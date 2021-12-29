@@ -47,7 +47,7 @@ namespace YAFC
         {
             RegisterPageView<ProductionTable>(new ProductionTableView());
             RegisterPageView<AutoPlanner>(new AutoPlannerView());
-            RegisterPageView<Summary>(new SummaryView());
+            RegisterPageView<Summary>(new SummaryView(this));
             searchGui = new ImGui(BuildSearch, new Padding(1f)) { boxShadow = RectangleBorder.Thin, boxColor = SchemeColor.Background };
             Instance = this;
             tabBar = new MainScreenTabBar(this);
@@ -81,6 +81,13 @@ namespace YAFC
             if (project.displayPages.Count == 0)
             {
                 project.displayPages.Add(project.pages[0].guid);
+            }
+
+            // Hack to activate all page solvers for the summary view
+            foreach (var page in project.pages)
+            {
+                page.SetActive(true);
+                page.SetActive(false);
             }
 
             SetActivePage(project.FindPage(project.displayPages[0]));
