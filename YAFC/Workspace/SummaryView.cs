@@ -7,11 +7,18 @@ namespace YAFC
 {
     public class SummaryView : ProjectPageView<Summary>
     {
+        struct GoodDetails
+        {
+            public float totalProvided;
+            public float totalNeeded;
+            public float extraProduced;
+        }
+
         private readonly MainScreen screen;
 
         private readonly DataGrid<ProjectPage> mainGrid;
 
-        private readonly Dictionary<string, float> allGoods = new Dictionary<string, float>();
+        private readonly Dictionary<string, GoodDetails> allGoods = new Dictionary<string, GoodDetails>();
 
         private ProjectPage invokedPage;
 
@@ -57,15 +64,22 @@ namespace YAFC
 
             using (var grid = gui.EnterInlineGrid(3f, 1f))
             {
-                foreach (KeyValuePair<string, float> entry in allGoods)
+                foreach (KeyValuePair<string, GoodDetails> entry in allGoods)
                 {
+                    var amountAvailable = entry.Value.totalProvided > 0 ? entry.Value.totalProvided : entry.Value.extraProduced;
+                    var amountNeeded = entry.Value.totalProvided < 0 ? -entry.Value.totalProvided : entry.Value.totalNeeded;
+                    if (DataUtils.FormatAmount(amountAvailable, UnitOfMeasure.None) == DataUtils.FormatAmount(amountNeeded, UnitOfMeasure.None))
+                    {
+                        continue;
+                    }
+
                     grid.Next();
                     var link = table.links.Find(x => x.goods.name == entry.Key);
                     if (link != null)
                     {
                         if (link.amount != 0f)
                         {
-                            DrawProvideProduct(gui, link, page, entry.Value);
+                            DrawProvideProduct(gui, link, page, entry.Value.extraProduced, amountAvailable >= entry.Value.totalNeeded);
                         }
                     }
                     else
@@ -73,9 +87,10 @@ namespace YAFC
                         if (Array.Exists(table.flow, x => x.goods.name == entry.Key))
                         {
                             var flow = Array.Find(table.flow, x => x.goods.name == entry.Key);
-                            if (flow.amount < -1e-5f)
+                            if (Math.Abs(flow.amount) > 1e-5f)
                             {
-                                DrawRequestProduct(gui, flow);
+
+                                DrawRequestProduct(gui, flow, entry.Value.extraProduced >= entry.Value.totalNeeded);
                             }
                         }
                     }
@@ -83,11 +98,12 @@ namespace YAFC
             }
         }
 
-        private void DrawProvideProduct(ImGui gui, ProductionLink element, ProjectPage page, float requiredOutput)
+        private void DrawProvideProduct(ImGui gui, ProductionLink element, ProjectPage page, float extraProduced, bool enoughOutput)
         {
             gui.allocator = RectAllocator.Stretch;
             gui.spacing = 0f;
-            var evt = gui.BuildFactorioObjectWithEditableAmount(element.goods, element.amount, element.goods.flowUnitOfMeasure, out var newAmount, requiredOutput > element.amount ? SchemeColor.Error : SchemeColor.Primary);
+
+            var evt = gui.BuildFactorioObjectWithEditableAmount(element.goods, element.amount, element.goods.flowUnitOfMeasure, out var newAmount, (element.amount > 0 && enoughOutput) || (element.amount < 0 && DataUtils.FormatAmount(extraProduced, UnitOfMeasure.None) == DataUtils.FormatAmount(-element.amount, UnitOfMeasure.None)) ? SchemeColor.Primary : SchemeColor.Error);
             if (evt == GoodsWithAmountEvent.TextEditing && newAmount != 0)
             {
                 element.RecordUndo().amount = newAmount;
@@ -100,11 +116,11 @@ namespace YAFC
             }
         }
 
-        private void DrawRequestProduct(ImGui gui, ProductionTableFlow flow)
+        private void DrawRequestProduct(ImGui gui, ProductionTableFlow flow, bool enoughProduced)
         {
             gui.allocator = RectAllocator.Stretch;
             gui.spacing = 0f;
-            gui.BuildFactorioObjectWithAmount(flow.goods, -flow.amount, flow.goods?.flowUnitOfMeasure ?? UnitOfMeasure.None, SchemeColor.None);
+            gui.BuildFactorioObjectWithAmount(flow.goods, -flow.amount, flow.goods?.flowUnitOfMeasure ?? UnitOfMeasure.None, flow.amount > 1e-5f ? enoughProduced ? SchemeColor.Green : SchemeColor.Error : SchemeColor.None);
         }
 
         protected override void BuildContent(ImGui gui)
@@ -122,8 +138,12 @@ namespace YAFC
 
                 foreach (var link in content.links)
                 {
-                    if (link.amount != 0f && !allGoods.ContainsKey(link.goods.name))
-                        allGoods[link.goods.name] = 0;
+                    if (link.amount != 0f)
+                    {
+                        var value = allGoods.GetValueOrDefault(link.goods.name);
+                        value.totalProvided += link.amount;
+                        allGoods[link.goods.name] = value;
+                    }
                 }
 
                 foreach (var flow in content.flow)
@@ -131,7 +151,13 @@ namespace YAFC
                     if (flow.amount < -1e-5f)
                     {
                         var value = allGoods.GetValueOrDefault(flow.goods.name);
-                        value -= flow.amount;
+                        value.totalNeeded -= flow.amount;
+                        allGoods[flow.goods.name] = value;
+                    }
+                    else if (flow.amount > 1e-5f)
+                    {
+                        var value = allGoods.GetValueOrDefault(flow.goods.name);
+                        value.extraProduced += flow.amount;
                         allGoods[flow.goods.name] = value;
                     }
                 }
