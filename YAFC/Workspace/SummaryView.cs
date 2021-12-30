@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using YAFC.Model;
 using YAFC.UI;
 
@@ -9,6 +10,8 @@ namespace YAFC
         private readonly MainScreen screen;
 
         private readonly DataGrid<ProjectPage> mainGrid;
+
+        private readonly Dictionary<string, float> allGoods = new Dictionary<string, float>();
 
         private ProjectPage invokedPage;
 
@@ -50,33 +53,41 @@ namespace YAFC
                 return;
             }
 
+            var table = page.content as ProductionTable;
+
             using (var grid = gui.EnterInlineGrid(3f, 1f))
             {
-                foreach (var link in (page.content as ProductionTable).links)
+                foreach (KeyValuePair<string, float> entry in allGoods)
                 {
-                    if (link.amount != 0f)
-                    {
-                        grid.Next();
-                        DrawProvideProduct(gui, link, page);
-                    }
-
-                }
-
-                foreach (var flow in (page.content as ProductionTable).flow)
-                {
-                    if (flow.amount >= -1e-5f)
-                        break;
                     grid.Next();
-                    DrawRequestProduct(gui, flow);
+                    var link = table.links.Find(x => x.goods.name == entry.Key);
+                    if (link != null)
+                    {
+                        if (link.amount != 0f)
+                        {
+                            DrawProvideProduct(gui, link, page, entry.Value);
+                        }
+                    }
+                    else
+                    {
+                        if (Array.Exists(table.flow, x => x.goods.name == entry.Key))
+                        {
+                            var flow = Array.Find(table.flow, x => x.goods.name == entry.Key);
+                            if (flow.amount < -1e-5f)
+                            {
+                                DrawRequestProduct(gui, flow);
+                            }
+                        }
+                    }
                 }
             }
         }
 
-        private void DrawProvideProduct(ImGui gui, ProductionLink element, ProjectPage page)
+        private void DrawProvideProduct(ImGui gui, ProductionLink element, ProjectPage page, float requiredOutput)
         {
             gui.allocator = RectAllocator.Stretch;
             gui.spacing = 0f;
-            var evt = gui.BuildFactorioObjectWithEditableAmount(element.goods, element.amount, element.goods.flowUnitOfMeasure, out var newAmount, SchemeColor.Primary);
+            var evt = gui.BuildFactorioObjectWithEditableAmount(element.goods, element.amount, element.goods.flowUnitOfMeasure, out var newAmount, requiredOutput > element.amount ? SchemeColor.Error : SchemeColor.Primary);
             if (evt == GoodsWithAmountEvent.TextEditing && newAmount != 0)
             {
                 element.RecordUndo().amount = newAmount;
@@ -98,6 +109,33 @@ namespace YAFC
 
         protected override void BuildContent(ImGui gui)
         {
+            // TODO Can we detect if things changed?
+            allGoods.Clear();
+            foreach (var displayPage in screen.project.displayPages)
+            {
+                var page = screen.project.FindPage(displayPage);
+                var content = page?.content as ProductionTable;
+                if (content == null)
+                {
+                    continue;
+                }
+
+                foreach (var link in content.links)
+                {
+                    if (link.amount != 0f && !allGoods.ContainsKey(link.goods.name))
+                        allGoods[link.goods.name] = 0;
+                }
+
+                foreach (var flow in content.flow)
+                {
+                    if (flow.amount < -1e-5f)
+                    {
+                        var value = allGoods.GetValueOrDefault(flow.goods.name);
+                        value -= flow.amount;
+                        allGoods[flow.goods.name] = value;
+                    }
+                }
+            }
 
             foreach (var displayPage in screen.project.displayPages)
             {
