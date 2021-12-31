@@ -7,6 +7,7 @@ namespace YAFC
 {
     public class SummaryView : ProjectPageView<Summary>
     {
+        static readonly float Epsilon = 1e-5f;
         struct GoodDetails
         {
             public float totalProvided;
@@ -66,9 +67,9 @@ namespace YAFC
             {
                 foreach (KeyValuePair<string, GoodDetails> entry in allGoods)
                 {
-                    var amountAvailable = entry.Value.totalProvided > 0 ? entry.Value.totalProvided : entry.Value.extraProduced;
-                    var amountNeeded = entry.Value.totalProvided < 0 ? -entry.Value.totalProvided : entry.Value.totalNeeded;
-                    if (DataUtils.FormatAmount(amountAvailable, UnitOfMeasure.None) == DataUtils.FormatAmount(amountNeeded, UnitOfMeasure.None))
+                    var amountAvailable = YAFCRounding((entry.Value.totalProvided > 0 ? entry.Value.totalProvided : 0) + entry.Value.extraProduced);
+                    var amountNeeded = YAFCRounding((entry.Value.totalProvided < 0 ? -entry.Value.totalProvided : 0) + entry.Value.totalNeeded);
+                    if (Math.Abs(amountAvailable - amountNeeded) < Epsilon || amountNeeded == 0)
                     {
                         continue;
                     }
@@ -79,7 +80,7 @@ namespace YAFC
                     {
                         if (link.amount != 0f)
                         {
-                            DrawProvideProduct(gui, link, page, entry.Value.extraProduced, amountAvailable >= entry.Value.totalNeeded);
+                            DrawProvideProduct(gui, link, page, entry.Value.extraProduced, amountAvailable >= amountNeeded);
                         }
                     }
                     else
@@ -87,10 +88,10 @@ namespace YAFC
                         if (Array.Exists(table.flow, x => x.goods.name == entry.Key))
                         {
                             var flow = Array.Find(table.flow, x => x.goods.name == entry.Key);
-                            if (Math.Abs(flow.amount) > 1e-5f)
+                            if (Math.Abs(flow.amount) > Epsilon)
                             {
 
-                                DrawRequestProduct(gui, flow, entry.Value.extraProduced >= entry.Value.totalNeeded);
+                                DrawRequestProduct(gui, flow, amountAvailable >= amountNeeded);
                             }
                         }
                     }
@@ -103,7 +104,7 @@ namespace YAFC
             gui.allocator = RectAllocator.Stretch;
             gui.spacing = 0f;
 
-            var evt = gui.BuildFactorioObjectWithEditableAmount(element.goods, element.amount, element.goods.flowUnitOfMeasure, out var newAmount, (element.amount > 0 && enoughOutput) || (element.amount < 0 && DataUtils.FormatAmount(extraProduced, UnitOfMeasure.None) == DataUtils.FormatAmount(-element.amount, UnitOfMeasure.None)) ? SchemeColor.Primary : SchemeColor.Error);
+            var evt = gui.BuildFactorioObjectWithEditableAmount(element.goods, element.amount, element.goods.flowUnitOfMeasure, out var newAmount, (element.amount > 0 && enoughOutput) || (element.amount < 0 && extraProduced == -element.amount) ? SchemeColor.Primary : SchemeColor.Error);
             if (evt == GoodsWithAmountEvent.TextEditing && newAmount != 0)
             {
                 element.RecordUndo().amount = newAmount;
@@ -120,7 +121,7 @@ namespace YAFC
         {
             gui.allocator = RectAllocator.Stretch;
             gui.spacing = 0f;
-            gui.BuildFactorioObjectWithAmount(flow.goods, -flow.amount, flow.goods?.flowUnitOfMeasure ?? UnitOfMeasure.None, flow.amount > 1e-5f ? enoughProduced ? SchemeColor.Green : SchemeColor.Error : SchemeColor.None);
+            gui.BuildFactorioObjectWithAmount(flow.goods, -flow.amount, flow.goods?.flowUnitOfMeasure ?? UnitOfMeasure.None, flow.amount > Epsilon ? enoughProduced ? SchemeColor.Green : SchemeColor.Error : SchemeColor.None);
         }
 
         protected override void BuildContent(ImGui gui)
@@ -141,24 +142,28 @@ namespace YAFC
                     if (link.amount != 0f)
                     {
                         var value = allGoods.GetValueOrDefault(link.goods.name);
-                        value.totalProvided += link.amount;
+                        value.totalProvided += YAFCRounding(link.amount); ;
                         allGoods[link.goods.name] = value;
                     }
                 }
 
                 foreach (var flow in content.flow)
                 {
-                    if (flow.amount < -1e-5f)
+                    if (flow.amount < -Epsilon)
                     {
                         var value = allGoods.GetValueOrDefault(flow.goods.name);
-                        value.totalNeeded -= flow.amount;
+                        value.totalNeeded -= YAFCRounding(flow.amount); ;
                         allGoods[flow.goods.name] = value;
                     }
-                    else if (flow.amount > 1e-5f)
+                    else if (flow.amount > Epsilon)
                     {
-                        var value = allGoods.GetValueOrDefault(flow.goods.name);
-                        value.extraProduced += flow.amount;
-                        allGoods[flow.goods.name] = value;
+                        if (!content.links.Exists(x => x.goods == flow.goods))
+                        {
+                            // Only count extras if not linked
+                            var value = allGoods.GetValueOrDefault(flow.goods.name);
+                            value.extraProduced += YAFCRounding(flow.amount);
+                            allGoods[flow.goods.name] = value;
+                        }
                     }
                 }
             }
@@ -168,6 +173,13 @@ namespace YAFC
                 var page = screen.project.FindPage(displayPage);
                 mainGrid.BuildRow(gui, page);
             }
+        }
+
+        // Convert/truncate value as shown in UI to prevent slight mismatches
+        private float YAFCRounding(float value)
+        {
+            DataUtils.TryParseAmount(DataUtils.FormatAmount(value, UnitOfMeasure.Second), out float result, UnitOfMeasure.Second);
+            return result;
         }
 
         private void RebuildInvoked(bool visualOnly = false)
