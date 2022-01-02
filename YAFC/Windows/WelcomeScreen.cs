@@ -72,7 +72,7 @@ namespace YAFC
             errorScroll = new ScrollArea(20f, BuildError, collapsible: true);
             recentProjectScroll = new ScrollArea(20f, BuildRecentProjectList, collapsible: true);
             languageScroll = new ScrollArea(20f, LanguageSelection, collapsible: true);
-            Create("Welcome to YAFC v" + YafcLib.version.ToString(3), 45, null);
+            Create("Welcome to YAFC v" + YafcLib.version, 45, null);
             IconCollection.ClearCustomIcons();
             if (tips == null)
                 tips = File.ReadAllLines("Data/Tips.txt");
