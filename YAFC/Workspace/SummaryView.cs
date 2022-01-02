@@ -9,6 +9,7 @@ namespace YAFC
     {
         static readonly float Epsilon = 1e-5f;
         static readonly float ElementWidth = 3;
+        static readonly float ElementSpacing = 1;
         struct GoodDetails
         {
             public float totalProvided;
@@ -86,13 +87,13 @@ namespace YAFC
 
             var table = page.content as ProductionTable;
 
-            using (var grid = gui.EnterInlineGrid(ElementWidth, 1f))
+            using (var grid = gui.EnterInlineGrid(ElementWidth, ElementSpacing))
             {
                 foreach (KeyValuePair<string, GoodDetails> entry in allGoods)
                 {
                     var amountAvailable = YAFCRounding((entry.Value.totalProvided > 0 ? entry.Value.totalProvided : 0) + entry.Value.extraProduced);
                     var amountNeeded = YAFCRounding((entry.Value.totalProvided < 0 ? -entry.Value.totalProvided : 0) + entry.Value.totalNeeded);
-                    if (Math.Abs(amountAvailable - amountNeeded) < Epsilon || amountNeeded == 0)
+                    if (model.showOnlyIssues && (Math.Abs(amountAvailable - amountNeeded) < Epsilon || amountNeeded == 0))
                     {
                         continue;
                     }
@@ -157,6 +158,12 @@ namespace YAFC
 
         protected override void BuildContent(ImGui gui)
         {
+            if (gui.BuildCheckBox("Only show issues", model.showOnlyIssues, out var newValue))
+            {
+                model.showOnlyIssues = newValue;
+                Recalculate();
+            }
+
             scrollArea.Build(gui);
         }
 
@@ -224,7 +231,19 @@ namespace YAFC
                 }
             }
 
-            goodsColumn.width = allGoods.Count * ElementWidth;
+            var count = 0;
+            foreach (var entry in allGoods)
+            {
+                var amountAvailable = YAFCRounding((entry.Value.totalProvided > 0 ? entry.Value.totalProvided : 0) + entry.Value.extraProduced);
+                var amountNeeded = YAFCRounding((entry.Value.totalProvided < 0 ? -entry.Value.totalProvided : 0) + entry.Value.totalNeeded);
+                if (model != null && model.showOnlyIssues && (Math.Abs(amountAvailable - amountNeeded) < Epsilon || amountNeeded == 0))
+                {
+                    continue;
+                }
+                count++;
+            }
+
+            goodsColumn.width = count * (ElementWidth + ElementSpacing);
 
             Rebuild(visualOnly);
             scrollArea.RebuildContents();
