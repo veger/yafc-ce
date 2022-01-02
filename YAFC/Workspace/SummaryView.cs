@@ -8,6 +8,7 @@ namespace YAFC
     public class SummaryView : ProjectPageView<Summary>
     {
         static readonly float Epsilon = 1e-5f;
+        static readonly float ElementWidth = 3;
         struct GoodDetails
         {
             public float totalProvided;
@@ -17,6 +18,8 @@ namespace YAFC
 
         private readonly MainScreen screen;
 
+        private readonly ScrollArea scrollArea;
+        private readonly DataColumn<ProjectPage> goodsColumn;
         private readonly DataGrid<ProjectPage> mainGrid;
 
         private readonly Dictionary<string, GoodDetails> allGoods = new Dictionary<string, GoodDetails>();
@@ -26,11 +29,14 @@ namespace YAFC
         public SummaryView(MainScreen screen)
         {
             this.screen = screen;
+            goodsColumn = new DataColumn<ProjectPage>("Linked", BuildSummaryTable, null, 30f);
             var columns = new[]
             {
                 new DataColumn<ProjectPage>("Tab", BuildTabName, null, 6f),
-                new DataColumn<ProjectPage>("Linked", BuildLinkedItems, null, float.MaxValue),
+                goodsColumn,
             };
+            // TODO Make height relative to window height instead of fixed
+            scrollArea = new ScrollArea(30, BuildScrollArea, vertical: true, horizontal: true);
             mainGrid = new DataGrid<ProjectPage>(columns);
         }
 
@@ -54,7 +60,7 @@ namespace YAFC
             }
         }
 
-        protected void BuildLinkedItems(ImGui gui, ProjectPage page)
+        protected void BuildSummaryTable(ImGui gui, ProjectPage page)
         {
             if (page?.contentType != typeof(ProductionTable))
             {
@@ -63,7 +69,7 @@ namespace YAFC
 
             var table = page.content as ProductionTable;
 
-            using (var grid = gui.EnterInlineGrid(3f, 1f))
+            using (var grid = gui.EnterInlineGrid(ElementWidth, 1f))
             {
                 foreach (KeyValuePair<string, GoodDetails> entry in allGoods)
                 {
@@ -75,12 +81,13 @@ namespace YAFC
                     }
 
                     grid.Next();
+                    var enoughProduced = amountAvailable >= amountNeeded;
                     var link = table.links.Find(x => x.goods.name == entry.Key);
                     if (link != null)
                     {
                         if (link.amount != 0f)
                         {
-                            DrawProvideProduct(gui, link, page, entry.Value.extraProduced, amountAvailable >= amountNeeded);
+                            DrawProvideProduct(gui, link, page, entry.Value.extraProduced, enoughProduced);
                         }
                     }
                     else
@@ -91,7 +98,7 @@ namespace YAFC
                             if (Math.Abs(flow.amount) > Epsilon)
                             {
 
-                                DrawRequestProduct(gui, flow, amountAvailable >= amountNeeded);
+                                DrawRequestProduct(gui, flow, enoughProduced);
                             }
                         }
                     }
@@ -99,12 +106,12 @@ namespace YAFC
             }
         }
 
-        private void DrawProvideProduct(ImGui gui, ProductionLink element, ProjectPage page, float extraProduced, bool enoughOutput)
+        private void DrawProvideProduct(ImGui gui, ProductionLink element, ProjectPage page, float extraProduced, bool enoughProduced)
         {
             gui.allocator = RectAllocator.Stretch;
             gui.spacing = 0f;
 
-            var evt = gui.BuildFactorioObjectWithEditableAmount(element.goods, element.amount, element.goods.flowUnitOfMeasure, out var newAmount, (element.amount > 0 && enoughOutput) || (element.amount < 0 && extraProduced == -element.amount) ? SchemeColor.Primary : SchemeColor.Error);
+            var evt = gui.BuildFactorioObjectWithEditableAmount(element.goods, element.amount, element.goods.flowUnitOfMeasure, out var newAmount, (element.amount > 0 && enoughProduced) || (element.amount < 0 && extraProduced == -element.amount) ? SchemeColor.Primary : SchemeColor.Error);
             if (evt == GoodsWithAmountEvent.TextEditing && newAmount != 0)
             {
                 element.RecordUndo().amount = newAmount;
@@ -122,6 +129,15 @@ namespace YAFC
             gui.allocator = RectAllocator.Stretch;
             gui.spacing = 0f;
             gui.BuildFactorioObjectWithAmount(flow.goods, -flow.amount, flow.goods?.flowUnitOfMeasure ?? UnitOfMeasure.None, flow.amount > Epsilon ? enoughProduced ? SchemeColor.Green : SchemeColor.Error : SchemeColor.None);
+        }
+
+        protected override void BuildHeader(ImGui gui)
+        {
+            base.BuildHeader(gui);
+
+            gui.allocator = RectAllocator.Center;
+            gui.BuildText("Production Sheet Summary", Font.header, false, RectAlignment.Middle);
+            gui.allocator = RectAllocator.LeftAlign;
         }
 
         protected override void BuildContent(ImGui gui)
@@ -168,6 +184,12 @@ namespace YAFC
                 }
             }
 
+            goodsColumn.width = allGoods.Count * ElementWidth;
+            scrollArea.Build(gui);
+        }
+
+        private void BuildScrollArea(ImGui gui)
+        {
             foreach (var displayPage in screen.project.displayPages)
             {
                 var page = screen.project.FindPage(displayPage);
@@ -185,6 +207,7 @@ namespace YAFC
         private void RebuildInvoked(bool visualOnly = false)
         {
             Rebuild(visualOnly);
+            scrollArea.RebuildContents();
             invokedPage.contentChanged -= RebuildInvoked;
         }
 
