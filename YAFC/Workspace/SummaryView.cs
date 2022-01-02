@@ -16,7 +16,7 @@ namespace YAFC
             public float extraProduced;
         }
 
-        private readonly MainScreen screen;
+        private Project project;
 
         private readonly ScrollArea scrollArea;
         private readonly DataColumn<ProjectPage> goodsColumn;
@@ -24,20 +24,37 @@ namespace YAFC
 
         private readonly Dictionary<string, GoodDetails> allGoods = new Dictionary<string, GoodDetails>();
 
-        private ProjectPage invokedPage;
-
-        public SummaryView(MainScreen screen)
+        public SummaryView()
         {
-            this.screen = screen;
             goodsColumn = new DataColumn<ProjectPage>("Linked", BuildSummaryTable, null, 30f);
             var columns = new[]
             {
                 new DataColumn<ProjectPage>("Tab", BuildTabName, null, 6f),
                 goodsColumn,
             };
-            // TODO Make height relative to window height instead of fixed
+            // TODO Make height relative to min(window,content) height instead of fixed
             scrollArea = new ScrollArea(30, BuildScrollArea, vertical: true, horizontal: true);
             mainGrid = new DataGrid<ProjectPage>(columns);
+        }
+
+        public void SetProject(Project project)
+        {
+            if (this.project != null)
+            {
+                this.project.metaInfoChanged -= Recalculate;
+                foreach (var page in project.pages)
+                {
+                    page.contentChanged -= Recalculate;
+                }
+            }
+
+            this.project = project;
+
+            project.metaInfoChanged += Recalculate;
+            foreach (var page in project.pages)
+            {
+                page.contentChanged += Recalculate;
+            }
         }
 
         protected override void BuildPageTooltip(ImGui gui, Summary contents)
@@ -116,8 +133,6 @@ namespace YAFC
             {
                 element.RecordUndo().amount = newAmount;
                 // Hack force recalculate the page 9and make sure to catch the content change event caused by the recalculation)
-                invokedPage = page;
-                page.contentChanged += RebuildInvoked;
                 page.SetActive(true);
                 page.SetToRecalculate();
                 page.SetActive(false);
@@ -142,11 +157,36 @@ namespace YAFC
 
         protected override void BuildContent(ImGui gui)
         {
-            // TODO Can we detect if things changed?
-            allGoods.Clear();
-            foreach (var displayPage in screen.project.displayPages)
+            scrollArea.Build(gui);
+        }
+
+        private void BuildScrollArea(ImGui gui)
+        {
+            foreach (var displayPage in project.displayPages)
             {
-                var page = screen.project.FindPage(displayPage);
+                var page = project.FindPage(displayPage);
+                if (page?.contentType != typeof(ProductionTable))
+                    continue;
+
+                mainGrid.BuildRow(gui, page);
+            }
+        }
+
+        // Convert/truncate value as shown in UI to prevent slight mismatches
+        private float YAFCRounding(float value)
+        {
+            DataUtils.TryParseAmount(DataUtils.FormatAmount(value, UnitOfMeasure.Second), out float result, UnitOfMeasure.Second);
+            return result;
+        }
+
+        private void Recalculate() => Recalculate(false);
+
+        private void Recalculate(bool visualOnly)
+        {
+            allGoods.Clear();
+            foreach (var displayPage in project.displayPages)
+            {
+                var page = project.FindPage(displayPage);
                 var content = page?.content as ProductionTable;
                 if (content == null)
                 {
@@ -185,30 +225,9 @@ namespace YAFC
             }
 
             goodsColumn.width = allGoods.Count * ElementWidth;
-            scrollArea.Build(gui);
-        }
 
-        private void BuildScrollArea(ImGui gui)
-        {
-            foreach (var displayPage in screen.project.displayPages)
-            {
-                var page = screen.project.FindPage(displayPage);
-                mainGrid.BuildRow(gui, page);
-            }
-        }
-
-        // Convert/truncate value as shown in UI to prevent slight mismatches
-        private float YAFCRounding(float value)
-        {
-            DataUtils.TryParseAmount(DataUtils.FormatAmount(value, UnitOfMeasure.Second), out float result, UnitOfMeasure.Second);
-            return result;
-        }
-
-        private void RebuildInvoked(bool visualOnly = false)
-        {
             Rebuild(visualOnly);
             scrollArea.RebuildContents();
-            invokedPage.contentChanged -= RebuildInvoked;
         }
 
         public override void CreateModelDropdown(ImGui gui, Type type, Project project)
