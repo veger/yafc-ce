@@ -19,7 +19,7 @@ namespace YAFC.UI
         {
             this.build = build;
             this.menuBuilder = menuBuilder;
-            
+
             this.header = header;
             this.width = width;
             this.minWidth = minWidth == 0f ? width : minWidth;
@@ -27,8 +27,8 @@ namespace YAFC.UI
             isFixedSize = minWidth == maxWidth;
         }
     }
-    
-    public class DataGrid<TData> where TData:class
+
+    public class DataGrid<TData> where TData : class
     {
         private readonly DataColumn<TData>[] columns;
         private readonly Padding innerPadding = new Padding(0.2f);
@@ -64,7 +64,7 @@ namespace YAFC.UI
                         gui.Rebuild();
                     break;
                 case ImGuiAction.MouseDown:
-                    gui.ConsumeMouseDown(rect, cursor:RenderingUtils.cursorHorizontalResize);
+                    gui.ConsumeMouseDown(rect, cursor: RenderingUtils.cursorHorizontalResize);
                     break;
                 case ImGuiAction.MouseUp:
                     if (gui.ConsumeMouseUp(rect, false))
@@ -75,6 +75,16 @@ namespace YAFC.UI
                     }
                     break;
             }
+        }
+
+        private void CalculateWidth()
+        {
+            var x = 0f;
+            foreach (var column in columns)
+            {
+                x += column.width + spacing;
+            }
+            width = x + 0.2f - spacing;
         }
 
         public void BuildHeader(ImGui gui)
@@ -97,12 +107,12 @@ namespace YAFC.UI
 
                     if (!column.isFixedSize)
                     {
-                        BuildHeaderResizer(gui, column, new Rect(x-0.7f, y, 1f, 2.2f));
+                        BuildHeaderResizer(gui, column, new Rect(x - 0.7f, y, 1f, 2.2f));
                     }
 
                     if (column.menuBuilder != null)
                     {
-                        var menuRect = new Rect(rect.Right-1.7f, rect.Y + 0.3f, 1.5f, 1.5f);
+                        var menuRect = new Rect(rect.Right - 1.7f, rect.Y + 0.3f, 1.5f, 1.5f);
                         if (gui.isBuilding)
                             gui.DrawIcon(menuRect, Icon.DropDown, SchemeColor.BackgroundText);
                         if (gui.BuildButton(menuRect, SchemeColor.None, SchemeColor.Grey))
@@ -110,7 +120,7 @@ namespace YAFC.UI
                     }
                 }
             }
-            width = x + 0.2f - spacing;
+            CalculateWidth();
 
             var separator = gui.AllocateRect(x, 0.1f);
             if (gui.isBuilding)
@@ -145,10 +155,11 @@ namespace YAFC.UI
                 buildGroup.Complete();
             }
 
+            CalculateWidth();
             var rect = gui.lastRect;
             var bottom = gui.lastRect.Bottom;
             if (gui.isBuilding)
-                gui.DrawRectangle(new Rect(startX, bottom - 0.1f, x-startX, 0.1f), SchemeColor.Grey);
+                gui.DrawRectangle(new Rect(startX, bottom - 0.1f, x - startX, 0.1f), SchemeColor.Grey);
             return rect;
         }
 
@@ -161,7 +172,7 @@ namespace YAFC.UI
         public Rect EndBuildingContent(ImGui gui)
         {
             var bottom = gui.statePosition.Bottom;
-            return new Rect(buildingStart.X, buildingStart.Y, width, bottom-buildingStart.Y);
+            return new Rect(buildingStart.X, buildingStart.Y, width, bottom - buildingStart.Y);
         }
 
         public bool BuildContent(ImGui gui, IReadOnlyList<TData> data, out (TData from, TData to) reorder, out Rect rect)
