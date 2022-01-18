@@ -19,6 +19,7 @@ namespace YAFC
         }
 
         private Project project;
+        private SearchQuery searchQuery;
 
         private readonly ScrollArea scrollArea;
         private readonly DataColumn<ProjectPage> goodsColumn;
@@ -92,6 +93,12 @@ namespace YAFC
             {
                 foreach (KeyValuePair<string, GoodDetails> goodInfo in allGoods)
                 {
+                    if (!searchQuery.Match(goodInfo.Key))
+                    {
+                        Console.WriteLine("skip=" + goodInfo.Key);
+                        continue;
+                    }
+
                     float amountAvailable = YAFCRounding((goodInfo.Value.totalProvided > 0 ? goodInfo.Value.totalProvided : 0) + goodInfo.Value.extraProduced);
                     var amountNeeded = YAFCRounding((goodInfo.Value.totalProvided < 0 ? -goodInfo.Value.totalProvided : 0) + goodInfo.Value.totalNeeded);
                     if (model.showOnlyIssues && (Math.Abs(amountAvailable - amountNeeded) < Epsilon || amountNeeded == 0))
@@ -255,10 +262,17 @@ namespace YAFC
         private void SetProviderAmount(ProductionLink element, ProjectPage page, float newAmount)
         {
             element.RecordUndo().amount = newAmount;
-            // Hack force recalculate the page 9and make sure to catch the content change event caused by the recalculation)
+            // Hack force recalculate the page (and make sure to catch the content change event caused by the recalculation)
             page.SetActive(true);
             page.SetToRecalculate();
             page.SetActive(false);
+        }
+
+        public override void SetSearchQuery(SearchQuery query)
+        {
+            searchQuery = query;
+            bodyContent.Rebuild();
+            scrollArea.Rebuild();
         }
 
         public override void CreateModelDropdown(ImGui gui, Type type, Project project)
