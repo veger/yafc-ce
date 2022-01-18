@@ -15,6 +15,7 @@ namespace YAFC
             public float totalProvided;
             public float totalNeeded;
             public float extraProduced;
+            public float sum;
         }
 
         private Project project;
@@ -89,30 +90,30 @@ namespace YAFC
 
             using (var grid = gui.EnterInlineGrid(ElementWidth, ElementSpacing))
             {
-                foreach (KeyValuePair<string, GoodDetails> entry in allGoods)
+                foreach (KeyValuePair<string, GoodDetails> goodInfo in allGoods)
                 {
-                    var amountAvailable = YAFCRounding((entry.Value.totalProvided > 0 ? entry.Value.totalProvided : 0) + entry.Value.extraProduced);
-                    var amountNeeded = YAFCRounding((entry.Value.totalProvided < 0 ? -entry.Value.totalProvided : 0) + entry.Value.totalNeeded);
+                    float amountAvailable = YAFCRounding((goodInfo.Value.totalProvided > 0 ? goodInfo.Value.totalProvided : 0) + goodInfo.Value.extraProduced);
+                    var amountNeeded = YAFCRounding((goodInfo.Value.totalProvided < 0 ? -goodInfo.Value.totalProvided : 0) + goodInfo.Value.totalNeeded);
                     if (model.showOnlyIssues && (Math.Abs(amountAvailable - amountNeeded) < Epsilon || amountNeeded == 0))
                     {
                         continue;
                     }
 
                     grid.Next();
-                    var enoughProduced = amountAvailable >= amountNeeded;
-                    var link = table.links.Find(x => x.goods.name == entry.Key);
+                    bool enoughProduced = amountAvailable >= amountNeeded;
+                    ProductionLink link = table.links.Find(x => x.goods.name == goodInfo.Key);
                     if (link != null)
                     {
                         if (link.amount != 0f)
                         {
-                            DrawProvideProduct(gui, link, page, entry.Value.extraProduced, enoughProduced);
+                            DrawProvideProduct(gui, link, page, goodInfo.Value, enoughProduced);
                         }
                     }
                     else
                     {
-                        if (Array.Exists(table.flow, x => x.goods.name == entry.Key))
+                        if (Array.Exists(table.flow, x => x.goods.name == goodInfo.Key))
                         {
-                            var flow = Array.Find(table.flow, x => x.goods.name == entry.Key);
+                            var flow = Array.Find(table.flow, x => x.goods.name == goodInfo.Key);
                             if (Math.Abs(flow.amount) > Epsilon)
                             {
 
@@ -124,19 +125,19 @@ namespace YAFC
             }
         }
 
-        private void DrawProvideProduct(ImGui gui, ProductionLink element, ProjectPage page, float extraProduced, bool enoughProduced)
+        private void DrawProvideProduct(ImGui gui, ProductionLink element, ProjectPage page, GoodDetails goodInfo, bool enoughProduced)
         {
             gui.allocator = RectAllocator.Stretch;
             gui.spacing = 0f;
 
-            var evt = gui.BuildFactorioObjectWithEditableAmount(element.goods, element.amount, element.goods.flowUnitOfMeasure, out var newAmount, (element.amount > 0 && enoughProduced) || (element.amount < 0 && extraProduced == -element.amount) ? SchemeColor.Primary : SchemeColor.Error);
+            var evt = gui.BuildFactorioObjectWithEditableAmount(element.goods, element.amount, element.goods.flowUnitOfMeasure, out float newAmount, (element.amount > 0 && enoughProduced) || (element.amount < 0 && goodInfo.extraProduced == -element.amount) ? SchemeColor.Primary : SchemeColor.Error);
             if (evt == GoodsWithAmountEvent.TextEditing && newAmount != 0)
             {
-                element.RecordUndo().amount = newAmount;
-                // Hack force recalculate the page 9and make sure to catch the content change event caused by the recalculation)
-                page.SetActive(true);
-                page.SetToRecalculate();
-                page.SetActive(false);
+                SetProviderAmount(element, page, newAmount);
+            }
+            else if (evt == GoodsWithAmountEvent.ButtonClick)
+            {
+                SetProviderAmount(element, page, YAFCRounding(goodInfo.sum));
             }
         }
 
@@ -216,6 +217,7 @@ namespace YAFC
                     {
                         var value = allGoods.GetValueOrDefault(flow.goods.name);
                         value.totalNeeded -= YAFCRounding(flow.amount); ;
+                        value.sum -= YAFCRounding(flow.amount); ;
                         allGoods[flow.goods.name] = value;
                     }
                     else if (flow.amount > Epsilon)
@@ -225,6 +227,7 @@ namespace YAFC
                             // Only count extras if not linked
                             var value = allGoods.GetValueOrDefault(flow.goods.name);
                             value.extraProduced += YAFCRounding(flow.amount);
+                            value.sum -= YAFCRounding(flow.amount);
                             allGoods[flow.goods.name] = value;
                         }
                     }
@@ -247,6 +250,15 @@ namespace YAFC
 
             Rebuild(visualOnly);
             scrollArea.RebuildContents();
+        }
+
+        private void SetProviderAmount(ProductionLink element, ProjectPage page, float newAmount)
+        {
+            element.RecordUndo().amount = newAmount;
+            // Hack force recalculate the page 9and make sure to catch the content change event caused by the recalculation)
+            page.SetActive(true);
+            page.SetToRecalculate();
+            page.SetActive(false);
         }
 
         public override void CreateModelDropdown(ImGui gui, Type type, Project project)
