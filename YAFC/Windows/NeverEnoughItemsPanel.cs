@@ -355,8 +355,8 @@ namespace YAFC
             }
 
             if (gui.BuildFactorioObjectButton(gui.lastRect, current, SchemeColor.Grey))
-                SelectObjectPanel.Select(Database.goods.all, "Select item", SetItem);
-
+                SelectSingleObjectPanel.Select(Database.goods.all, "Select item", SetItem);
+                
             using (var split = gui.EnterHorizontalSplit(2))
             {
                 split.Next();
