@@ -124,7 +124,7 @@ namespace YAFC.Model
 
             if (autoSort)
             {
-                // Adding default milestones AND special flag to auto-order them
+                // Set special flag to auto-order the milestones, keep currentMilestones empty, as the milestones needs to be added later so they get ordered according to their dependencies
                 foreach (var milestone in milestones)
                     processing[milestone] |= ProcessingFlags.MilestoneNeedOrdering;
                 currentMilestones = new FactorioObject[milestones.Length];
@@ -171,15 +171,19 @@ namespace YAFC.Model
                         Array.Resize(ref currentMilestones, nextMilestoneIndex);
                         break;
                     }
-                    Console.WriteLine("Processing milestone " + milestone.locName);
-                    processingQueue.Enqueue(milestone.id);
-                    processing[milestone] = ProcessingFlags.Initial | ProcessingFlags.InQueue;
+                    else
+                    {
+                        Console.WriteLine("Queuing milestone {0} ({1}) [{2}]", milestone.name, milestone.id, milestone.GetType().Name);
+
+                        processingQueue.Enqueue(milestone.id);
+                        processing[milestone] = ProcessingFlags.Initial | ProcessingFlags.InQueue;
+                    }
                 }
 
                 while (processingQueue.Count > 0)
                 {
                     var elem = processingQueue.Dequeue();
-                    var entry = dependencyList[elem];
+                    var elemDeps = dependencyList[elem];
 
 
                     var cur = result[elem] ?? new Bits();
@@ -187,13 +191,17 @@ namespace YAFC.Model
                     var isInitial = (processing[elem] & ProcessingFlags.Initial) != 0;
                     processing[elem] &= ProcessingFlags.MilestoneNeedOrdering;
 
-                    foreach (var list in entry)
+                    // Console.WriteLine("Processing {0} ({1}) [{2}] -> isInitial: {3}", Database.objects[elem].name, Database.objects[elem].id, Database.objects[elem].GetType().Name, isInitial);
+
+                    foreach (var list in elemDeps)
                     {
+                        // Console.WriteLine("  -> {0}: req all {1}", list.flags, list.flags & DependencyList.Flags.RequireEverything);
                         if ((list.flags & DependencyList.Flags.RequireEverything) != 0)
                         {
                             foreach (var req in list.elements)
                             {
                                 var reqFlags = result[req];
+                                // Console.WriteLine("    -> dep all {0} ({1}) [{2}]: reqflags {3}", Database.objects[req].name, Database.objects[req].id, Database.objects[req].GetType().Name, reqFlags);
                                 if ((reqFlags is null || reqFlags.IsClear()) && !isInitial)
                                     goto skip;
                                 eflags |= reqFlags;
@@ -201,16 +209,25 @@ namespace YAFC.Model
                         }
                         else
                         {
+                            if (list.elements.Length == 0)
+                            {
+                                Console.WriteLine("Unexpected: {0} ({1}) [{2}] - {3} group deps empty, will cause unreachable elements", Database.objects[elem].name, Database.objects[elem].id, Database.objects[elem].GetType().Name, list.flags);
+                            }
+
+                            // Minimize group  (dependency) cost
                             var groupFlags = new Bits();
                             foreach (var req in list.elements)
                             {
-                                var acc = result[req];
-                                if (acc is null || acc.IsClear())
+                                var reqFlags = result[req];
+                                // Console.WriteLine("    -> dep grp {0} ({1}) [{2}]: reqflags {3}, groupFlags {4}", Database.objects[req].name, Database.objects[req].id, Database.objects[req].GetType().Name, reqFlags, groupFlags);
+                                if (reqFlags is null || reqFlags.IsClear())
+                                    // Dependency is not available/processed yet, so check next
                                     continue;
-                                if (acc < groupFlags || groupFlags.IsClear())
-                                    groupFlags = acc;
+                                if (reqFlags < groupFlags || groupFlags.IsClear())
+                                    groupFlags = reqFlags;
                             }
 
+                            // Console.WriteLine("    -> group flags {0}", groupFlags);
                             if (groupFlags.IsClear() && !isInitial)
                                 goto skip;
                             eflags |= groupFlags;
@@ -220,15 +237,19 @@ namespace YAFC.Model
                     if (!isInitial)
                     {
                         if (eflags == cur || (eflags | flagMask) != flagMask)
+                        {
+                            // Console.WriteLine("  -> Skipping: eflags {0}, flagMask {1}, cur {2}", eflags, flagMask, cur);
                             continue;
+                        }
                     }
                     else eflags &= flagMask;
 
                     accessibleObjects++;
-                    //var obj = Database.objects[elem];
-                    //Console.WriteLine("Added object " + obj.locName + " [" + obj.GetType().Name + "] with mask " + eflags.ToString() + " (was " + cur.ToString() + ")");
+                    // Console.WriteLine("  -> Added object {0} ({1}) [{2}] with eflags {3} (was {4})", Database.objects[elem].name, Database.objects[elem].id, Database.objects[elem].GetType().Name, eflags, cur);
+
                     if (processing[elem] == ProcessingFlags.MilestoneNeedOrdering)
                     {
+                        // Auto-sorting, elem was not added to currentMilestones yet, so add now its dependencies are solved
                         processing[elem] = 0;
                         eflags |= nextMilestoneMask;
                         nextMilestoneMask <<= 1;
@@ -236,16 +257,20 @@ namespace YAFC.Model
                     }
 
                     result[elem] = eflags;
+                    // Add reverse dependencies to feed the algorithm with new processable elements
                     foreach (var revdep in reverseDependencies[elem])
                     {
                         if ((processing[revdep] & ~ProcessingFlags.MilestoneNeedOrdering) != 0 || (result[revdep] is not null && !result[revdep].IsClear()))
+                            // Already/About to be processed
                             continue;
+
+                        // Console.WriteLine("    -> Queuing rev dep {0} ({1}) [{2}]", Database.objects[revdep].name, Database.objects[revdep].id, Database.objects[revdep].GetType().Name);
 
                         processing[revdep] |= ProcessingFlags.InQueue;
                         processingQueue.Enqueue(revdep);
                     }
 
-skip:;
+                skip:;
                 }
             }
 
@@ -273,7 +298,7 @@ skip:;
                 warnings.Error("There are some milestones that are not accessible: " + string.Join(", ", milestonesNotReachable.Select(x => x.locName)) + ". You may remove these from milestone list," +
                                MaybeBug + MilestoneAnalysisIsImportant + UseDependencyExplorer, ErrorSeverity.AnalysisWarning);
             }
-            Console.WriteLine("Milestones calculation finished in " + time.ElapsedMilliseconds + " ms.");
+            Console.WriteLine("Milestones calculation finished in {0} ms.", time.ElapsedMilliseconds);
             milestoneResult = result;
         }
 
