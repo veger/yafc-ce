@@ -13,7 +13,7 @@ namespace YAFC.Model
     {
         [Flags]
         public enum Flags
-        {            
+        {
             RequireEverything = 0x100,
             OneTimeInvestment = 0x200,
 
@@ -32,7 +32,7 @@ namespace YAFC.Model
         public Flags flags;
         public FactorioId[] elements;
     }
-    
+
     public static class Dependencies
     {
         public static Mapping<FactorioObject, DependencyList[]> dependencyList;
@@ -42,9 +42,9 @@ namespace YAFC.Model
         {
             dependencyList = Database.objects.CreateMapping<DependencyList[]>();
             reverseDependencies = Database.objects.CreateMapping<List<FactorioId>>();
-            foreach (var obj in Database.objects.all) 
+            foreach (var obj in Database.objects.all)
                 reverseDependencies[obj] = new List<FactorioId>();
-            
+
             var collector = new DependencyCollector();
             var temp = new List<FactorioObject>();
             foreach (var obj in Database.objects.all)
@@ -57,7 +57,7 @@ namespace YAFC.Model
                     foreach (var req in group.elements)
                         if (!reverseDependencies[req].Contains(obj.id))
                             reverseDependencies[req].Add(obj.id);
-                        
+
             }
         }
 
@@ -67,10 +67,10 @@ namespace YAFC.Model
 
             public void Add(FactorioId[] elements, DependencyList.Flags flags)
             {
-                // Only add lists that actually contain elements
-                if (elements.Length > 0)
+                // Only add lists that actually contain elements, lists that are used to hide objects, or lists to unlock technologies (because of the lack of unlocking dependencies those should be unavailable)
+                if (elements.Length > 0 || flags == DependencyList.Flags.Hidden || flags == DependencyList.Flags.TechnologyUnlock)
                 {
-                    list.Add(new DependencyList {elements = elements, flags = flags});
+                    list.Add(new DependencyList { elements = elements, flags = flags });
                 }
             }
 
@@ -89,6 +89,6 @@ namespace YAFC.Model
                 return packed;
             }
         }
-        
+
     }
 }
