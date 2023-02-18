@@ -241,13 +241,11 @@ namespace YAFC.Model
                         return true;
                     }
                 }
-
-                if (a.data[i] < b.data[i])
+                else if (a.data[i] < b.data[i])
                 {
                     return false;
                 }
-
-                if (a.data[i] > b.data[i])
+                else if (a.data[i] > b.data[i])
                 {
                     return true;
                 }
@@ -318,12 +316,13 @@ namespace YAFC.Model
                 return false;
             }
 
-            if (a.length != b.length)
+            // Check if a and b have the same 'width' (ignoring zeroed bits)
+            if (a.HighestBitSet() != b.HighestBitSet())
             {
                 return false;
             }
 
-            for (int i = 1; i < a.data.Length; i++)
+            for (int i = Math.Min(a.data.Length, b.data.Length) - 1; i >= 0; i--)
             {
                 if (a.data[i] != b.data[i])
                 {
@@ -348,12 +347,13 @@ namespace YAFC.Model
                 return true;
             }
 
-            if (a.length != b.length)
+            // Check if a and b have the same 'width' (ignoring zeroed bits)
+            if (a.HighestBitSet() != b.HighestBitSet())
             {
                 return true;
             }
 
-            for (int i = 1; i < a.data.Length; i++)
+            for (int i = Math.Min(a.data.Length, b.data.Length) - 1; i >= 0; i--)
             {
                 if (a.data[i] != b.data[i])
                 {

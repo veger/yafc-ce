@@ -274,7 +274,6 @@ namespace YAFC.Model.Tests
             var bitsLength = bitsType.GetField("_length", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
 
             var a = new Bits();
-            var b = new Bits();
             bitsData.SetValue(a, new ulong[] { 4, 3 });
             bitsLength.SetValue(a, 128);
 
@@ -289,6 +288,23 @@ namespace YAFC.Model.Tests
 
             // First data element matches and rest is cleared (zero)
             Assert.True(result2);
+        }
+
+        [Fact]
+        public void EqualOperator_WithSameValueDifferentLengths_ShouldReturnCorrectResult()
+        {
+            var bitsType = typeof(Bits);
+            var bitsData = bitsType.GetField("data", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            var bitsLength = bitsType.GetField("_length", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+
+            var a = new Bits();
+            var b = new Bits();
+            bitsData.SetValue(a, new ulong[] { 4, 3 });
+            bitsData.SetValue(b, new ulong[] { 4, 3 });
+            bitsLength.SetValue(a, 128);
+            bitsLength.SetValue(b, 126); // drop some zeros
+
+            Assert.True(a == b);
         }
 
         [Fact]
@@ -326,7 +342,6 @@ namespace YAFC.Model.Tests
             var bitsLength = bitsType.GetField("_length", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
 
             var a = new Bits();
-            var b = new Bits();
             bitsData.SetValue(a, new ulong[] { 4, 3 });
             bitsLength.SetValue(a, 128);
 
@@ -343,6 +358,24 @@ namespace YAFC.Model.Tests
         }
 
         [Fact]
+        public void UnequalOperator_WithSameValueDifferentLengths_ShouldReturnCorrectResult()
+        {
+            var bitsType = typeof(Bits);
+            var bitsData = bitsType.GetField("data", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            var bitsLength = bitsType.GetField("_length", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+
+            var a = new Bits();
+            var b = new Bits();
+            bitsData.SetValue(a, new ulong[] { 4, 3 });
+            bitsData.SetValue(b, new ulong[] { 4, 3 });
+            bitsLength.SetValue(a, 128);
+            bitsLength.SetValue(b, 126); // drop some zeros
+
+            // Number of bits does not matter, so a == b
+            Assert.False(a != b);
+        }
+
+        [Fact]
         public void UnequalOperator_WithNull_ShouldReturnFalse()
         {
             Bits a = null;
@@ -350,6 +383,7 @@ namespace YAFC.Model.Tests
 
             Assert.False(result);
         }
+
         [Fact]
         public void SubtractOperator_WithLongInputBits_ShouldReturnCorrectResult()
         {

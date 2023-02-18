@@ -273,7 +273,7 @@ namespace YAFC.Model
                         processingQueue.Enqueue(revdep);
                     }
 
-                skip:;
+skip:;
                 }
             }
 
