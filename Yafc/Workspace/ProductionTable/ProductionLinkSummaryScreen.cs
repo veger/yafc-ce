@@ -50,15 +50,42 @@ public class ProductionLinkSummaryScreen : PseudoScreen, IComparer<(RecipeRow ro
     private void BuildFlow(ImGui gui, List<(RecipeRow row, float flow)> list, float total) {
         gui.spacing = 0f;
         foreach (var (row, flow) in list) {
-            _ = gui.BuildFactorioObjectButtonWithText(row.recipe, DataUtils.FormatAmount(flow, link.goods.flowUnitOfMeasure));
+            string amount = DataUtils.FormatAmount(flow, link.goods.flowUnitOfMeasure);
+            _ = gui.BuildFactorioObjectButtonWithText(row.recipe, amount, tooltipOptions: DrawParentRecipes(row.owner, "recipe"));
             if (gui.isBuilding) {
                 var lastRect = gui.lastRect;
                 lastRect.Width *= (flow / total);
                 gui.DrawRectangle(lastRect, SchemeColor.Primary);
             }
         }
-
     }
+
+    /// <summary>
+    /// Returns a delegate that will be called when drawing <see cref="ObjectTooltip"/>, to provide nesting information when hovering recipes and links.
+    /// </summary>
+    /// <param name="table">The first table to consider when determining what recipe rows to report.</param>
+    /// <param name="type">"link" or "recipe", for the text "This X is nested under:"</param>
+    /// <returns>A <see cref="DrawBelowHeader"/> that will draw the appropriate information when called.</returns>
+    private static DrawBelowHeader DrawParentRecipes(ProductionTable table, string type) => gui => {
+        // Collect the parent recipes (equivalently, the table headers of all tables that contain table)
+        Stack<RecipeRow> parents = new();
+        while (table?.owner is RecipeRow row) {
+            parents.Push(row);
+            table = row.owner;
+        }
+
+        if (parents.Count > 0) {
+            gui.BuildText($"This {type} is nested under:", TextBlockDisplayStyle.WrappedText);
+
+            // Draw the parents with nesting
+            float padding = 0.5f;
+            while (parents.Count > 0) {
+                IconDisplayStyle style = IconDisplayStyle.Default with { MilestoneDisplay = MilestoneDisplay.None };
+                gui.BuildFactorioObjectButtonWithText(parents.Pop().recipe, iconDisplayStyle: style, indent: padding);
+                padding += 0.5f;
+            }
+        }
+    };
 
     private void CalculateFlow(ProductionLink link) {
         totalInput = 0;
