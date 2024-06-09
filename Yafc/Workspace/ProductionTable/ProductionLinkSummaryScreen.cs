@@ -43,6 +43,10 @@ public class ProductionLinkSummaryScreen : PseudoScreen, IComparer<(RecipeRow ro
 
     public override void Build(ImGui gui) {
         BuildHeader(gui, "Link summary");
+        using (gui.EnterRow()) {
+            gui.BuildText("Exploring link for: ", topOffset: 0.5f);
+            _ = gui.BuildFactorioObjectButtonWithText(link.goods, tooltipOptions: DrawParentRecipes(link.owner, "link"));
+        }
         scrollArea.Build(gui);
         if (gui.BuildButton("Done")) {
             Close();
