@@ -236,7 +236,7 @@ namespace Yafc {
         /// <param name="useScale">If <see langword="true"/>, this icon will be displayed at <see cref="ProjectPreferences.iconScale"/>, instead of at 100% scale.</param>
         public static Click BuildFactorioObjectWithAmount(this ImGui gui, FactorioObject? goods, DisplayAmount amount, ButtonDisplayStyle buttonDisplayStyle, TextBlockDisplayStyle? textDisplayStyle = null, ObjectTooltipOptions tooltipOptions = default) {
             textDisplayStyle ??= new(Alignment: RectAlignment.Middle);
-            using (gui.EnterFixedPositioning(3f, 3f, default)) {
+            using (gui.EnterFixedPositioning(buttonDisplayStyle.Size, buttonDisplayStyle.Size, default)) {
                 gui.allocator = RectAllocator.Stretch;
                 gui.spacing = 0f;
                 Click clicked = gui.BuildFactorioObjectButton(goods, buttonDisplayStyle, tooltipOptions);
@@ -296,7 +296,7 @@ namespace Yafc {
         /// If <see langword="false"/>, the scroll wheel will be ignored when hovering.</param>
         public static GoodsWithAmountEvent BuildFactorioObjectWithEditableAmount(this ImGui gui, FactorioObject? obj, DisplayAmount amount, ButtonDisplayStyle buttonDisplayStyle, bool allowScroll = true, ObjectTooltipOptions tooltipOptions = default) {
             using var group = gui.EnterGroup(default, RectAllocator.Stretch, spacing: 0f);
-            group.SetWidth(3f);
+            group.SetWidth(buttonDisplayStyle.Size);
             GoodsWithAmountEvent evt = (GoodsWithAmountEvent)gui.BuildFactorioObjectButton(obj, buttonDisplayStyle, tooltipOptions);
 
             if (gui.BuildFloatInput(amount, TextBoxDisplayStyle.FactorioObjectInput)) {

@@ -80,7 +80,7 @@ namespace Yafc.UI {
 
     public class DataGrid<TData> where TData : class {
         public readonly List<DataColumn<TData>> columns;
-        private readonly Padding innerPadding = new Padding(0.2f);
+        public static readonly Padding innerPadding = new Padding(0.2f);
         public float width { get; private set; }
         private readonly float spacing;
         private Vector2 buildingStart;
