@@ -24,7 +24,7 @@ public abstract class Scrollable(bool vertical, bool horizontal, bool collapsibl
 
     protected abstract void PositionContent(ImGui gui, Rect viewport);
 
-    /// <param name="availableHeight">Available height without in parent context for the Scrollable</param>
+    /// <param name="availableHeight">Available height in parent context for the Scrollable</param>
     public void Build(ImGui gui, float availableHeight, bool useBottomPadding = false) {
         this.gui = gui;
         var rect = gui.statePosition;
@@ -150,7 +150,7 @@ public abstract class Scrollable(bool vertical, bool horizontal, bool collapsibl
 
     ///<summary>This method is called when the required area of the <see cref="Scrollable"/> for the provided <paramref name="width"/> is needed.</summary>
     /// <returns>The required area of the contents of the <see cref="Scrollable"/>.</returns>
-    protected abstract Vector2 MeasureContent(float width, ImGui gui);
+    public abstract Vector2 MeasureContent(float width, ImGui gui);
 
     public bool KeyDown(SDL.SDL_Keysym key) {
         bool ctrl = InputSystem.Instance.control;
@@ -226,7 +226,8 @@ public abstract class ScrollAreaBase : Scrollable {
 
     public void RebuildContents() => contents.Rebuild();
 
-    protected override Vector2 MeasureContent(float width, ImGui gui) => contents.CalculateState(width, gui.pixelsPerUnit);
+    ///<summary>Calculates the content dimensions by (re)building the contents using <see cref="BuildContents"/></summary>
+    public override Vector2 MeasureContent(float width, ImGui gui) => contents.CalculateState(width, gui.pixelsPerUnit);
 }
 
 ///<summary>Area with scrollbars, which will be visible if it does not fit in the parent area in order to let the user fully view the content of the area.</summary>
