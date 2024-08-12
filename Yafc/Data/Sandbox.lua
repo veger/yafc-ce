@@ -42,6 +42,22 @@ if data then
 	-- If data isn't set, we couldn't load __core__/lualib/dataloader, which means we're running tests. They replace the entire data table.
 	data.data_crawler = "yafc "..yafc_version;
 	log(data.data_crawler);
+	data.script_enabled = {}
+	function data.script_enabled:insert(entry, ...)
+		if entry then
+			if entry[1] then
+				-- unpack an array argument
+				for _, e in pairs(entry) do
+					table.insert(self, e)
+				end
+			else
+				-- insert a non-array argument
+				table.insert(self, entry)
+			end
+			-- continue to the next argument
+			self:insert(...)
+		end
+	end
 end
 
 size=32;
