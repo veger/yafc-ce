@@ -23,6 +23,7 @@ Date:
     Bugfixes:
         - Recipes no longer have excessive question marks in their names
         - Moved mining and research bonuses have to the Preferences screen.
+        - Support games without the Space Age DLC again.
     Internal changes:
         - Added rudimentary tools for drawing tab controls.
 ----------------------------------------------------------------------------------------------------------------------
