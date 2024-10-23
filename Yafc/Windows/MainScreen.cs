@@ -35,7 +35,6 @@ public partial class MainScreen : WindowMain, IKeyboardFocus, IProgress<(string,
     private ProjectPage? _secondaryPage;
     public ProjectPage? secondaryPage => _secondaryPage;
     private ProjectPageView? secondaryPageView;
-    private readonly SummaryView summaryView;
 
     private bool analysisUpdatePending;
     private SearchQuery pageSearch;
@@ -47,11 +46,10 @@ public partial class MainScreen : WindowMain, IKeyboardFocus, IProgress<(string,
     private readonly Dictionary<Type, ProjectPageView> secondaryPageViews = [];
 
     public MainScreen(int display, Project project) : base(default, Preferences.Instance.forceSoftwareRenderer) {
-        summaryView = new SummaryView(project);
         RegisterPageView<ProductionTable>(new ProductionTableView());
         RegisterPageView<AutoPlanner>(new AutoPlannerView());
         RegisterPageView<ProductionSummary>(new ProductionSummaryView());
-        RegisterPageView<Summary>(summaryView);
+        RegisterPageView<Summary>(new SummaryView(project));
         searchGui = new ImGui(BuildSearch, new Padding(1f)) { boxShadow = RectangleBorder.Thin, boxColor = SchemeColor.Background };
         Instance = this;
         tabBar = new MainScreenTabBar(this);
