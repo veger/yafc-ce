@@ -11,45 +11,22 @@ using Yafc.UI;
 namespace Yafc;
 
 public class SummaryView : ProjectPageView<Summary> {
+    ///<summary>Size of the main contents (in <see cref="scrollArea"/>)</summary>
+    private Vector2 contentSize;
     /// <summary>Height of each row</summary>
     private float rowHeight;
+    /// <summary>Extra <see cref="rowHeight"/> that is added by the DataGrid</summary>
+    private static readonly float extraRowHeight = DataGrid<ProjectPage>.innerPadding.top + DataGrid<ProjectPage>.innerPadding.bottom;
 
     /// <summary>Some padding to have the contents of the first column not 'stick' to the rest of the UI</summary>
     private readonly Padding FirstColumnPadding = new Padding(1f, 1.5f, 0, 0);
-    private static float firstColumnWidth;
+    private float firstColumnWidth;
 
-    private class SummaryScrollArea(GuiBuilder builder) : ScrollArea(DefaultHeight, builder, horizontal: true) {
+    private class SummaryScrollArea(GuiBuilder builder) : ScrollArea(DefaultHeight, builder, horizontal: true, vertical: false) {
         private static readonly float DefaultHeight = 10;
 
-        public new void Build(ImGui gui) =>
-            // Maximize scroll area to fit parent area (minus header and 'show issues' heights, and some (3) padding probably)
-            Build(gui, gui.valid && gui.parent is not null ? gui.parent.contentSize.Y - Font.header.size - Font.text.size - 3 : DefaultHeight);
-    }
-
-    private class SummaryTabColumn : TextDataColumn<ProjectPage> {
-        public SummaryTabColumn() : base(LSs.Page, firstColumnWidth) {
-        }
-
-        public override void BuildElement(ImGui gui, ProjectPage page) {
-            width = firstColumnWidth;
-
-            if (page?.contentType != typeof(ProductionTable)) {
-                return;
-            }
-
-            using (gui.EnterGroup(new Padding(0.5f, 0.2f, 0.2f, 0.5f))) {
-                gui.spacing = 0.2f;
-
-                if (page.icon != null) {
-                    gui.BuildIcon(page.icon.icon, FirstColumnIconSize);
-                }
-                else {
-                    _ = gui.AllocateRect(0f, FirstColumnIconSize);
-                }
-
-                gui.BuildText(page.name);
-            }
-        }
+        public void Build(ImGui gui, float contentHeight) =>
+            base.Build(gui, contentHeight != 0 ? contentHeight + ScrollbarSize : DefaultHeight);
     }
 
     private sealed class SummaryDataColumn(SummaryView view) : TextDataColumn<ProjectPage>(LSs.SummaryColumnLinked, float.MaxValue) {
@@ -83,7 +60,7 @@ public class SummaryView : ProjectPageView<Summary> {
                     }
                 }
                 if (!isDrawn) {
-                    // Reserve empty space to prevent 'compressing' empty rows
+                    // Reserve empty space to prevent 'compressing' empty rows, causing mismatches with the fake rows of firstColum
                     _ = gui.AllocateRect(0f, view.rowHeight);
                 }
 
@@ -164,6 +141,8 @@ public class SummaryView : ProjectPageView<Summary> {
     private readonly SummaryScrollArea scrollArea;
     private readonly SummaryDataColumn goodsColumn;
     private readonly DataGrid<ProjectPage> mainGrid;
+    ///<summary>Separate panel to contain the first colum (page names)</summary>
+    public readonly ImGui firstColumContent;
 
     private Dictionary<string, GoodDetails> allGoods = [];
 
@@ -201,9 +180,9 @@ public class SummaryView : ProjectPageView<Summary> {
 
     public SummaryView(Project project) {
         goodsColumn = new SummaryDataColumn(this);
-        TextDataColumn<ProjectPage>[] columns = [new SummaryTabColumn(), goodsColumn];
         scrollArea = new SummaryScrollArea(BuildScrollArea);
-        mainGrid = new DataGrid<ProjectPage>(columns);
+        mainGrid = new DataGrid<ProjectPage>([goodsColumn]);
+        firstColumContent = new ImGui(BuildFirstColumn, default, RectAllocator.LeftAlign);
 
         SetProject(project);
     }
@@ -256,6 +235,28 @@ public class SummaryView : ProjectPageView<Summary> {
         return width + FirstColumnPadding.left + FirstColumnPadding.right;
     }
 
+    private void BuildFirstColumn(ImGui gui) {
+        foreach (Guid displayPage in project.displayPages) {
+            ProjectPage? page = project.FindPage(displayPage);
+            if (page?.contentType != typeof(ProductionTable)) {
+                continue;
+            }
+
+            using (gui.EnterFixedPositioning(firstColumnWidth, rowHeight + extraRowHeight, FirstColumnPadding)) {
+                gui.allocator = RectAllocator.LeftAlign;
+                gui.spacing = 0.2f;
+                if (page.icon != null) {
+                    gui.BuildIcon(page.icon.icon, FirstColumnIconSize);
+                }
+                else {
+                    _ = gui.AllocateRect(0f, FirstColumnIconSize);
+                }
+
+                gui.BuildText(page.name);
+            }
+        }
+    }
+
     protected override async void BuildContent(ImGui gui) {
         using (gui.EnterRow()) {
             _ = gui.AllocateRect(0, 2); // Increase row height to 2, for vertical centering.
@@ -271,14 +272,19 @@ public class SummaryView : ProjectPageView<Summary> {
                 }
             }
         }
-        gui.AllocateSpacing();
+        // gui.AllocateSpacing();
 
         if (gui.isBuilding) {
             firstColumnWidth = CalculateFirstColumWidth(gui);
             rowHeight = ButtonDisplayStyle.ProductionTableUnscaled.Size + gui.PixelsToUnits(gui.GetFontSize().lineSize);
+            contentSize = scrollArea.MeasureContent(contentSize.X, gui);
+            gui.DrawPanel(new Rect(gui.statePosition.X, gui.statePosition.Y, firstColumnWidth, contentSize.Y), firstColumContent);
         }
 
-        scrollArea.Build(gui);
+        // Add padding to the left, so the scrollArea is moved to the right, next to the firstColumn panel
+        using (gui.EnterGroup(new Padding(firstColumnWidth, 0, 0, 0), RectAllocator.LeftAlign, spacing: 0f)) {
+            scrollArea.Build(gui, contentSize.Y);
+        }
     }
 
     private async Task AutoBalance() {
