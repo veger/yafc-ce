@@ -155,39 +155,75 @@ public abstract class Scrollable(bool vertical, bool horizontal, bool collapsibl
 
         switch ((ctrl, shift, key.scancode)) {
             case (false, false, SDL.SDL_Scancode.SDL_SCANCODE_UP):
+                if (!vertical) {
+                    return false;
+                }
                 scrollY -= 3;
                 return true;
-            case (true, false, SDL.SDL_Scancode.SDL_SCANCODE_UP):
-                scrollY = 0; // ctrl+up = home
+            case (true, false, SDL.SDL_Scancode.SDL_SCANCODE_UP): // ctrl+up = home
+                if (!vertical) {
+                    return false;
+                }
+                scrollY = 0;
                 return true;
             case (false, false, SDL.SDL_Scancode.SDL_SCANCODE_DOWN):
+                if (!vertical) {
+                    return false;
+                }
                 scrollY += 3;
                 return true;
-            case (true, false, SDL.SDL_Scancode.SDL_SCANCODE_DOWN):
-                scrollY = maxScroll.Y; // ctrl+down = end
+            case (true, false, SDL.SDL_Scancode.SDL_SCANCODE_DOWN): // ctrl+down = end
+                if (!vertical) {
+                    return false;
+                }
+                scrollY = maxScroll.Y;
                 return true;
             case (false, false, SDL.SDL_Scancode.SDL_SCANCODE_LEFT):
+                if (!horizontal) {
+                    return false;
+                }
                 scrollX -= 3;
                 return true;
-            case (true, false, SDL.SDL_Scancode.SDL_SCANCODE_LEFT):
+            case (true, false, SDL.SDL_Scancode.SDL_SCANCODE_LEFT): // ctrl+left = start of line
+                if (!horizontal) {
+                    return false;
+                }
                 scrollX = 0;
                 return true;
             case (false, false, SDL.SDL_Scancode.SDL_SCANCODE_RIGHT):
+                if (!horizontal) {
+                    return false;
+                }
                 scrollX += 3;
                 return true;
-            case (true, false, SDL.SDL_Scancode.SDL_SCANCODE_RIGHT):
+            case (true, false, SDL.SDL_Scancode.SDL_SCANCODE_RIGHT):  // ctrl+right = end of line
+                if (!horizontal) {
+                    return false;
+                }
                 scrollX = maxScroll.X;
                 return true;
             case (false, false, SDL.SDL_Scancode.SDL_SCANCODE_PAGEDOWN):
+                if (!vertical) {
+                    return false;
+                }
                 scrollY += contentRect.Height;
                 return true;
             case (false, false, SDL.SDL_Scancode.SDL_SCANCODE_PAGEUP):
+                if (!vertical) {
+                    return false;
+                }
                 scrollY -= contentRect.Height;
                 return true;
             case (false, false, SDL.SDL_Scancode.SDL_SCANCODE_HOME):
                 scrollY = 0;
+                if (!vertical) {
+                    return false;
+                }
                 return true;
             case (false, false, SDL.SDL_Scancode.SDL_SCANCODE_END):
+                if (!vertical) {
+                    return false;
+                }
                 scrollY = maxScroll.Y;
                 return true;
             default:
