@@ -75,14 +75,11 @@ public abstract class Scrollable(bool vertical, bool horizontal, bool collapsibl
         }
 
         if (gui.action == ImGuiAction.MouseScroll) {
-            if (gui.ConsumeEvent(rect)) {
-                if (vertical && (!horizontal || !InputSystem.Instance.control)) {
-                    scrollY += gui.actionParameter * 3f;
-                }
-                else {
-                    scrollX += gui.actionParameter * 3f;
-                }
-            }
+            if (vertical && !InputSystem.Instance.control && gui.ConsumeEvent(rect))
+                scrollY += gui.actionParameter * 3f;
+
+            else if (horizontal && InputSystem.Instance.control && gui.ConsumeEvent(rect))
+                scrollX += gui.actionParameter * 3f;
         }
         else {
             if (horizontal && maxScroll.X > 0f) {
