@@ -89,8 +89,8 @@ public static class ImmediateWidgets {
         }
     }
 
-    public static bool BuildFloatInput(this ImGui gui, DisplayAmount amount, TextBoxDisplayStyle displayStyle, bool setInitialFocus = false) {
-        if (gui.BuildTextInput(DataUtils.FormatAmount(amount.Value, amount.Unit), out string newText, null, displayStyle, true, setInitialFocus)
+    public static bool BuildFloatInput(this ImGui gui, DisplayAmount amount, TextBoxDisplayStyle displayStyle, SetKeyboardFocus setKeyboardFocus = SetKeyboardFocus.No) {
+        if (gui.BuildTextInput(DataUtils.FormatAmount(amount.Value, amount.Unit), out string newText, null, displayStyle, true, setKeyboardFocus)
             && DataUtils.TryParseAmount(newText, out float newValue, amount.Unit)) {
             amount.Value = newValue;
             return true;

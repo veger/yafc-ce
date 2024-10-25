@@ -71,7 +71,7 @@ public class ModuleTemplateConfiguration : PseudoScreen {
                 RefreshList();
             }
 
-            _ = gui.RemainingRow().BuildTextInput(newPageName, out newPageName, "Create new template", setInitialFocus: true);
+            _ = gui.RemainingRow().BuildTextInput(newPageName, out newPageName, "Create new template", setKeyboardFocus: SetKeyboardFocus.OnFirstPanelDraw);
         }
     }
 }

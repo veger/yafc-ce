@@ -26,7 +26,7 @@ public class ProjectPageSettingsPanel : PseudoScreen {
     }
 
     private void Build(ImGui gui, Action<FactorioObject?> setIcon) {
-        _ = gui.BuildTextInput(name, out name, "Input name", setInitialFocus: editingPage == null);
+        _ = gui.BuildTextInput(name, out name, "Input name", setKeyboardFocus: editingPage == null ? SetKeyboardFocus.OnFirstPanelDraw : SetKeyboardFocus.No);
         if (gui.BuildFactorioObjectButton(icon, new ButtonDisplayStyle(4f, MilestoneDisplay.None, SchemeColor.Grey) with { UseScaleSetting = false }) == Click.Left) {
             SelectSingleObjectPanel.Select(Database.objects.all, "Select icon", setIcon);
         }

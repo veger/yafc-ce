@@ -295,8 +295,8 @@ public static class ImGuiUtils {
         return closed;
     }
 
-    public static bool BuildIntegerInput(this ImGui gui, int value, out int newValue, bool setInitialFocus = false) {
-        if (gui.BuildTextInput(value.ToString(), out string newText, null, delayed: true, setInitialFocus: setInitialFocus) && int.TryParse(newText, out newValue)) {
+    public static bool BuildIntegerInput(this ImGui gui, int value, out int newValue, SetKeyboardFocus setKeyboardFocus = SetKeyboardFocus.No) {
+        if (gui.BuildTextInput(value.ToString(), out string newText, null, delayed: true, setKeyboardFocus: setKeyboardFocus) && int.TryParse(newText, out newValue)) {
             return true;
         }
 
@@ -417,10 +417,10 @@ public static class ImGuiUtils {
         return true;
     }
 
-    public static bool BuildSearchBox(this ImGui gui, SearchQuery searchQuery, out SearchQuery newQuery, string placeholder = "Search", bool setInitialFocus = false) {
+    public static bool BuildSearchBox(this ImGui gui, SearchQuery searchQuery, out SearchQuery newQuery, string placeholder = "Search", SetKeyboardFocus setKeyboardFocus = SetKeyboardFocus.No) {
         newQuery = searchQuery;
 
-        if (gui.BuildTextInput(searchQuery.query, out string newText, placeholder, Icon.Search, setInitialFocus: setInitialFocus)) {
+        if (gui.BuildTextInput(searchQuery.query, out string newText, placeholder, Icon.Search, setKeyboardFocus: setKeyboardFocus)) {
             newQuery = new SearchQuery(newText);
             return true;
         }
