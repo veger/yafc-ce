@@ -339,9 +339,16 @@ goodsHaveNoProduction:;
                 }
                 else if (recipe.fixedBuildings > 0) {
                     recipe.RecordUndo().fixedBuildings = 0;
+                    // Clear the keyboard focus: If we hide and then recreate the edit box without removing the focus, the UI system will restore the old value.
+                    // (If the focus was on a text box we aren't hiding, other code also removes the focus.)
+                    // To observe (prior to this fix), add a fixed or built count with a non-default value, clear it with right-click, and then click the "Set ... building count" button again.
+                    // The old behavior is that the non-default value is restored.
+                    InputSystem.Instance.currentKeyboardFocus?.FocusChanged(false);
                 }
                 else if (recipe.builtBuildings != null) {
                     recipe.RecordUndo().builtBuildings = null;
+                    // Clear the keyboard focus: as above
+                    InputSystem.Instance.currentKeyboardFocus?.FocusChanged(false);
                 }
             }
 
