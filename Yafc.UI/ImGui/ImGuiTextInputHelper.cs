@@ -80,6 +80,10 @@ internal partial class ImGuiTextInputHelper(ImGui gui) : IKeyboardFocus {
             SetCaret(0, this.text.Length);
         }
 
+        if (!gui.enableDrawing) {
+            return false;
+        }
+
         switch (gui.action) {
             case ImGuiAction.MouseDown:
                 if (gui.actionParameter != SDL.SDL_BUTTON_LEFT) {

@@ -97,6 +97,17 @@ public partial class ImGui {
         return context;
     }
 
+    /// <summary>
+    /// Call to initialize drawing operations for UI elements that behave like the body of a tab control, with the additional behavior that the control is always large
+    /// enough for its largest content.
+    /// </summary>
+    /// <param name="alsoDraw">If <see langword="true"/>, subsequent drawing commands (for the first tab page) will both allocate and draw.
+    /// If <see langword="false"/>, subsequent drawing commands (for the first tab page) will allocate space, but will not draw their controls.</param>
+    /// <returns>An <see cref="OverlappingAllocations"/> object that controls the allocation behavior.</returns>
+    /// <remarks>After drawing each page, call <see cref="OverlappingAllocations.StartNextAllocatePass"/> to return to the top of the drawing area and start allocating
+    /// (and drawing, if appropriate) the next set of controls.</remarks>
+    public OverlappingAllocations StartOverlappingAllocations(bool alsoDraw) => new OverlappingAllocations(this, alsoDraw);
+
     private struct CopyableState {
         public RectAllocator allocator;
         public float left, right, top, bottom;
@@ -250,6 +261,31 @@ public partial class ImGui {
             cstate.bottom = cstate.top + rect.Height;
             cstate.allocator = allocator;
         }
+    }
+
+    public sealed class OverlappingAllocations : IDisposable {
+        private readonly ImGui gui;
+        private readonly bool initialDrawState;
+        private readonly float initialTop;
+
+        internal OverlappingAllocations(ImGui gui, bool alsoDraw) {
+            this.gui = gui;
+            initialDrawState = gui.enableDrawing;
+            initialTop = gui.state.top;
+            gui.enableDrawing = initialDrawState && alsoDraw;
+        }
+
+        /// <summary>
+        /// Call after allocating/drawing one "page" of the tab controls, to move the draw point back to the top of the tab page and set whether the next set of controls should appear.
+        /// </summary>
+        /// <param name="alsoDraw">If <see langword="true"/>, subsequent drawing commands (for the next tab page) will both allocate and draw.
+        /// If <see langword="false"/>, subsequent drawing commands (for the next tab page) will allocate space, but will not draw their controls.</param>
+        public void StartNextAllocatePass(bool alsoDraw) {
+            gui.enableDrawing = initialDrawState && alsoDraw;
+            gui.state.top = initialTop;
+        }
+
+        public void Dispose() => gui.enableDrawing = initialDrawState;
     }
 
     public void SetMinWidth(float width) {

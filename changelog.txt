@@ -21,6 +21,8 @@ Date:
         - Focus the built count and fixed count edit boxes when first opening them.
     Bugfixes:
         - Recipes no longer have excessive question marks in their names
+    Internal changes:
+        - Added rudimentary tools for drawing tab controls.
 ----------------------------------------------------------------------------------------------------------------------
 Version: 2.0.1
 Date: October 23rd 2024
