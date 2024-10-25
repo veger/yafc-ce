@@ -15,6 +15,11 @@
 //     Internal changes:
 //         Changes to the code that do not affect the behavior of the program.
 ----------------------------------------------------------------------------------------------------------------------
+Version: 2.x
+Date:
+    Bugfixes:
+        - Recipes no longer have excessive question marks in their names
+----------------------------------------------------------------------------------------------------------------------
 Version: 2.0.1
 Date: October 23rd 2024
     Bugfixes:
