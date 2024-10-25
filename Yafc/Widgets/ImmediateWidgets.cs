@@ -316,13 +316,13 @@ public static class ImmediateWidgets {
     /// <param name="allowScroll">If <see langword="true"/>, the default, the user can adjust the value by using the scroll wheel while hovering over the editable text.
     /// If <see langword="false"/>, the scroll wheel will be ignored when hovering.</param>
     public static GoodsWithAmountEvent BuildFactorioObjectWithEditableAmount(this ImGui gui, FactorioObject? obj, DisplayAmount amount, ButtonDisplayStyle buttonDisplayStyle,
-        bool allowScroll = true, ObjectTooltipOptions tooltipOptions = default) {
+        bool allowScroll = true, ObjectTooltipOptions tooltipOptions = default, SetKeyboardFocus setKeyboardFocus = SetKeyboardFocus.No) {
 
         using var group = gui.EnterGroup(default, RectAllocator.Stretch, spacing: 0f);
         group.SetWidth(3f);
         GoodsWithAmountEvent evt = (GoodsWithAmountEvent)gui.BuildFactorioObjectButton(obj, buttonDisplayStyle, tooltipOptions);
 
-        if (gui.BuildFloatInput(amount, TextBoxDisplayStyle.FactorioObjectInput)) {
+        if (gui.BuildFloatInput(amount, TextBoxDisplayStyle.FactorioObjectInput, setKeyboardFocus)) {
             return GoodsWithAmountEvent.TextEditing;
         }
 

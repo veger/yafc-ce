@@ -298,7 +298,8 @@ goodsHaveNoProduction:;
                 group.SetWidth(3f);
                 if (recipe.fixedBuildings > 0 && !recipe.fixedFuel && recipe.fixedIngredient == null && recipe.fixedProduct == null) {
                     DisplayAmount amount = recipe.fixedBuildings;
-                    GoodsWithAmountEvent evt = gui.BuildFactorioObjectWithEditableAmount(recipe.entity, amount, ButtonDisplayStyle.ProductionTableUnscaled);
+                    GoodsWithAmountEvent evt = gui.BuildFactorioObjectWithEditableAmount(recipe.entity, amount, ButtonDisplayStyle.ProductionTableUnscaled,
+                        setKeyboardFocus: recipe.ShouldFocusFixedCountThisTime());
 
                     if (evt == GoodsWithAmountEvent.TextEditing && amount.Value >= 0) {
                         recipe.RecordUndo().fixedBuildings = amount.Value;
@@ -313,7 +314,9 @@ goodsHaveNoProduction:;
                 if (recipe.builtBuildings != null) {
                     DisplayAmount amount = recipe.builtBuildings.Value;
 
-                    if (gui.BuildFloatInput(amount, TextBoxDisplayStyle.FactorioObjectInput with { ColorGroup = SchemeColorGroup.Grey }) && amount.Value >= 0) {
+                    if (gui.BuildFloatInput(amount, TextBoxDisplayStyle.FactorioObjectInput with { ColorGroup = SchemeColorGroup.Grey }, recipe.ShouldFocusBuiltCountThisTime())
+                        && amount.Value >= 0) {
+
                         recipe.RecordUndo().builtBuildings = (int)amount.Value;
                     }
                 }
@@ -428,6 +431,7 @@ goodsHaveNoProduction:;
                     recipe.fixedFuel = false;
                     recipe.fixedIngredient = null;
                     recipe.fixedProduct = null;
+                    recipe.FocusFixedCountOnNextDraw();
                 }
             }
 
@@ -447,6 +451,7 @@ goodsHaveNoProduction:;
                 }
                 else if (gui.BuildButton("Set built building count") && gui.CloseDropdown()) {
                     recipe.RecordUndo().builtBuildings = Math.Max(0, Convert.ToInt32(Math.Ceiling(recipe.buildingCount)));
+                    recipe.FocusBuiltCountOnNextDraw();
                 }
             }
 
@@ -1016,6 +1021,7 @@ goodsHaveNoProduction:;
                                 default:
                                     break;
                             }
+                            recipe.FocusFixedCountOnNextDraw();
                             targetGui.Rebuild();
                         }
                     }
@@ -1151,7 +1157,9 @@ goodsHaveNoProduction:;
             && ((dropdownType == ProductDropdownType.Fuel && recipe.fixedFuel)
             || (dropdownType == ProductDropdownType.Ingredient && recipe.fixedIngredient == goods)
             || (dropdownType == ProductDropdownType.Product && recipe.fixedProduct == goods))) {
-            evt = gui.BuildFactorioObjectWithEditableAmount(goods, displayAmount, ButtonDisplayStyle.ProductionTableScaled(iconColor), tooltipOptions: tooltipOptions);
+
+            evt = gui.BuildFactorioObjectWithEditableAmount(goods, displayAmount, ButtonDisplayStyle.ProductionTableScaled(iconColor), tooltipOptions: tooltipOptions,
+                setKeyboardFocus: recipe.ShouldFocusFixedCountThisTime());
         }
         else {
             evt = (GoodsWithAmountEvent)gui.BuildFactorioObjectWithAmount(goods, displayAmount, ButtonDisplayStyle.ProductionTableScaled(iconColor),
