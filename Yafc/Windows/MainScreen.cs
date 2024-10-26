@@ -392,7 +392,7 @@ public partial class MainScreen : WindowMain, IKeyboardFocus, IProgress<(string,
         }
 
         if (gui.BuildContextMenuButton("Preferences") && gui.CloseDropdown()) {
-            PreferencesScreen.Show();
+            PreferencesScreen.ShowPreviousState();
         }
 
         if (gui.BuildContextMenuButton("Summary") && gui.CloseDropdown()) {

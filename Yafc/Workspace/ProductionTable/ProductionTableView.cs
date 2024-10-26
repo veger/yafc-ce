@@ -1309,7 +1309,7 @@ goodsHaveNoProduction:;
         }
 
         if (click && gui.CloseDropdown()) {
-            PreferencesScreen.Show();
+            PreferencesScreen.ShowProgression();
         }
     }
 
