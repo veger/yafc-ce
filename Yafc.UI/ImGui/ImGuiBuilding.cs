@@ -5,6 +5,23 @@ using SDL2;
 
 namespace Yafc.UI;
 
+public enum SetKeyboardFocus {
+    /// <summary>
+    /// Do not explicitly focus this edit control.
+    /// </summary>
+    No,
+    /// <summary>
+    /// Explicitly focus this edit control the first time the panel/pseudoscreen is drawn, but not after that.<br/>
+    /// If you are adding a new control to an existing panel (e.g. the production table), you will need to use <see cref="Always"/> instead.
+    /// </summary>
+    OnFirstPanelDraw,
+    /// <summary>
+    /// Always explicitly focus this edit control.<br/>
+    /// The caller is responsible for properly implementing "only the first time the control is drawn".
+    /// </summary>
+    Always,
+};
+
 public partial class ImGui {
     private readonly struct DrawCommand<T>(Rect rect, T data, SchemeColor color) {
         public readonly Rect rect = rect;
@@ -145,23 +162,25 @@ public partial class ImGui {
     }
 
     private ImGuiTextInputHelper? textInputHelper;
-    public bool BuildTextInput(string? text, out string newText, string? placeholder, Icon icon = Icon.None, bool delayed = false, bool setInitialFocus = false) {
+    public bool BuildTextInput(string? text, out string newText, string? placeholder, Icon icon = Icon.None, bool delayed = false, SetKeyboardFocus setKeyboardFocus = SetKeyboardFocus.No) {
         TextBoxDisplayStyle displayStyle = TextBoxDisplayStyle.DefaultTextInput;
 
         if (icon != Icon.None) {
             displayStyle = displayStyle with { Icon = icon };
         }
 
-        return BuildTextInput(text, out newText, placeholder, displayStyle, delayed, setInitialFocus);
+        return BuildTextInput(text, out newText, placeholder, displayStyle, delayed, setKeyboardFocus);
     }
 
-    public bool BuildTextInput(string? text, out string newText, string? placeholder, TextBoxDisplayStyle displayStyle, bool delayed, bool setInitialFocus = false) {
-        setInitialFocus &= textInputHelper == null;
+    public bool BuildTextInput(string? text, out string newText, string? placeholder, TextBoxDisplayStyle displayStyle, bool delayed, SetKeyboardFocus setKeyboardFocus = SetKeyboardFocus.No) {
+        if (setKeyboardFocus != SetKeyboardFocus.Always && textInputHelper != null) {
+            setKeyboardFocus = SetKeyboardFocus.No;
+        }
         textInputHelper ??= new ImGuiTextInputHelper(this);
         bool result = textInputHelper.BuildTextInput(text, out newText, placeholder, GetFontSize(), delayed, displayStyle);
 
-        if (setInitialFocus) {
-            SetTextInputFocus(lastRect, "");
+        if (setKeyboardFocus != SetKeyboardFocus.No) {
+            SetTextInputFocus(lastRect, newText);
         }
 
         return result;

@@ -97,7 +97,7 @@ public abstract class SelectObjectPanel<T> : PseudoScreenWithResult<T> {
 
     public override void Build(ImGui gui) {
         BuildHeader(gui, header);
-        if (gui.BuildSearchBox(list.filter, out var newFilter, "Start typing for search", setInitialFocus: true)) {
+        if (gui.BuildSearchBox(list.filter, out var newFilter, "Start typing for search", setKeyboardFocus: SetKeyboardFocus.OnFirstPanelDraw)) {
             list.filter = newFilter;
         }
 
