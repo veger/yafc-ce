@@ -58,6 +58,29 @@ public class PreferencesScreen : PseudoScreen {
                 gui.Rebuild();
             }, width: 25f);
 
+            gui.AllocateSpacing();
+            using (gui.EnterRow()) {
+                gui.BuildText("Mining productivity bonus: ", topOffset: 0.5f);
+                DisplayAmount amount = new(Project.current.settings.miningProductivity, UnitOfMeasure.Percent);
+                if (gui.BuildFloatInput(amount, TextBoxDisplayStyle.DefaultTextInput) && amount.Value >= 0) {
+                    Project.current.settings.RecordUndo().miningProductivity = amount.Value;
+                }
+            }
+            using (gui.EnterRow()) {
+                gui.BuildText("Research speed bonus: ", topOffset: 0.5f);
+                DisplayAmount amount = new(Project.current.settings.researchSpeedBonus, UnitOfMeasure.Percent);
+                if (gui.BuildFloatInput(amount, TextBoxDisplayStyle.DefaultTextInput) && amount.Value >= 0) {
+                    Project.current.settings.RecordUndo().researchSpeedBonus = amount.Value;
+                }
+            }
+            using (gui.EnterRow()) {
+                gui.BuildText("Research productivity bonus: ", topOffset: 0.5f);
+                DisplayAmount amount = new(Project.current.settings.researchProductivity, UnitOfMeasure.Percent);
+                if (gui.BuildFloatInput(amount, TextBoxDisplayStyle.DefaultTextInput) && amount.Value >= 0) {
+                    Project.current.settings.RecordUndo().researchProductivity = amount.Value;
+                }
+            }
+
             controller.StartNextAllocatePass(!onProgressionPage);
 
             gui.BuildText("Unit of time:", Font.subheader);
