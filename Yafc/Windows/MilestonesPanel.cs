@@ -53,6 +53,11 @@ public class MilestonesPanel : PseudoScreen {
                 MilestonesEditor.Show();
             }
 
+            if (gui.BuildButton("Edit tech progression settings")) {
+                Close();
+                PreferencesScreen.ShowProgression();
+            }
+
             if (gui.RemainingRow().BuildButton("Done")) {
                 Close();
             }
