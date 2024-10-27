@@ -267,6 +267,7 @@ public partial class ImGui {
         private readonly ImGui gui;
         private readonly bool initialDrawState;
         private readonly float initialTop;
+        private float maximumBottom;
 
         internal OverlappingAllocations(ImGui gui, bool alsoDraw) {
             this.gui = gui;
@@ -282,10 +283,14 @@ public partial class ImGui {
         /// If <see langword="false"/>, subsequent drawing commands (for the next tab page) will allocate space, but will not draw their controls.</param>
         public void StartNextAllocatePass(bool alsoDraw) {
             gui.enableDrawing = initialDrawState && alsoDraw;
+            maximumBottom = Math.Max(gui.state.top, maximumBottom);
             gui.state.top = initialTop;
         }
 
-        public void Dispose() => gui.enableDrawing = initialDrawState;
+        public void Dispose() {
+            gui.enableDrawing = initialDrawState;
+            gui.state.top = maximumBottom;
+        }
     }
 
     public void SetMinWidth(float width) {
