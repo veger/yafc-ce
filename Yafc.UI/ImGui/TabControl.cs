@@ -148,6 +148,35 @@ public sealed class TabControl {
         // Complete the final row.
         rows.Add((nextTabToAssign, tabPages.Length, Math.Min(1, (layoutWidth - rowPaddingWidth) / rowTextWidth)));
 
+        // Rows are tentatively assigned and the row count is fixed. Try to reduce horizontal compression by bumping row-final tabs to the next row:
+        // 1: [Sixth]
+        // 0: [First] [Second] [Third] [Fourth] [Fifth]
+        // will become
+        // 1: [Fifth] [Sixth]
+        // 0: [First] [Second] [Third] [Fourth]
+        // and then
+        // 1: [Fourth] [Fifth] [Sixth]
+        // 0: [First] [Second] [Third]
+        // provided row 0 was experiencing horizontal compression.
+        for (int sourceRow = 0; sourceRow < rows.Count - 1; sourceRow++) {
+            if (rows[sourceRow].Compression >= 1) {
+                continue;
+            }
+            int destinationRow = sourceRow + 1;
+
+            float destinationCompression = GetRequiredCompression(tabPages[rows[destinationRow].AbsorbedRange]);
+            if (destinationCompression > rows[sourceRow].Compression) {
+                // After provisionally bumping the tab, destinationRow still has less compression than sourceRow had. Make the bump official.
+                float sourceCompression = GetRequiredCompression(tabPages[rows[sourceRow].RejectedRange]);
+                TabRow.BumpTab(rows[sourceRow], sourceCompression, rows[destinationRow], destinationCompression);
+
+                // A tab was successfully bumped from this row, so we want to try bumping a tab into this row on the next loop iteration.
+                // (The next iteration will be sourceRow = sourceRow - 2 + 1)
+                // Except when this is row 0, in which case we'll just repeat row 0 and try to bump another tab out instead.
+                sourceRow = Math.Max(-1, sourceRow - 2);
+            }
+        }
+
         #endregion
 
         // Reverse the rows so the render pass can just use ROW_HEIGHT*rowIdx to draw the tabs from bottom up. Rows end up re-numbered as:
@@ -238,8 +267,33 @@ public sealed class TabControl {
 
     private float GetTitleWidth(TabPage tabPage, float compression = 1) => gui.GetTextDimensions(out _, tabPage.Title).X * compression;
 
+    // Measure the titles for the tab pages in this (potential) row and calculate the horizontal compression.
+    private float GetRequiredCompression(IEnumerable<TabPage> tabPages) {
+        float rowTextWidth = 0;
+        float rowPaddingWidth = -HorizontalTabSeparation;
+        foreach (TabPage tabPage in tabPages) {
+            rowPaddingWidth += AdditionalTabSpacing;
+            rowTextWidth += GetTitleWidth(tabPage);
+        }
+
+        return Math.Min(1, (layoutWidth - rowPaddingWidth) / rowTextWidth);
+    }
+
     private record TabRow(int Start, int End, float Compression) {
+        public int Start { get; private set; } = Start;
+        public int End { get; private set; } = End;
+        public float Compression { get; private set; } = Compression;
+
         public Range Range => Start..End;
+        public Range AbsorbedRange => (Start - 1)..End;
+        public Range RejectedRange => Start..(End - 1);
+
+        internal static void BumpTab(TabRow sourceRow, float sourceCompression, TabRow destinationRow, float destinationCompression) {
+            sourceRow.End--;
+            sourceRow.Compression = sourceCompression;
+            destinationRow.Start--;
+            destinationRow.Compression = destinationCompression;
+        }
 
         public static implicit operator TabRow((int Start, int End, float Compression) value) => new TabRow(value.Start, value.End, value.Compression);
     }
