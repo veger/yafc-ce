@@ -129,6 +129,19 @@ internal partial class FactorioDataDeserializer {
                         
                         break;
                     }
+
+                    case "change-recipe-productivity": {
+                        if (!GetRef<Recipe>(modifier, "recipe", out var recipe)) {
+                            continue;
+                        }
+
+                        float change = modifier.Get("change", 0f);
+
+                        technology.changeRecipeProductivity.Add(recipe, change);
+                        recipe.technologyProductivity.Add(technology, change);
+
+                        break;
+                    }
                 }
             }
         }
