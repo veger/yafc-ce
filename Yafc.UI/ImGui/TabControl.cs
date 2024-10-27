@@ -103,6 +103,13 @@ public sealed class TabControl {
     }
 
     /// <summary>
+    /// Gets or sets the height of the tab buttons. Must not be smaller than the height of a line of text.
+    /// </summary>
+    // Does not invalidate layout. The layout is only concerned about widths, not heights.
+    // Because gui might not be available yet (and a different gui might change the text height?) this is not validated until rendering.
+    public float TabHeight { get; set; } = 2.25f;
+
+    /// <summary>
     /// Gets the non-text space required for the first tab in a row.
     /// </summary>
     private float FirstTabSpacing => HorizontalTextPadding * 2;
@@ -239,6 +246,11 @@ public sealed class TabControl {
         // Implementation note: TabPage.Drawer is permitted to be null. Accommodating a null GuiBuilder was easy and useful for testing.
         // On the other hand, there's no reason to do that in real life, so the accommodation is not acknowledged in the nullable annotations.
 
+        float minTabHeight = gui.GetTextDimensions(out _, "test").Y;
+        if (TabHeight < minTabHeight) {
+            throw new InvalidOperationException($"{nameof(TabHeight)} must be at least the height of a line of text, {minTabHeight}, but it was {TabHeight}.");
+        }
+
         this.gui = gui;
 
         if (gui.statePosition.Width != layoutWidth) {
@@ -257,11 +269,11 @@ public sealed class TabControl {
 
         for (int currentRow = 0; currentRow < rows.Count; currentRow++) {
             float startingX = gui.statePosition.Left;
-            float startingY = gui.statePosition.Top + (2.25f + VerticalTabSeparation) * currentRow;
+            float startingY = gui.statePosition.Top + (TabHeight + VerticalTabSeparation) * currentRow;
             foreach (TabPage tabPage in tabPages[rows[currentRow].Range]) {
                 float textWidth = GetTitleWidth(tabPage, rows[currentRow].Compression);
-                Rect buttonRect = new(startingX, startingY, textWidth + HorizontalTextPadding * 2, 2.25f);
-                Rect textRect = new(startingX + HorizontalTextPadding, buttonRect.Top, textWidth, 2.25f);
+                Rect buttonRect = new(startingX, startingY, textWidth + HorizontalTextPadding * 2, TabHeight);
+                Rect textRect = new(startingX + HorizontalTextPadding, buttonRect.Top, textWidth, TabHeight);
                 RectAlignment textAlignment = RectAlignment.MiddleFullRow;
                 if (tabPage.ButtonWidth.HasValue) {  // also, Compression == 1 (aka no horizontal squishing)
                     buttonRect.Width = tabPage.ButtonWidth.Value;
@@ -284,7 +296,7 @@ public sealed class TabControl {
 
             // On every row except the last, draw a Primary bar across the bottom of the buttons, to make them look more tab-like.
             if (currentRow != rows.Count - 1) {
-                float top = startingY + 2.25f;
+                float top = startingY + TabHeight;
                 float bottom = top + VerticalTabSeparation / 2;
                 // If we aren't using the full width, the connector stops half a HorizontalTabSeparation past the last tab button.
                 // (equivalently, half a HorizontalTabSeparation before where the next button would be drawn, if it existed.)
@@ -293,7 +305,7 @@ public sealed class TabControl {
             }
         }
 
-        gui.AllocateRect(0, (2.25f + VerticalTabSeparation) * rows.Count - VerticalTabSeparation + .25f, 0); // Allocate space (vertical) for the tabs
+        gui.AllocateRect(0, (TabHeight + VerticalTabSeparation) * rows.Count - VerticalTabSeparation + .25f, 0); // Allocate space (vertical) for the tabs
         // On the last row, draw a Secondary bar across the bottom of the buttons, to connect the active tab to the controls that will be drawn.
         // Unlike the Primary bars, this one is always full-width.
         gui.DrawRectangle(new(gui.statePosition.X, gui.statePosition.Y - .25f, layoutWidth, .25f), SchemeColor.Secondary);
