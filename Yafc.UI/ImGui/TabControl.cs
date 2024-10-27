@@ -16,6 +16,7 @@ public sealed class TabControl {
     private float horizontalTabSeparation = .8f;
     private float maximumTextCompression = .75f;
     private float verticalTabSeparation = .25f;
+    private bool fullWidthTabRows = true;
 
     private readonly List<TabRow> rows = [];
     private float layoutWidth;
@@ -29,7 +30,7 @@ public sealed class TabControl {
     public void SetActivePage(int pageIdx) => activePage = pageIdx;
 
     /// <summary>
-    /// Gets or sets the padding between the left and right ends of the text and the left and right edges of the tab. Must not be negative.
+    /// Gets or sets the (minimum) padding between the left and right ends of the text and the left and right edges of the tab. Must not be negative.
     /// </summary>
     public float HorizontalTextPadding {
         get => horizontalTextPadding;
@@ -84,6 +85,19 @@ public sealed class TabControl {
             if (verticalTabSeparation != value) {
                 ArgumentOutOfRangeException.ThrowIfNegative(value);
                 verticalTabSeparation = value;
+            }
+        }
+    }
+
+    /// <summary>
+    /// If <see cref="true"/>, tab buttons (not title text) will be stretched horizontally to fill complete rows.
+    /// </summary>
+    public bool FullWidthTabRows {
+        get => fullWidthTabRows;
+        set {
+            if (fullWidthTabRows != value) {
+                fullWidthTabRows = value;
+                InvalidateLayout();
             }
         }
     }
@@ -179,7 +193,39 @@ public sealed class TabControl {
 
         #endregion
 
-        // Reverse the rows so the render pass can just use ROW_HEIGHT*rowIdx to draw the tabs from bottom up. Rows end up re-numbered as:
+        #region Calculations for full-width rows
+
+        // Remove results from previous layout passes.
+        foreach (TabPage tabPage in tabPages) {
+            tabPage.ButtonWidth = null;
+        }
+
+        if (FullWidthTabRows) {
+            foreach ((int start, int end, _) in rows.Where(r => r.Compression == 1)) {
+                // Do the math as if there's an extra options.HorizontalTabSeparation that has to be allocated after the final tab.
+                float easyMathWidth = layoutWidth + HorizontalTabSeparation;
+                List<(TabPage, float Width)> pages = tabPages[start..end].Select(p => (p, GetTitleWidth(p) + AdditionalTabSpacing)).ToList();
+
+                float desiredTabWidth = easyMathWidth / pages.Count;
+                (TabPage, float Width) widestTab = pages.MaxBy(p => p.Width);
+                while (widestTab.Width > desiredTabWidth) {
+                    // The widest tab is too wide for equal allocation of the (remaining) space. Reserve its full required width and remove it from consideration.
+                    easyMathWidth -= widestTab.Width;
+                    pages.Remove(widestTab);
+                    desiredTabWidth = easyMathWidth / pages.Count;
+                    widestTab = pages.MaxBy(p => p.Width);
+                }
+
+                // The (remaining) tabs get equal allocation of the (remaining) space.
+                foreach ((TabPage page, _) in pages) {
+                    page.ButtonWidth = desiredTabWidth - HorizontalTabSeparation;
+                }
+            }
+        }
+
+        #endregion
+
+        // Reverse the rows so the render can just use ROW_HEIGHT*rowIdx to draw the tabs from bottom up:
         // 0: [Seventh] [Eighth] [Ninth]
         // 1: [Fourth] [Fifth] [Sixth]
         // 2: [First] [Second] [Third]
@@ -215,6 +261,14 @@ public sealed class TabControl {
             foreach (TabPage tabPage in tabPages[rows[currentRow].Range]) {
                 float textWidth = GetTitleWidth(tabPage, rows[currentRow].Compression);
                 Rect buttonRect = new(startingX, startingY, textWidth + HorizontalTextPadding * 2, 2.25f);
+                Rect textRect = new(startingX + HorizontalTextPadding, buttonRect.Top, textWidth, 2.25f);
+                RectAlignment textAlignment = RectAlignment.MiddleFullRow;
+                if (tabPage.ButtonWidth.HasValue) {  // also, Compression == 1 (aka no horizontal squishing)
+                    buttonRect.Width = tabPage.ButtonWidth.Value;
+                    textRect = buttonRect;
+                    textAlignment = RectAlignment.Middle;
+                }
+
                 if (Array.IndexOf(tabPages, tabPage) == activePage) {
                     // Draw the active tab as just a rectangle
                     gui.DrawRectangle(buttonRect, SchemeColor.Secondary);
@@ -224,8 +278,7 @@ public sealed class TabControl {
                     activePage = Array.IndexOf(tabPages, tabPage);
                 }
 
-                Rect textRect = new(startingX + HorizontalTextPadding, buttonRect.Top, textWidth, 2.25f);
-                gui.DrawText(textRect, tabPage.Title, RectAlignment.MiddleFullRow);
+                gui.DrawText(textRect, tabPage.Title, textAlignment);
                 startingX += buttonRect.Width + HorizontalTabSeparation;
             }
 
@@ -313,6 +366,11 @@ public sealed class TabPage(string title, GuiBuilder drawer) {
     /// Gets the <see cref="GuiBuilder"/> that allocates space and draws content for the tab page.
     /// </summary>
     public GuiBuilder Drawer { get; } = drawer;
+
+    /// <summary>
+    /// Stores the width of the tab button, if extra width is required to accommodate <see cref="ImGuiUtils.TabControlOptions.FullWidthTabRows"/>
+    /// </summary>
+    internal float? ButtonWidth { get; set; }
 
     public static implicit operator TabPage((string Title, GuiBuilder Drawer) value) => new TabPage(value.Title, value.Drawer);
 }
