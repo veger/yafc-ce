@@ -42,6 +42,9 @@ public static class ImGuiUtils {
         if (button == 0) {
             button = (uint)InputSystem.Instance.mouseDownButton;
         }
+        if (!gui.enableDrawing) {
+            return ButtonEvent.None;
+        }
 
         switch (gui.action) {
             case ImGuiAction.MouseMove:
@@ -64,6 +67,10 @@ public static class ImGuiUtils {
 
     public static bool BuildLink(this ImGui gui, string text) {
         gui.BuildText(text, TextBlockDisplayStyle.Default(SchemeColor.Link));
+        if (!gui.enableDrawing) {
+            return ButtonEvent.None;
+        }
+
         var rect = gui.lastRect;
         switch (gui.action) {
             case ImGuiAction.MouseMove:
@@ -381,6 +388,10 @@ public static class ImGuiUtils {
         Rect handleRect = new Rect(sliderRect.X + handleStart, sliderRect.Y, 1f, sliderRect.Height);
         bool update = false;
         newValue = value;
+
+        if (!gui.enableDrawing) {
+            return false;
+        }
 
         switch (gui.action) {
             case ImGuiAction.Build:

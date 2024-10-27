@@ -169,29 +169,6 @@ public class ModuleFillerParametersScreen : PseudoScreen {
             }
         }
 
-        gui.AllocateSpacing();
-        using (gui.EnterRow()) {
-            gui.BuildText("Mining productivity bonus (project-wide setting): ");
-            DisplayAmount amount = new(Project.current.settings.miningProductivity, UnitOfMeasure.Percent);
-            if (gui.BuildFloatInput(amount, TextBoxDisplayStyle.ModuleParametersTextInput) && amount.Value >= 0) {
-                Project.current.settings.RecordUndo().miningProductivity = amount.Value;
-            }
-        }
-        using (gui.EnterRow()) {
-            gui.BuildText("Research speed bonus (project-wide setting): ");
-            DisplayAmount amount = new(Project.current.settings.researchSpeedBonus, UnitOfMeasure.Percent);
-            if (gui.BuildFloatInput(amount, TextBoxDisplayStyle.ModuleParametersTextInput) && amount.Value >= 0) {
-                Project.current.settings.RecordUndo().researchSpeedBonus = amount.Value;
-            }
-        }
-        using (gui.EnterRow()) {
-            gui.BuildText("Research productivity bonus (project-wide setting): ");
-            DisplayAmount amount = new(Project.current.settings.researchProductivity, UnitOfMeasure.Percent);
-            if (gui.BuildFloatInput(amount, TextBoxDisplayStyle.ModuleParametersTextInput) && amount.Value >= 0) {
-                Project.current.settings.RecordUndo().researchProductivity = amount.Value;
-            }
-        }
-
         if (gui.BuildButton("Done")) {
             Close();
         }

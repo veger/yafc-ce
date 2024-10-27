@@ -353,9 +353,10 @@ public class Special : Goods {
     internal string? virtualSignal { get; set; }
     internal bool power;
     internal bool isResearch;
+    internal bool isVoid;
     public override bool isPower => power;
     public override string type => isPower ? "Power" : "Special";
-    public override UnitOfMeasure flowUnitOfMeasure => isPower ? UnitOfMeasure.Megawatt : UnitOfMeasure.PerSecond;
+    public override UnitOfMeasure flowUnitOfMeasure => isVoid ? UnitOfMeasure.None : isPower ? UnitOfMeasure.Megawatt : UnitOfMeasure.PerSecond;
     internal override FactorioObjectSortOrder sortingOrder => FactorioObjectSortOrder.SpecialGoods;
     public override bool showInExplorers => !isResearch;
 

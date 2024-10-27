@@ -61,6 +61,7 @@ internal partial class FactorioDataDeserializer {
         fuels.Add(SpecialNames.Heat, heat);
 
         voidEnergy = createSpecialObject(true, SpecialNames.Void, "Void", "This is an object that represents infinite energy", "__core__/graphics/icons/mip/infinity.png", "signal-V");
+        voidEnergy.isVoid = true;
         fuels.Add(SpecialNames.Void, voidEnergy);
         rootAccessible.Add(voidEnergy);
 
