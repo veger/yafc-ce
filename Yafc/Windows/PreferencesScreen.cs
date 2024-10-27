@@ -111,7 +111,7 @@ public class PreferencesScreen : PseudoScreen {
             gui.BuildText("Fluid production/consumption:", Font.subheader);
             BuildUnitPerTime(gui, true, prefs);
 
-            using (gui.EnterRowWithHelpIcon("0 for off, 100% for old default")) {
+            using (gui.EnterRowWithHelpIcon("0% for off, 100% for old default")) {
                 gui.BuildText("Pollution cost modifier", topOffset: 0.5f);
                 DisplayAmount amount = new(settings.PollutionCostModifier, UnitOfMeasure.Percent);
                 if (gui.BuildFloatInput(amount, TextBoxDisplayStyle.DefaultTextInput) && amount.Value >= 0) {

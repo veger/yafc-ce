@@ -545,7 +545,7 @@ public static partial class DataUtils {
         }
 
         if (amount == 0f) {
-            return "0";
+            return prefix + "0" + unitSuffix + suffix;
         }
 
         _ = amountBuilder.Clear();
