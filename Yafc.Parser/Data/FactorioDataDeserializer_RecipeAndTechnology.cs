@@ -118,9 +118,19 @@ internal partial class FactorioDataDeserializer {
         }
 
         if (table.Get("effects", out LuaTable? modifiers)) {
-            technology.unlockRecipes = modifiers.ArrayElements<LuaTable>()
-            .Select(x => x.Get("type", out string? type) && type == "unlock-recipe" && GetRef<Recipe>(x, "recipe", out var recipe) ? recipe : null).WhereNotNull()
-            .ToArray();
+            foreach (LuaTable modifier in modifiers.ArrayElements<LuaTable>()) {
+                switch (modifier.Get("type", "")) {
+                    case "unlock-recipe": {
+                        if (!GetRef<Recipe>(modifier, "recipe", out var recipe)) {
+                            continue;
+                        }
+
+                        technology.unlockRecipes.Add(recipe);
+                        
+                        break;
+                    }
+                }
+            }
         }
     }
 

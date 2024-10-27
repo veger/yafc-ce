@@ -522,7 +522,7 @@ public class EntityContainer : Entity {
 public class Technology : RecipeOrTechnology { // Technology is very similar to recipe
     public float count { get; internal set; } // TODO support formula count
     public Technology[] prerequisites { get; internal set; } = [];
-    public Recipe[] unlockRecipes { get; internal set; } = [];
+    public List<Recipe> unlockRecipes { get; internal set; } = [];
     internal override FactorioObjectSortOrder sortingOrder => FactorioObjectSortOrder.Technologies;
     public override string type => "Technology";
 
