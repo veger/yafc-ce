@@ -68,6 +68,7 @@ public static class RenderingUtils {
     public static void SetColorScheme(bool darkMode) {
         RenderingUtils.darkMode = darkMode;
         SchemeColors = darkMode ? DarkModeScheme : LightModeScheme;
+        Ui.ColorSchemeChanged();
         byte col = darkMode ? (byte)0 : (byte)255;
         _ = SDL.SDL_SetSurfaceColorMod(CircleSurface, col, col, col);
     }

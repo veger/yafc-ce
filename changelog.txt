@@ -19,6 +19,7 @@ Version: 2.x
 Date:
     Features:
         - Focus the built count and fixed count edit boxes when first opening them.
+        - Add a dark mode checkbox to the preferences.
     Bugfixes:
         - Recipes no longer have excessive question marks in their names
         - Moved mining and research bonuses have to the Preferences screen.

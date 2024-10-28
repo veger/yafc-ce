@@ -183,6 +183,8 @@ public abstract class Window : IDisposable {
         }
     }
 
+    internal virtual void DarkModeChanged() { }
+
     public void ShowTooltip(Tooltip tooltip) {
         this.tooltip = tooltip;
         Rebuild();

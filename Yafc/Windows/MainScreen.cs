@@ -46,7 +46,7 @@ public partial class MainScreen : WindowMain, IKeyboardFocus, IProgress<(string,
     private readonly Dictionary<Type, ProjectPageView> registeredPageViews = [];
     private readonly Dictionary<Type, ProjectPageView> secondaryPageViews = [];
 
-    public MainScreen(int display, Project project) : base(default) {
+    public MainScreen(int display, Project project) : base(default, Preferences.Instance.forceSoftwareRenderer) {
         summaryView = new SummaryView(project);
         RegisterPageView<ProductionTable>(new ProductionTableView());
         RegisterPageView<AutoPlanner>(new AutoPlannerView());
@@ -58,7 +58,7 @@ public partial class MainScreen : WindowMain, IKeyboardFocus, IProgress<(string,
         allPages = new VirtualScrollList<ProjectPage>(30, new Vector2(0f, 2f), BuildPage, collapsible: true);
 
         Create("Yet Another Factorio Calculator CE v" + YafcLib.version.ToString(3), display, Preferences.Instance.initialMainScreenWidth,
-            Preferences.Instance.initialMainScreenHeight, Preferences.Instance.maximizeMainScreen, Preferences.Instance.forceSoftwareRenderer);
+            Preferences.Instance.initialMainScreenHeight, Preferences.Instance.maximizeMainScreen);
         SetProject(project);
     }
 

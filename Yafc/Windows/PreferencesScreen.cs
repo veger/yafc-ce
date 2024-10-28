@@ -145,6 +145,12 @@ public class PreferencesScreen : PseudoScreen {
                     }
                 }
             }
+
+            if (gui.BuildCheckBox("Dark mode", Preferences.Instance.darkMode, out bool newValue)) {
+                Preferences.Instance.darkMode = newValue;
+                Preferences.Instance.Save();
+                RenderingUtils.SetColorScheme(newValue);
+            }
         }
 
         gui.AllocateSpacing();
