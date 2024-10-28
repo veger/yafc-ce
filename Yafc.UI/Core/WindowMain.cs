@@ -7,8 +7,8 @@ using Serilog;
 namespace Yafc.UI;
 
 // Main window is resizable and hardware-accelerated unless forced to render via software by caller
-public abstract class WindowMain(Padding padding) : Window(padding) {
-    protected void Create(string title, int display, float initialWidth, float initialHeight, bool maximized, bool forceSoftwareRenderer) {
+public abstract class WindowMain(Padding padding, bool forceSoftwareRenderer) : Window(padding) {
+    protected void Create(string title, int display, float initialWidth, float initialHeight, bool maximized) {
         if (visible) {
             return;
         }
@@ -36,6 +36,14 @@ public abstract class WindowMain(Padding padding) : Window(padding) {
         WindowResize();
         surface = new MainWindowDrawingSurface(this, forceSoftwareRenderer);
         base.Create();
+    }
+
+    internal override void DarkModeChanged() {
+        if (surface != null) {
+            // Replace surface to (1) replace circleTexture, which is used for drawing shadows, and (2) invalidate the faded background from FadeDrawer.
+            surface.Dispose();
+            surface = new MainWindowDrawingSurface(this, forceSoftwareRenderer);
+        }
     }
 
     protected override void BuildContents(ImGui gui) {

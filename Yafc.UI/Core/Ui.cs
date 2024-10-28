@@ -284,4 +284,10 @@ public static partial class Ui {
             }
         }
     }
+
+    internal static void ColorSchemeChanged() {
+        foreach (Window window in windows.Values) {
+            window.DarkModeChanged();
+        }
+    }
 }
