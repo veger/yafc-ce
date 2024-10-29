@@ -15,8 +15,8 @@
 //     Internal changes:
 //         Changes to the code that do not affect the behavior of the program.
 ----------------------------------------------------------------------------------------------------------------------
-Version: 2.x
-Date:
+Version: 2.1.0
+Date: October 29th 2024
     Features:
         - Focus the built count and fixed count edit boxes when first opening them.
         - Add a dark mode checkbox to the preferences.
