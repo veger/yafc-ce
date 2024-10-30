@@ -61,6 +61,7 @@ internal partial class FactorioDataDeserializer {
             obj.locName = locName;
             obj.locDescr = locDescr;
             obj.iconSpec = [new FactorioIconPart(icon)];
+            obj.isLinkable = false;
             obj.showInExplorers = false;
             rootAccessible.Add(obj);
 
@@ -76,6 +77,7 @@ internal partial class FactorioDataDeserializer {
 
         voidEnergy = createSpecialObject(true, SpecialNames.Void, "Void", "This is an object that represents infinite energy", "__core__/graphics/icons/mip/infinity.png", "signal-V");
         voidEnergy.isVoid = true;
+        voidEnergy.isLinkable = false;
         voidEnergy.showInExplorers = false;
         fuels.Add(SpecialNames.Void, voidEnergy);
         rootAccessible.Add(voidEnergy);

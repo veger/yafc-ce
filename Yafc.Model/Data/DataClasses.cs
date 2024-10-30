@@ -304,6 +304,7 @@ public abstract class Goods : FactorioObject {
     public FactorioObject[] miscSources { get; internal set; } = [];
     public Entity[] fuelFor { get; internal set; } = [];
     public abstract UnitOfMeasure flowUnitOfMeasure { get; }
+    public bool isLinkable { get; internal set; } = true;
 
     public override void GetDependencies(IDependencyCollector collector, List<FactorioObject> temp) => collector.Add(production.Concat(miscSources).ToArray(), DependencyList.Flags.Source);
 

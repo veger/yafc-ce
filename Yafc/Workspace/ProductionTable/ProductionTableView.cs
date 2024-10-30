@@ -722,7 +722,7 @@ goodsHaveNoProduction:;
     }
 
     private void CreateLink(ProductionTable table, Goods goods) {
-        if (table.linkMap.ContainsKey(goods)) {
+        if (table.linkMap.ContainsKey(goods) || !goods.isLinkable) {
             return;
         }
 
@@ -976,13 +976,12 @@ goodsHaveNoProduction:;
                         "Nested tables can have its own separate set of links";
                     gui.BuildText(goodsNestLinkMessage, TextBlockDisplayStyle.WrappedText);
                 }
-                else {
+                else if (goods.isLinkable) {
                     string notLinkedMessage = goods.locName + " production is currently NOT linked. This means that YAFC will make no attempt to match production with consumption.";
                     gui.BuildText(notLinkedMessage, TextBlockDisplayStyle.WrappedText);
-                }
-
-                if (gui.BuildButton("Create link").WithTooltip(gui, "Shortcut: right-click") && gui.CloseDropdown()) {
-                    CreateLink(context, goods);
+                    if (gui.BuildButton("Create link").WithTooltip(gui, "Shortcut: right-click") && gui.CloseDropdown()) {
+                        CreateLink(context, goods);
+                    }
                 }
             }
             #endregion
@@ -1180,7 +1179,7 @@ goodsHaveNoProduction:;
             case GoodsWithAmountEvent.LeftButtonClick when goods is not null:
                 OpenProductDropdown(gui, gui.lastRect, goods, amount, link, dropdownType, recipe, context, variants);
                 break;
-            case GoodsWithAmountEvent.RightButtonClick when goods is not null && (link is null || link.owner != context):
+            case GoodsWithAmountEvent.RightButtonClick when goods is not null and not { isLinkable: false } && (link is null || link.owner != context):
                 CreateLink(context, goods);
                 break;
             case GoodsWithAmountEvent.RightButtonClick when link?.amount == 0 && link.owner == context:
@@ -1431,7 +1430,7 @@ goodsHaveNoProduction:;
     }
 
     private static void AddDesiredProductAtLevel(ProductionTable table) => SelectMultiObjectPanel.Select(
-        Database.goods.all.Except(table.linkMap.Where(p => p.Value.amount != 0).Select(p => p.Key)), "Add desired product", product => {
+        Database.goods.all.Except(table.linkMap.Where(p => p.Value.amount != 0).Select(p => p.Key)).Where(g => g.isLinkable), "Add desired product", product => {
             if (table.linkMap.TryGetValue(product, out var existing)) {
                 if (existing.amount != 0) {
                     return;
