@@ -66,7 +66,7 @@ public abstract class FactorioObject : IFactorioObjectWrapper, IComparable<Facto
 
     public int CompareTo(FactorioObject? other) => DataUtils.DefaultOrdering.Compare(this, other);
 
-    public virtual bool showInExplorers => true;
+    public bool showInExplorers { get; internal set; } = true;
 }
 
 public class FactorioIconPart(string path) {
@@ -361,8 +361,6 @@ public class Special : Goods {
     public override string type => isPower ? "Power" : "Special";
     public override UnitOfMeasure flowUnitOfMeasure => isVoid ? UnitOfMeasure.None : isPower ? UnitOfMeasure.Megawatt : UnitOfMeasure.PerSecond;
     internal override FactorioObjectSortOrder sortingOrder => FactorioObjectSortOrder.SpecialGoods;
-    public override bool showInExplorers => !isResearch;
-
     public override void GetDependencies(IDependencyCollector collector, List<FactorioObject> temp) {
         if (isResearch) {
             collector.Add(Database.technologies.all.ToArray(), DependencyList.Flags.Source);

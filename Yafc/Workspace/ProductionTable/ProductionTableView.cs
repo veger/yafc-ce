@@ -536,6 +536,11 @@ goodsHaveNoProduction:;
                     grid.Next();
                     view.BuildGoodsIcon(gui, goods, link, amount, ProductDropdownType.Ingredient, recipe, recipe.linkRoot, HintLocations.OnProducingRecipes, variants);
                 }
+                if (recipe.Ingredients.Count() >= 3) {
+                    grid.Next();
+                    view.BuildGoodsIcon(gui, Database.itemInput, null, recipe.Ingredients.Where(i => i.Goods is Item).Sum(i => i.Amount),
+                        ProductDropdownType.Ingredient, recipe, recipe.linkRoot, HintLocations.None);
+                }
             }
             grid.Dispose();
         }
@@ -551,6 +556,11 @@ goodsHaveNoProduction:;
                 foreach (var (goods, amount, link) in recipe.Products) {
                     grid.Next();
                     view.BuildGoodsIcon(gui, goods, link, amount, ProductDropdownType.Product, recipe, recipe.linkRoot, HintLocations.OnConsumingRecipes);
+                }
+                if (recipe.Products.Count() >= 3) {
+                    grid.Next();
+                    view.BuildGoodsIcon(gui, Database.itemOutput, null, recipe.Products.Where(i => i.Goods is Item).Sum(i => i.Amount),
+                        ProductDropdownType.Product, recipe, recipe.linkRoot, HintLocations.None);
                 }
             }
             grid.Dispose();

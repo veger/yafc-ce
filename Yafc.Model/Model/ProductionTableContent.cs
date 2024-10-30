@@ -344,7 +344,7 @@ public class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Productio
             if (value == null) {
                 _fixedProduct = null;
             }
-            else if (recipe.products.All(p => p.goods != value)) {
+            else if (value != Database.itemOutput && recipe.products.All(p => p.goods != value)) {
                 // The UI doesn't know the difference between a product and a spent fuel, but we care about the difference
                 _fixedProduct = null;
                 fixedFuel = true;
@@ -612,13 +612,18 @@ public class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Productio
                 row.fixedBuildings *= row.parameters.recipeTime / oldParameters.recipeTime; // step 3, for fixed ingredient consumption
             }
             else if (row.fixedProduct != null) {
-                if (row.recipe.products.SingleOrDefault(p => p.goods == row.fixedProduct, false) is not Product product) {
+                if (row.fixedProduct == Database.itemOutput) {
+                    float oldAmount = row.recipe.products.Where(p => p.goods is Item).Sum(p => p.GetAmountPerRecipe(oldParameters.productivity)) / oldParameters.recipeTime;
+                    float newAmount = row.recipe.products.Where(p => p.goods is Item).Sum(p => p.GetAmountPerRecipe(row.parameters.productivity)) / row.parameters.recipeTime;
+                    row.fixedBuildings *= oldAmount / newAmount; // step 3, for fixed combined production amount
+                }
+                else if (row.recipe.products.SingleOrDefault(p => p.goods == row.fixedProduct, false) is not Product product) {
                     row.fixedBuildings = 0; // We couldn't find the Product corresponding to fixedProduct. Just clear the fixed amount.
                 }
                 else {
                     float oldAmount = product.GetAmountPerRecipe(oldParameters.productivity) / oldParameters.recipeTime;
                     float newAmount = product.GetAmountPerRecipe(row.parameters.productivity) / row.parameters.recipeTime;
-                    row.fixedBuildings *= oldAmount / newAmount; // step 3, for fixed production amount
+                    row.fixedBuildings *= oldAmount / newAmount; // step 3, for fixed individual production amount
                 }
             }
 

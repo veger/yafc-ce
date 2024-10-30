@@ -28,6 +28,8 @@ internal partial class FactorioDataDeserializer {
     private readonly Special electricity;
     private readonly Special rocketLaunch;
     private readonly Special researchUnit;
+    private readonly Item totalItemOutput;
+    private readonly Item totalItemInput;
     private readonly EntityEnergy voidEntityEnergy;
     private readonly EntityEnergy laborEntityEnergy;
     private Entity? character;
@@ -53,6 +55,18 @@ internal partial class FactorioDataDeserializer {
             return obj;
         }
 
+        Item createSpecialItem(string name, string locName, string locDescr, string icon) {
+            Item obj = GetObject<Item>(name);
+            obj.factorioType = "special";
+            obj.locName = locName;
+            obj.locDescr = locDescr;
+            obj.iconSpec = [new FactorioIconPart(icon)];
+            obj.showInExplorers = false;
+            rootAccessible.Add(obj);
+
+            return obj;
+        }
+
         electricity = createSpecialObject(true, SpecialNames.Electricity, "Electricity", "This is an object that represents electric energy",
             "__core__/graphics/icons/alerts/electricity-icon-unplugged.png", "signal-E");
         fuels.Add(SpecialNames.Electricity, electricity);
@@ -62,6 +76,7 @@ internal partial class FactorioDataDeserializer {
 
         voidEnergy = createSpecialObject(true, SpecialNames.Void, "Void", "This is an object that represents infinite energy", "__core__/graphics/icons/mip/infinity.png", "signal-V");
         voidEnergy.isVoid = true;
+        voidEnergy.showInExplorers = false;
         fuels.Add(SpecialNames.Void, voidEnergy);
         rootAccessible.Add(voidEnergy);
 
@@ -70,6 +85,7 @@ internal partial class FactorioDataDeserializer {
         researchUnit = createSpecialObject(false, SpecialNames.ResearchUnit, "Research",
             "This represents one unit of a research task.", "__base__/graphics/icons/compilatron.png", "signal-L");
         researchUnit.isResearch = true;
+        researchUnit.showInExplorers = false;
         Analysis.ExcludeFromAnalysis<CostAnalysis>(researchUnit);
 
         generatorProduction = CreateSpecialRecipe(electricity, SpecialNames.GeneratorRecipe, "generating");
@@ -84,6 +100,9 @@ internal partial class FactorioDataDeserializer {
 
         voidEntityEnergy = new EntityEnergy { type = EntityEnergyType.Void, effectivity = float.PositiveInfinity };
         laborEntityEnergy = new EntityEnergy { type = EntityEnergyType.Labor, effectivity = float.PositiveInfinity };
+
+        totalItemInput = createSpecialItem("item-total-input", "Total item consumption", "This item represents the combined total item input of a multi-ingredient recipe. It can be used to set or measure the number of sushi belts required to supply this recipe row.", "__base__/graphics/icons/signal/signal_I.png");
+        totalItemOutput = createSpecialItem("item-total-output", "Total item production", "This item represents the combined total item output of a multi-product recipe. It can be used to set or measure the number of sushi belts required to handle the products of this recipe row.", "__base__/graphics/icons/signal/signal_O.png");
     }
 
     private T GetObject<T>(string name) where T : FactorioObject, new() => GetObject<T, T>(name);
@@ -120,6 +139,8 @@ internal partial class FactorioDataDeserializer {
         Database.allSciencePacks = [.. sciencePacks];
         Database.voidEnergy = voidEnergy;
         Database.researchUnit = researchUnit;
+        Database.itemInput = totalItemInput;
+        Database.itemOutput = totalItemOutput;
         Database.electricity = electricity;
         Database.electricityGeneration = generatorProduction;
         Database.heat = heat;
