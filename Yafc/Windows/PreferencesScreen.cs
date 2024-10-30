@@ -80,6 +80,7 @@ public class PreferencesScreen : PseudoScreen {
             .OrderBy(x => x.locName);
         foreach (var tech in productivityTech) {
             using (gui.EnterRow()) {
+                gui.BuildFactorioObjectButton(tech, ButtonDisplayStyle.Default);
                 gui.BuildText($"{tech.locName} Level: ", topOffset: 0.5f);
                 int currentLevel = Project.current.settings.productivityTechnologyLevels.GetValueOrDefault(tech, 0);
                 if (gui.BuildIntegerInput(currentLevel, out int newLevel) && newLevel >= 0) {
