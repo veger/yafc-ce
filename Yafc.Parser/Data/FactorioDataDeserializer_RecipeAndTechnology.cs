@@ -121,27 +121,27 @@ internal partial class FactorioDataDeserializer {
             foreach (LuaTable modifier in modifiers.ArrayElements<LuaTable>()) {
                 switch (modifier.Get("type", "")) {
                     case "unlock-recipe": {
-                        if (!GetRef<Recipe>(modifier, "recipe", out var recipe)) {
-                            continue;
-                        }
+                            if (!GetRef<Recipe>(modifier, "recipe", out var recipe)) {
+                                continue;
+                            }
 
-                        technology.unlockRecipes.Add(recipe);
-                        
-                        break;
-                    }
+                            technology.unlockRecipes.Add(recipe);
+
+                            break;
+                        }
 
                     case "change-recipe-productivity": {
-                        if (!GetRef<Recipe>(modifier, "recipe", out var recipe)) {
-                            continue;
+                            if (!GetRef<Recipe>(modifier, "recipe", out var recipe)) {
+                                continue;
+                            }
+
+                            float change = modifier.Get("change", 0f);
+
+                            technology.changeRecipeProductivity.Add(recipe, change);
+                            recipe.technologyProductivity.Add(technology, change);
+
+                            break;
                         }
-
-                        float change = modifier.Get("change", 0f);
-
-                        technology.changeRecipeProductivity.Add(recipe, change);
-                        recipe.technologyProductivity.Add(technology, change);
-
-                        break;
-                    }
                 }
             }
         }

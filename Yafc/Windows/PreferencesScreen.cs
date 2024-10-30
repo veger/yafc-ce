@@ -74,7 +74,7 @@ public class PreferencesScreen : PseudoScreen {
                 Project.current.settings.RecordUndo().researchProductivity = amount.Value;
             }
         }
-        
+
         IEnumerable<Technology> productivityTech = Database.technologies.all
             .Where(x => x.changeRecipeProductivity.Count != 0)
             .OrderBy(x => x.locName);
