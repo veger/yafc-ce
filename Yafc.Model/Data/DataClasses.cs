@@ -457,6 +457,7 @@ public abstract class EntityWithModules : Entity {
 public class EntityCrafter : EntityWithModules {
     public int itemInputs { get; internal set; }
     public int fluidInputs { get; internal set; } // fluid inputs for recipe, not including power
+    public bool hasVectorToPlaceResult { get; internal set; }
     public Goods[]? inputs { get; internal set; }
     public RecipeOrTechnology[] recipes { get; internal set; } = null!; // null-forgiving: Set in the first step of CalculateMaps
     private float _craftingSpeed = 1;

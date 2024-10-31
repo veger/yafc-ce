@@ -289,6 +289,10 @@ internal partial class FactorioDataDeserializer {
                     crafter.fluidInputs = CountFluidBoxes(fluidBoxes, true);
                 }
 
+                if (table.Get("vector_to_place_result", out LuaTable? hasVectorToPlaceResult)) {
+                    crafter.hasVectorToPlaceResult = hasVectorToPlaceResult != null;
+                }
+
                 Recipe? fixedRecipe = null;
 
                 if (table.Get("fixed_recipe", out string? fixedRecipeName)) {
@@ -359,6 +363,9 @@ internal partial class FactorioDataDeserializer {
                 if (table.Get("input_fluid_box", out LuaTable? _)) {
                     drill.fluidInputs = 1;
                 }
+
+                // All drills have/require the vector_to_place_result to drop their items
+                drill.hasVectorToPlaceResult = true;
 
                 foreach (string resource in resourceCategories.ArrayElements<string>()) {
                     recipeCrafters.Add(drill, SpecialNames.MiningRecipe + resource);

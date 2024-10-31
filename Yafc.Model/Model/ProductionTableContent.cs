@@ -250,12 +250,21 @@ public class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Productio
     public EntityCrafter? entity {
         get => _entity;
         set {
-            if (SerializationMap.IsDeserializing || fixedBuildings == 0 || _entity == value) {
-                _entity = value;
+            if (_entity == value) {
+                // Nothing to do
+                return;
             }
-            else if (fixedFuel && !(value?.energy.fuels ?? []).Contains(_fuel)) {
-                // We're changing both the entity and the fuel (changing between electric, fluid-burning, item-burning, heat-powered, and steam-powered crafter categories)
-                // Don't try to preserve fuel consumption in this case.
+
+            if (SerializationMap.IsDeserializing) {
+                // Just apply the deserialized entity and stop further processing
+                _entity = value;
+                return;
+            }
+
+            if (fixedBuildings == 0 || (fixedFuel && !(value?.energy.fuels ?? []).Contains(_fuel))) {
+                // We're either changing both the entity and the fuel (changing between electric, fluid-burning, item-burning, heat-powered, and steam-powered crafter categories),
+                // or fixedBuilding is zero.
+                // Don't try to preserve fuel consumption in these cases.
                 fixedBuildings = 0;
                 _entity = value;
             }
@@ -264,6 +273,9 @@ public class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Productio
                     _entity = value;
                 }
             }
+
+            // By default show the total item consumption and production signals for unloading crafters (miners, recyclers, etc) when they output multiple products.
+            showTotalIO |= value?.hasVectorToPlaceResult == true && recipe.products.Length > 1;
         }
     }
     public Goods? fuel {
