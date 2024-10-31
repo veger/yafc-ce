@@ -22,7 +22,8 @@ internal enum FactorioObjectSortOrder {
     Mechanics,
     Technologies,
     Entities,
-    Tiles
+    Tiles,
+    Qualities,
 }
 
 public enum FactorioId { }
@@ -477,6 +478,41 @@ public class EntityCrafter : EntityWithModules {
         internal set => _craftingSpeed = value;
     }
     public EffectReceiver? effectReceiver { get; internal set; } = null!;
+}
+
+public sealed class Quality : FactorioObject {
+    public static Quality Normal { get; internal set; } = null!;
+    /// <summary>
+    /// Gets the highest quality that is accessible at the current milestones.
+    /// </summary>
+    public static Quality MaxAccessible {
+        get {
+            Quality quality = Normal;
+            while (quality.nextQuality?.IsAccessibleWithCurrentMilestones() ?? false) {
+                quality = quality.nextQuality;
+            }
+            return quality;
+        }
+    }
+
+    public Quality? nextQuality { get; internal set; }
+    public int level { get; internal set; }
+
+    public override string type => "Quality";
+    internal override FactorioObjectSortOrder sortingOrder => FactorioObjectSortOrder.Qualities;
+
+    internal List<Technology> technologyUnlock { get; } = [];
+    internal Quality? previousQuality { get; set; }
+
+    public override void GetDependencies(IDependencyCollector collector, List<FactorioObject> temp) {
+        collector.Add(technologyUnlock.ToArray(), DependencyList.Flags.TechnologyUnlock);
+        if (previousQuality != null) {
+            collector.Add([previousQuality], DependencyList.Flags.Source);
+        }
+        if (level != 0) {
+            collector.Add(Database.allModules.Where(m => m.moduleSpecification.quality > 0).ToArray(), DependencyList.Flags.Source);
+        }
+    }
 }
 
 public class Effect {

@@ -15,7 +15,7 @@ namespace Yafc.Parser;
 internal partial class FactorioDataDeserializer {
     private static readonly ILogger logger = Logging.GetLogger<FactorioDataDeserializer>();
     private LuaTable raw = null!; // null-forgiving: Initialized at the beginning of LoadData.
-    private bool GetRef<T>(LuaTable table, string key, [MaybeNullWhen(false)] out T result) where T : FactorioObject, new() {
+    private bool GetRef<T>(LuaTable table, string key, [NotNullWhen(true)] out T? result) where T : FactorioObject, new() {
         result = null;
         if (!table.Get(key, out string? name)) {
             return false;
@@ -134,9 +134,13 @@ internal partial class FactorioDataDeserializer {
         DeserializePrototypes(raw, "recipe", DeserializeRecipe, progress, errorCollector);
         progress.Report(("Loading", "Loading technologies"));
         DeserializePrototypes(raw, "technology", DeserializeTechnology, progress, errorCollector);
-        progress.Report(("Loading", "Loading entities"));
-        LuaTable entityPrototypes = (LuaTable?)prototypes["entity"] ?? throw new ArgumentException("Could not load prototypes.item from data argument", nameof(prototypes));
+        progress.Report(("Loading", "Loading qualities"));
+        DeserializePrototypes(raw, "quality", DeserializeQuality, progress, errorCollector);
+        Quality.Normal = GetObject<Quality>("normal");
+        rootAccessible.Add(Quality.Normal);
 
+        progress.Report(("Loading", "Loading entities"));
+        LuaTable entityPrototypes = (LuaTable?)prototypes["entity"] ?? throw new ArgumentException("Could not load prototypes.entity from data argument", nameof(prototypes));
         foreach (object prototypeName in entityPrototypes.ObjectElements.Keys) {
             DeserializePrototypes(raw, (string)prototypeName, DeserializeEntity, progress, errorCollector);
         }
