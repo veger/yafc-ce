@@ -19,6 +19,8 @@ Version:
 Date:
     Features:
         - Add pseudo-items representing a recipe's total sushi-inputs and sushi-outputs.
+    Bugfixes:
+        - Fixed counts are hidden on disabled recipes, since editing them won't work properly.
 ----------------------------------------------------------------------------------------------------------------------
 Version: 2.1.0
 Date: October 29th 2024
