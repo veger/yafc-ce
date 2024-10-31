@@ -14,6 +14,8 @@ public static class Database {
     public static Dictionary<string, List<Fluid>> fluidVariants { get; internal set; } = null!;
     public static Goods voidEnergy { get; internal set; } = null!;
     public static Goods researchUnit { get; internal set; } = null!;
+    public static Goods itemInput { get; internal set; } = null!;
+    public static Goods itemOutput { get; internal set; } = null!;
     public static Goods electricity { get; internal set; } = null!;
     public static Recipe electricityGeneration { get; internal set; } = null!;
     public static Goods heat { get; internal set; } = null!;

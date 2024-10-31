@@ -258,6 +258,10 @@ public class ProjectPreferences(Project owner) : ModelObject<Project>(owner) {
     /// The scale to use when drawing icons that have information stored in their background color, stored as a ratio from 0 to 1.
     /// </summary>
     public float iconScale { get; set; } = .9f;
+    /// <summary>
+    /// The <see cref="Database.itemInput"/> and <see cref="Database.itemOutput"/> pseudo-items will be displayed at or above this ingredient/product count.
+    /// </summary>
+    public int minForTotalItems { get; set; } = 3;
 
     protected internal override void AfterDeserialize() {
         base.AfterDeserialize();
