@@ -19,6 +19,7 @@ Version:
 Date:
     Features:
         - Add pseudo-items representing a recipe's total sushi-inputs and sushi-outputs.
+          They can be toggled on/off in the LMB of the recipe.
     Bugfixes:
         - Fixed counts are hidden on disabled recipes, since editing them won't work properly.
 ----------------------------------------------------------------------------------------------------------------------
