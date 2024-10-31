@@ -296,7 +296,7 @@ goodsHaveNoProduction:;
             Click click;
             using (var group = gui.EnterGroup(default, RectAllocator.Stretch, spacing: 0f)) {
                 group.SetWidth(3f);
-                if (recipe.fixedBuildings > 0 && !recipe.fixedFuel && recipe.fixedIngredient == null && recipe.fixedProduct == null) {
+                if (recipe is { fixedBuildings: > 0, fixedFuel: false, fixedIngredient: null, fixedProduct: null, hierarchyEnabled: true }) {
                     DisplayAmount amount = recipe.fixedBuildings;
                     GoodsWithAmountEvent evt = gui.BuildFactorioObjectWithEditableAmount(recipe.entity, amount, ButtonDisplayStyle.ProductionTableUnscaled,
                         setKeyboardFocus: recipe.ShouldFocusFixedCountThisTime());
@@ -400,7 +400,7 @@ goodsHaveNoProduction:;
 
             gui.AllocateSpacing(0.5f);
 
-            if (recipe.fixedBuildings > 0f && (recipe.fixedFuel || recipe.fixedIngredient != null || recipe.fixedProduct != null)) {
+            if (recipe.fixedBuildings > 0f && (recipe.fixedFuel || recipe.fixedIngredient != null || recipe.fixedProduct != null || !recipe.hierarchyEnabled)) {
                 ButtonEvent evt = gui.BuildButton("Clear fixed recipe multiplier");
                 if (willResetFixed) {
                     _ = evt.WithTooltip(gui, "Shortcut: right-click");
@@ -410,28 +410,30 @@ goodsHaveNoProduction:;
                 }
             }
 
-            string fixedBuildingsTip = "Tell YAFC how many buildings it must use when solving this page.\n" +
-                "Use this to ask questions like 'What does it take to handle the output of ten miners?'";
+            if (recipe.hierarchyEnabled) {
+                string fixedBuildingsTip = "Tell YAFC how many buildings it must use when solving this page.\n" +
+                    "Use this to ask questions like 'What does it take to handle the output of ten miners?'";
 
-            using (gui.EnterRowWithHelpIcon(fixedBuildingsTip)) {
-                gui.allocator = RectAllocator.RemainingRow;
-                if (recipe.fixedBuildings > 0f && !recipe.fixedFuel && recipe.fixedIngredient == null && recipe.fixedProduct == null) {
-                    ButtonEvent evt = gui.BuildButton("Clear fixed building count");
+                using (gui.EnterRowWithHelpIcon(fixedBuildingsTip)) {
+                    gui.allocator = RectAllocator.RemainingRow;
+                    if (recipe.fixedBuildings > 0f && !recipe.fixedFuel && recipe.fixedIngredient == null && recipe.fixedProduct == null) {
+                        ButtonEvent evt = gui.BuildButton("Clear fixed building count");
 
-                    if (willResetFixed) {
-                        _ = evt.WithTooltip(gui, "Shortcut: right-click");
+                        if (willResetFixed) {
+                            _ = evt.WithTooltip(gui, "Shortcut: right-click");
+                        }
+
+                        if (evt && gui.CloseDropdown()) {
+                            recipe.RecordUndo().fixedBuildings = 0f;
+                        }
                     }
-
-                    if (evt && gui.CloseDropdown()) {
-                        recipe.RecordUndo().fixedBuildings = 0f;
+                    else if (gui.BuildButton("Set fixed building count") && gui.CloseDropdown()) {
+                        recipe.RecordUndo().fixedBuildings = recipe.buildingCount <= 0f ? 1f : recipe.buildingCount;
+                        recipe.fixedFuel = false;
+                        recipe.fixedIngredient = null;
+                        recipe.fixedProduct = null;
+                        recipe.FocusFixedCountOnNextDraw();
                     }
-                }
-                else if (gui.BuildButton("Set fixed building count") && gui.CloseDropdown()) {
-                    recipe.RecordUndo().fixedBuildings = recipe.buildingCount <= 0f ? 1f : recipe.buildingCount;
-                    recipe.fixedFuel = false;
-                    recipe.fixedIngredient = null;
-                    recipe.fixedProduct = null;
-                    recipe.FocusFixedCountOnNextDraw();
                 }
             }
 
@@ -987,7 +989,7 @@ goodsHaveNoProduction:;
             #endregion
 
             #region Fixed production/consumption
-            if (goods != null && recipe != null) {
+            if (goods != null && recipe != null && recipe.hierarchyEnabled) {
                 if (recipe.fixedBuildings == 0
                     || (type == ProductDropdownType.Fuel && !recipe.fixedFuel)
                     || (type == ProductDropdownType.Ingredient && recipe.fixedIngredient != goods)
@@ -1162,7 +1164,7 @@ goodsHaveNoProduction:;
             };
         }
 
-        if (recipe != null && recipe.fixedBuildings > 0
+        if (recipe != null && recipe.fixedBuildings > 0 && recipe.hierarchyEnabled
             && ((dropdownType == ProductDropdownType.Fuel && recipe.fixedFuel)
             || (dropdownType == ProductDropdownType.Ingredient && recipe.fixedIngredient == goods)
             || (dropdownType == ProductDropdownType.Product && recipe.fixedProduct == goods))) {
