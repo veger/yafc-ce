@@ -531,7 +531,7 @@ public class ObjectTooltip : Tooltip {
             }
         }
 
-        if (technology.unlockRecipes.Length > 0) {
+        if (technology.unlockRecipes.Count > 0) {
             BuildSubHeader(gui, "Unlocks recipes");
             using (gui.EnterGroup(contentPadding)) {
                 BuildIconRow(gui, technology.unlockRecipes, 2);

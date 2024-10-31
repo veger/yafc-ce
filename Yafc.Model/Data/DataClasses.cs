@@ -155,6 +155,7 @@ public class Recipe : RecipeOrTechnology {
     public AllowedEffects allowedEffects { get; internal set; }
     public string[]? allowedModuleCategories { get; internal set; }
     public Technology[] technologyUnlock { get; internal set; } = [];
+    public Dictionary<Technology, float> technologyProductivity { get; internal set; } = [];
     public bool HasIngredientVariants() {
         foreach (var ingredient in ingredients) {
             if (ingredient.variants != null) {
@@ -522,7 +523,8 @@ public class EntityContainer : Entity {
 public class Technology : RecipeOrTechnology { // Technology is very similar to recipe
     public float count { get; internal set; } // TODO support formula count
     public Technology[] prerequisites { get; internal set; } = [];
-    public Recipe[] unlockRecipes { get; internal set; } = [];
+    public List<Recipe> unlockRecipes { get; internal set; } = [];
+    public Dictionary<Recipe, float> changeRecipeProductivity { get; internal set; } = [];
     internal override FactorioObjectSortOrder sortingOrder => FactorioObjectSortOrder.Technologies;
     public override string type => "Technology";
 

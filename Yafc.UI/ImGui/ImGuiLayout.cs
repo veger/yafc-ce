@@ -289,7 +289,7 @@ public partial class ImGui {
 
         public void Dispose() {
             gui.enableDrawing = initialDrawState;
-            gui.state.top = maximumBottom;
+            gui.state.top = Math.Max(gui.state.top, maximumBottom);
         }
     }
 

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 
 namespace Yafc.Model;
@@ -124,6 +125,16 @@ internal class RecipeParameters(float recipeTime, float fuelUsagePerSecondPerBui
             }
             else if (recipe is Technology) {
                 productivity += Project.current.settings.researchProductivity;
+            }
+            else if (recipe is Recipe actualRecipe) {
+                Dictionary<Technology, int> levels = Project.current.settings.productivityTechnologyLevels;
+                foreach ((Technology productivityTechnology, float changePerLevel) in actualRecipe.technologyProductivity) {
+                    if (!levels.TryGetValue(productivityTechnology, out int productivityTechLevel)) {
+                        continue;
+                    }
+
+                    productivity += changePerLevel * productivityTechLevel;
+                }
             }
 
             if (entity is EntityReactor reactor && reactor.reactorNeighborBonus > 0f) {

@@ -221,6 +221,7 @@ public class ProjectSettings(Project project) : ModelObject<Project>(project) {
     public float miningProductivity { get; set; }
     public float researchSpeedBonus { get; set; }
     public float researchProductivity { get; set; }
+    public Dictionary<Technology, int> productivityTechnologyLevels { get; } = [];
     public int reactorSizeX { get; set; } = 2;
     public int reactorSizeY { get; set; } = 2;
     public float PollutionCostModifier { get; set; } = 0;
