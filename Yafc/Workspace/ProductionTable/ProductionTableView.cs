@@ -538,7 +538,7 @@ goodsHaveNoProduction:;
                 }
                 if (recipe.fixedIngredient == Database.itemInput || recipe.Ingredients.Count() >= Project.current.preferences.minForTotalItems) {
                     grid.Next();
-                    view.BuildGoodsIcon(gui, Database.itemInput, null, recipe.Ingredients.Where(i => i.Goods is Item).Sum(i => i.Amount),
+                    view.BuildGoodsIcon(gui, recipe.hierarchyEnabled ? Database.itemInput : null, null, recipe.Ingredients.Where(i => i.Goods is Item).Sum(i => i.Amount),
                         ProductDropdownType.Ingredient, recipe, recipe.linkRoot, HintLocations.None);
                 }
             }
@@ -559,7 +559,7 @@ goodsHaveNoProduction:;
                 }
                 if (recipe.fixedProduct == Database.itemOutput || recipe.Products.Count() >= Project.current.preferences.minForTotalItems) {
                     grid.Next();
-                    view.BuildGoodsIcon(gui, Database.itemOutput, null, recipe.Products.Where(i => i.Goods is Item).Sum(i => i.Amount),
+                    view.BuildGoodsIcon(gui, recipe.hierarchyEnabled ? Database.itemOutput : null, null, recipe.Products.Where(i => i.Goods is Item).Sum(i => i.Amount),
                         ProductDropdownType.Product, recipe, recipe.linkRoot, HintLocations.None);
                 }
             }
