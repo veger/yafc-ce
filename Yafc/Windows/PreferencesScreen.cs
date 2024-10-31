@@ -142,7 +142,6 @@ public class PreferencesScreen : PseudoScreen {
             }
         }
 
-        float textBoxHeight; // measure the height of a text box, for use when drawing the item consumption input box.
         using (gui.EnterRow()) {
             gui.BuildText("Reactor layout:", topOffset: 0.5f);
             if (gui.BuildTextInput(settings.reactorSizeX + "x" + settings.reactorSizeY, out string newSize, null, delayed: true)) {
@@ -156,7 +155,6 @@ public class PreferencesScreen : PseudoScreen {
                     settings.reactorSizeY = sizeY;
                 }
             }
-            textBoxHeight = gui.lastRect.Height;
         }
 
         gui.AllocateSpacing();
