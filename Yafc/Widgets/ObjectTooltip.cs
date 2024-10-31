@@ -214,8 +214,8 @@ public class ObjectTooltip : Tooltip {
                 BuildSubHeader(gui, "Crafts");
                 using (gui.EnterGroup(contentPadding)) {
                     BuildIconRow(gui, crafter.recipes, 2);
-                    if (crafter.craftingSpeed != 1f) {
-                        gui.BuildText(DataUtils.FormatAmount(crafter.craftingSpeed, UnitOfMeasure.Percent, "Crafting speed: "));
+                    if (crafter.baseCraftingSpeed != 1f) {
+                        gui.BuildText(DataUtils.FormatAmount(crafter.baseCraftingSpeed, UnitOfMeasure.Percent, "Crafting speed: "));
                     }
 
                     var productivity = crafter.effectReceiver?.baseEffect.productivity ?? 0;
@@ -241,7 +241,7 @@ public class ObjectTooltip : Tooltip {
         }
 
         if (entity.energy != null) {
-            string energyUsage = EnergyDescriptions[entity.energy.type] + DataUtils.FormatAmount(entity.power, UnitOfMeasure.Megawatt);
+            string energyUsage = EnergyDescriptions[entity.energy.type] + DataUtils.FormatAmount(entity.basePower, UnitOfMeasure.Megawatt);
             if (entity.energy.drain > 0f) {
                 energyUsage += " + " + DataUtils.FormatAmount(entity.energy.drain, UnitOfMeasure.Megawatt);
             }
@@ -280,11 +280,11 @@ public class ObjectTooltip : Tooltip {
                 miscText = "Beacon efficiency: " + DataUtils.FormatAmount(beacon.beaconEfficiency, UnitOfMeasure.Percent);
                 break;
             case EntityAccumulator accumulator:
-                miscText = "Accumulator charge: " + DataUtils.FormatAmount(accumulator.accumulatorCapacity, UnitOfMeasure.Megajoule);
+                miscText = "Accumulator charge: " + DataUtils.FormatAmount(accumulator.baseAccumulatorCapacity, UnitOfMeasure.Megajoule);
                 break;
             case EntityCrafter solarPanel:
-                if (solarPanel.craftingSpeed > 0f && entity.factorioType == "solar-panel") {
-                    miscText = "Power production (average): " + DataUtils.FormatAmount(solarPanel.craftingSpeed, UnitOfMeasure.Megawatt);
+                if (solarPanel.baseCraftingSpeed > 0f && entity.factorioType == "solar-panel") {
+                    miscText = "Power production (average): " + DataUtils.FormatAmount(solarPanel.baseCraftingSpeed, UnitOfMeasure.Megawatt);
                 }
 
                 break;

@@ -20,6 +20,7 @@ Date:
     Features:
         - Add pseudo-items representing a recipe's total sushi-inputs and sushi-outputs.
           They can be toggled on/off in the LMB of the recipe.
+        - Add the ability to select qualities for crafters and accumulators.
     Bugfixes:
         - Fixed counts are hidden on disabled recipes, since editing them won't work properly.
         - Accomodate modules as spoilage results.

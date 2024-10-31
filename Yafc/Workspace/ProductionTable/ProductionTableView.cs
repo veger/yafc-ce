@@ -302,7 +302,7 @@ goodsHaveNoProduction:;
                 group.SetWidth(3f);
                 if (recipe is { fixedBuildings: > 0, fixedFuel: false, fixedIngredient: null, fixedProduct: null, hierarchyEnabled: true }) {
                     DisplayAmount amount = recipe.fixedBuildings;
-                    GoodsWithAmountEvent evt = gui.BuildFactorioObjectWithEditableAmount(recipe.entity?.target, amount, ButtonDisplayStyle.ProductionTableUnscaled,
+                    GoodsWithAmountEvent evt = gui.BuildFactorioObjectWithEditableAmount(recipe.entity, amount, ButtonDisplayStyle.ProductionTableUnscaled,
                         setKeyboardFocus: recipe.ShouldFocusFixedCountThisTime());
 
                     if (evt == GoodsWithAmountEvent.TextEditing && amount.Value >= 0) {
@@ -312,7 +312,7 @@ goodsHaveNoProduction:;
                     click = (Click)evt;
                 }
                 else {
-                    click = gui.BuildFactorioObjectWithAmount(recipe.entity?.target, recipe.buildingCount, ButtonDisplayStyle.ProductionTableUnscaled);
+                    click = gui.BuildFactorioObjectWithAmount(recipe.entity, recipe.buildingCount, ButtonDisplayStyle.ProductionTableUnscaled);
                 }
 
                 if (recipe.builtBuildings != null) {
@@ -373,125 +373,143 @@ goodsHaveNoProduction:;
 
         private static void BuildSolarPanelAccumulatorView(ImGui gui, RecipeRow recipe) {
             var accumulator = recipe.GetVariant(Database.allAccumulators);
-            float requiredMj = recipe.entity?.target.craftingSpeed * recipe.buildingCount * (70 / 0.7f) ?? 0; // 70 seconds of charge time to last through the night
-            float requiredAccumulators = requiredMj / accumulator.accumulatorCapacity;
-            if (gui.BuildFactorioObjectWithAmount(accumulator, requiredAccumulators, ButtonDisplayStyle.ProductionTableUnscaled) == Click.Left) {
-                ShowAccumulatorDropdown(gui, recipe, accumulator);
+            Quality accumulatorQuality = recipe.GetVariant(Database.qualities.all.OrderBy(q => q.level).ToArray());
+            float requiredMj = recipe.entity?.GetCraftingSpeed() * recipe.buildingCount * (70 / 0.7f) ?? 0; // 70 seconds of charge time to last through the night
+            float requiredAccumulators = requiredMj / accumulator.AccumulatorCapacity(accumulatorQuality);
+            ObjectWithQuality<Entity> accumulatorWithQuality = new(accumulator, accumulatorQuality);
+            if (gui.BuildFactorioObjectWithAmount(accumulatorWithQuality, requiredAccumulators, ButtonDisplayStyle.ProductionTableUnscaled) == Click.Left) {
+                ShowAccumulatorDropdown(gui, recipe, accumulator, accumulatorQuality);
             }
         }
 
-        private static void ShowAccumulatorDropdown(ImGui gui, RecipeRow recipe, Entity currentAccumulator) => gui.ShowDropDown(imGui
-            => imGui.BuildInlineObjectListAndButton(Database.allAccumulators, newAccumulator => recipe.RecordUndo().ChangeVariant(currentAccumulator, newAccumulator),
-                new("Select accumulator", ExtraText: x => DataUtils.FormatAmount(x.accumulatorCapacity, UnitOfMeasure.Megajoule))));
+        private static void ShowAccumulatorDropdown(ImGui gui, RecipeRow recipe, Entity currentAccumulator, Quality accumulatorQuality)
+            => gui.BuildObjectQualitySelectDropDown(Database.allAccumulators,
+                newAccumulator => recipe.RecordUndo().ChangeVariant(currentAccumulator, newAccumulator.target),
+                new("Select accumulator", ExtraText: x => DataUtils.FormatAmount(x.AccumulatorCapacity(accumulatorQuality), UnitOfMeasure.Megajoule)),
+                accumulatorQuality,
+                newQuality => recipe.RecordUndo().ChangeVariant(accumulatorQuality, newQuality));
 
-        private static void ShowEntityDropdown(ImGui imgui, RecipeRow recipe) => imgui.ShowDropDown(gui => {
-            EntityCrafter? favoriteCrafter = recipe.recipe.crafters.AutoSelect(DataUtils.FavoriteCrafter);
-            if (favoriteCrafter == recipe.entity?.target) { favoriteCrafter = null; }
-            bool willResetFixed = favoriteCrafter == null, willResetBuilt = willResetFixed && recipe.fixedBuildings == 0;
+        private static void ShowEntityDropdown(ImGui gui, RecipeRow recipe) {
+            Quality quality = recipe.entity?.quality ?? Quality.Normal;
+            gui.ShowDropDown(gui => {
+                EntityCrafter? favoriteCrafter = recipe.recipe.crafters.AutoSelect(DataUtils.FavoriteCrafter);
+                if (favoriteCrafter == recipe.entity?.target) { favoriteCrafter = null; }
+                bool willResetFixed = favoriteCrafter == null, willResetBuilt = willResetFixed && recipe.fixedBuildings == 0;
 
-            gui.BuildInlineObjectListAndButton(recipe.recipe.crafters, sel => {
-                if (recipe.entity?.target == sel) {
-                    return;
+                if (recipe.entity == null) {
+                    _ = gui.BuildQualityList(quality, out quality);
+                }
+                else if (gui.BuildQualityList(recipe.entity.quality, out quality) && gui.CloseDropdown()) {
+                    if (quality == recipe.entity.quality) {
+                        return;
+                    }
+                    recipe.RecordUndo().entity = recipe.entity.With(quality);
                 }
 
-                _ = recipe.RecordUndo();
-                recipe.entity = new(sel, Quality.Normal);
-                if (!sel.energy.fuels.Contains(recipe.fuel)) {
-                    recipe.fuel = recipe.entity.target.energy.fuels.AutoSelect(DataUtils.FavoriteFuel);
+                gui.BuildInlineObjectListAndButton(recipe.recipe.crafters, sel => {
+                    if (recipe.entity?.target == sel) {
+                        return;
+                    }
+
+                    _ = recipe.RecordUndo();
+                    recipe.entity = new(sel, quality);
+                    if (!sel.energy.fuels.Contains(recipe.fuel)) {
+                        recipe.fuel = recipe.entity.target.energy.fuels.AutoSelect(DataUtils.FavoriteFuel);
+                    }
+                }, new("Select crafting entity", DataUtils.FavoriteCrafter, ExtraText: x => DataUtils.FormatAmount(x.CraftingSpeed(quality), UnitOfMeasure.Percent)));
+
+                gui.AllocateSpacing(0.5f);
+
+                if (recipe.fixedBuildings > 0f && (recipe.fixedFuel || recipe.fixedIngredient != null || recipe.fixedProduct != null || !recipe.hierarchyEnabled)) {
+                    ButtonEvent evt = gui.BuildButton("Clear fixed recipe multiplier");
+                    if (willResetFixed) {
+                        _ = evt.WithTooltip(gui, "Shortcut: right-click");
+                    }
+                    if (evt && gui.CloseDropdown()) {
+                        recipe.RecordUndo().fixedBuildings = 0f;
+                    }
                 }
-            }, new("Select crafting entity", DataUtils.FavoriteCrafter, ExtraText: x => DataUtils.FormatAmount(x.craftingSpeed, UnitOfMeasure.Percent)));
 
-            gui.AllocateSpacing(0.5f);
+                if (recipe.hierarchyEnabled) {
+                    string fixedBuildingsTip = "Tell YAFC how many buildings it must use when solving this page.\n" +
+                        "Use this to ask questions like 'What does it take to handle the output of ten miners?'";
 
-            if (recipe.fixedBuildings > 0f && (recipe.fixedFuel || recipe.fixedIngredient != null || recipe.fixedProduct != null || !recipe.hierarchyEnabled)) {
-                ButtonEvent evt = gui.BuildButton("Clear fixed recipe multiplier");
-                if (willResetFixed) {
-                    _ = evt.WithTooltip(gui, "Shortcut: right-click");
+                    using (gui.EnterRowWithHelpIcon(fixedBuildingsTip)) {
+                        gui.allocator = RectAllocator.RemainingRow;
+                        if (recipe.fixedBuildings > 0f && !recipe.fixedFuel && recipe.fixedIngredient == null && recipe.fixedProduct == null) {
+                            ButtonEvent evt = gui.BuildButton("Clear fixed building count");
+
+                            if (willResetFixed) {
+                                _ = evt.WithTooltip(gui, "Shortcut: right-click");
+                            }
+
+                            if (evt && gui.CloseDropdown()) {
+                                recipe.RecordUndo().fixedBuildings = 0f;
+                            }
+                        }
+                        else if (gui.BuildButton("Set fixed building count") && gui.CloseDropdown()) {
+                            recipe.RecordUndo().fixedBuildings = recipe.buildingCount <= 0f ? 1f : recipe.buildingCount;
+                            recipe.fixedFuel = false;
+                            recipe.fixedIngredient = null;
+                            recipe.fixedProduct = null;
+                            recipe.FocusFixedCountOnNextDraw();
+                        }
+                    }
                 }
-                if (evt && gui.CloseDropdown()) {
-                    recipe.RecordUndo().fixedBuildings = 0f;
-                }
-            }
 
-            if (recipe.hierarchyEnabled) {
-                string fixedBuildingsTip = "Tell YAFC how many buildings it must use when solving this page.\n" +
-                    "Use this to ask questions like 'What does it take to handle the output of ten miners?'";
-
-                using (gui.EnterRowWithHelpIcon(fixedBuildingsTip)) {
+                using (gui.EnterRowWithHelpIcon("Tell YAFC how many of these buildings you have in your factory.\nYAFC will warn you if you need to build more buildings.")) {
                     gui.allocator = RectAllocator.RemainingRow;
-                    if (recipe.fixedBuildings > 0f && !recipe.fixedFuel && recipe.fixedIngredient == null && recipe.fixedProduct == null) {
-                        ButtonEvent evt = gui.BuildButton("Clear fixed building count");
 
-                        if (willResetFixed) {
+                    if (recipe.builtBuildings != null) {
+                        ButtonEvent evt = gui.BuildButton("Clear built building count");
+
+                        if (willResetBuilt) {
                             _ = evt.WithTooltip(gui, "Shortcut: right-click");
                         }
 
                         if (evt && gui.CloseDropdown()) {
-                            recipe.RecordUndo().fixedBuildings = 0f;
+                            recipe.RecordUndo().builtBuildings = null;
                         }
                     }
-                    else if (gui.BuildButton("Set fixed building count") && gui.CloseDropdown()) {
-                        recipe.RecordUndo().fixedBuildings = recipe.buildingCount <= 0f ? 1f : recipe.buildingCount;
-                        recipe.fixedFuel = false;
-                        recipe.fixedIngredient = null;
-                        recipe.fixedProduct = null;
-                        recipe.FocusFixedCountOnNextDraw();
+                    else if (gui.BuildButton("Set built building count") && gui.CloseDropdown()) {
+                        recipe.RecordUndo().builtBuildings = Math.Max(0, Convert.ToInt32(Math.Ceiling(recipe.buildingCount)));
+                        recipe.FocusBuiltCountOnNextDraw();
                     }
                 }
-            }
 
-            using (gui.EnterRowWithHelpIcon("Tell YAFC how many of these buildings you have in your factory.\nYAFC will warn you if you need to build more buildings.")) {
-                gui.allocator = RectAllocator.RemainingRow;
+                if (recipe.entity != null) {
+                    using (gui.EnterRowWithHelpIcon("Generate a blueprint for one of these buildings, with the recipe and internal modules set.")) {
+                        gui.allocator = RectAllocator.RemainingRow;
 
-                if (recipe.builtBuildings != null) {
-                    ButtonEvent evt = gui.BuildButton("Clear built building count");
+                        if (gui.BuildButton("Create single building blueprint") && gui.CloseDropdown()) {
+                            BlueprintEntity entity = new BlueprintEntity { index = 1, name = recipe.entity.target.name };
 
-                    if (willResetBuilt) {
-                        _ = evt.WithTooltip(gui, "Shortcut: right-click");
-                    }
+                            if (recipe.recipe is not Mechanics) {
+                                entity.recipe = recipe.recipe.name;
+                            }
 
-                    if (evt && gui.CloseDropdown()) {
-                        recipe.RecordUndo().builtBuildings = null;
-                    }
-                }
-                else if (gui.BuildButton("Set built building count") && gui.CloseDropdown()) {
-                    recipe.RecordUndo().builtBuildings = Math.Max(0, Convert.ToInt32(Math.Ceiling(recipe.buildingCount)));
-                    recipe.FocusBuiltCountOnNextDraw();
-                }
-            }
+                            var modules = recipe.usedModules.modules;
 
-            if (recipe.entity != null) {
-                using (gui.EnterRowWithHelpIcon("Generate a blueprint for one of these buildings, with the recipe and internal modules set.")) {
-                    gui.allocator = RectAllocator.RemainingRow;
+                            if (modules != null) {
+                                entity.items = [];
 
-                    if (gui.BuildButton("Create single building blueprint") && gui.CloseDropdown()) {
-                        BlueprintEntity entity = new BlueprintEntity { index = 1, name = recipe.entity.target.name };
-
-                        if (recipe.recipe is not Mechanics) {
-                            entity.recipe = recipe.recipe.name;
-                        }
-
-                        var modules = recipe.usedModules.modules;
-
-                        if (modules != null) {
-                            entity.items = [];
-
-                            foreach (var (module, count, beacon) in modules) {
-                                if (!beacon) {
-                                    entity.items[module.name] = count;
+                                foreach (var (module, count, beacon) in modules) {
+                                    if (!beacon) {
+                                        entity.items[module.name] = count;
+                                    }
                                 }
                             }
+                            BlueprintString bp = new BlueprintString(recipe.recipe.locName) { blueprint = { entities = { entity } } };
+                            _ = SDL.SDL_SetClipboardText(bp.ToBpString());
                         }
-                        BlueprintString bp = new BlueprintString(recipe.recipe.locName) { blueprint = { entities = { entity } } };
-                        _ = SDL.SDL_SetClipboardText(bp.ToBpString());
+                    }
+
+                    if (recipe.recipe.crafters.Length > 1) {
+                        BuildFavorites(gui, recipe.entity.target, "Add building to favorites");
                     }
                 }
-
-                if (recipe.recipe.crafters.Length > 1) {
-                    BuildFavorites(gui, recipe.entity.target, "Add building to favorites");
-                }
-            }
-        });
+            });
+        }
 
         public override void BuildMenu(ImGui gui) {
             if (gui.BuildButton("Mass set assembler") && gui.CloseDropdown()) {
@@ -509,6 +527,12 @@ goodsHaveNoProduction:;
                         }
                     }
                 }, DataUtils.FavoriteCrafter);
+            }
+
+            if (gui.BuildQualityList(null, out Quality? quality, "Mass set quality") && gui.CloseDropdown()) {
+                foreach (RecipeRow recipe in view.GetRecipesRecursive()) {
+                    recipe.RecordUndo().entity = recipe.entity?.With(quality);
+                }
             }
 
             if (gui.BuildButton("Mass set fuel") && gui.CloseDropdown()) {

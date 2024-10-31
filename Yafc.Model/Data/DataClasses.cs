@@ -410,7 +410,11 @@ public class Entity : FactorioObject {
     public Product[] loot { get; internal set; } = [];
     public bool mapGenerated { get; internal set; }
     public float mapGenDensity { get; internal set; }
-    public float power { get; internal set; }
+    public float basePower { get; internal set; }
+    public float Power(Quality quality)
+        => factorioType is "boiler" or "reactor" or "generator" or "burner-generator" ? quality.ApplyStandardBonus(basePower)
+        : basePower;
+
     public EntityEnergy energy { get; internal set; } = null!; // TODO: Prove that this is always properly initialized. (Do we need an EntityWithEnergy type?)
     public Item[] itemsToPlace { get; internal set; } = null!; // null-forgiving: This is initialized in CalculateMaps.
     public int size { get; internal set; }
@@ -473,11 +477,12 @@ public class EntityCrafter : EntityWithModules {
     public Goods[]? inputs { get; internal set; }
     public RecipeOrTechnology[] recipes { get; internal set; } = null!; // null-forgiving: Set in the first step of CalculateMaps
     private float _craftingSpeed = 1;
-    public float craftingSpeed {
+    public float baseCraftingSpeed {
         // The speed of a lab is baseSpeed * (1 + researchSpeedBonus) * Math.Min(0.2, 1 + moduleAndBeaconSpeedBonus)
         get => _craftingSpeed * (1 + (factorioType == "lab" ? Project.current.settings.researchSpeedBonus : 0));
         internal set => _craftingSpeed = value;
     }
+    public float CraftingSpeed(Quality quality) => factorioType is "agricultural-tower" or "electric-energy-interface" ? baseCraftingSpeed : quality.ApplyStandardBonus(baseCraftingSpeed);
     public EffectReceiver effectReceiver { get; internal set; } = null!;
 }
 
@@ -514,6 +519,11 @@ public sealed class Quality : FactorioObject {
             collector.Add(Database.allModules.Where(m => m.moduleSpecification.quality > 0).ToArray(), DependencyList.Flags.Source);
         }
     }
+
+    // applies the "standard" +30% per level bonus
+    internal float ApplyStandardBonus(float baseValue) => baseValue * (1 + .3f * level);
+    // applies the +100% per level accumulator capacity bonus
+    internal float ApplyAccumulatorCapacityBonus(float baseValue) => baseValue * (1 + level);
 }
 
 /// <summary>
@@ -615,7 +625,8 @@ public class EntityInserter : Entity {
 }
 
 public class EntityAccumulator : Entity {
-    public float accumulatorCapacity { get; internal set; }
+    public float baseAccumulatorCapacity { get; internal set; }
+    public float AccumulatorCapacity(Quality quality) => quality.ApplyAccumulatorCapacityBonus(baseAccumulatorCapacity);
 }
 
 public class EntityBelt : Entity {
@@ -681,7 +692,8 @@ public class EntityEnergy {
     public TemperatureRange acceptedTemperature { get; internal set; } = TemperatureRange.Any;
     public float emissions { get; internal set; }
     public float drain { get; internal set; }
-    public float fuelConsumptionLimit { get; internal set; } = float.PositiveInfinity;
+    public float baseFuelConsumptionLimit { get; internal set; } = float.PositiveInfinity;
+    public float FuelConsumptionLimit(Quality quality) => quality.ApplyStandardBonus(baseFuelConsumptionLimit);
     public Goods[] fuels { get; internal set; } = [];
     public float effectivity { get; internal set; } = 1f;
 }

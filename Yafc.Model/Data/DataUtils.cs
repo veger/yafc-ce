@@ -61,8 +61,8 @@ public static partial class DataUtils {
             return Comparer<EntityEnergyType?>.Default.Compare(x.energy?.type, y.energy?.type);
         }
 
-        if (x.craftingSpeed != y.craftingSpeed) {
-            return y.craftingSpeed.CompareTo(x.craftingSpeed);
+        if (x.baseCraftingSpeed != y.baseCraftingSpeed) {
+            return y.baseCraftingSpeed.CompareTo(x.baseCraftingSpeed);
         }
 
         return x.Cost().CompareTo(y.Cost());

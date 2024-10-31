@@ -123,7 +123,7 @@ public class ModuleCustomizationScreen : PseudoScreenWithResult<ModuleTemplateBu
             }
 
             if (recipe != null) {
-                float craftingSpeed = (recipe.entity?.target.craftingSpeed ?? 1f) * effects.speedMod;
+                float craftingSpeed = (recipe.entity?.GetCraftingSpeed() ?? 1f) * effects.speedMod;
                 gui.BuildText("Current effects:", Font.subheader);
                 gui.BuildText("Productivity bonus: " + DataUtils.FormatAmount(effects.productivity, UnitOfMeasure.Percent));
                 gui.BuildText("Speed bonus: " + DataUtils.FormatAmount(effects.speedMod - 1, UnitOfMeasure.Percent) + " (Crafting speed: " +
@@ -132,7 +132,7 @@ public class ModuleCustomizationScreen : PseudoScreenWithResult<ModuleTemplateBu
                 string energyUsageLine = "Energy usage: " + DataUtils.FormatAmount(effects.energyUsageMod, UnitOfMeasure.Percent);
 
                 if (recipe.entity != null) {
-                    float power = effects.energyUsageMod * recipe.entity.target.power / recipe.entity.target.energy.effectivity;
+                    float power = effects.energyUsageMod * recipe.entity.GetPower() / recipe.entity.target.energy.effectivity;
                     if (!recipe.recipe.flags.HasFlagAny(RecipeFlags.UsesFluidTemperature | RecipeFlags.ScaleProductionWithPower) && recipe.entity != null) {
                         energyUsageLine += " (" + DataUtils.FormatAmount(power, UnitOfMeasure.Megawatt) + " per building)";
                     }

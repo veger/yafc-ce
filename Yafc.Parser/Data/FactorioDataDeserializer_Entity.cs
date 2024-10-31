@@ -46,7 +46,7 @@ internal partial class FactorioDataDeserializer {
         energy.workingTemperature = TemperatureRange.Any;
 
         if (energySource.Get("fluid_usage_per_tick", out float fuelLimit)) {
-            energy.fuelConsumptionLimit = fuelLimit * 60f;
+            energy.baseFuelConsumptionLimit = fuelLimit * 60f;
         }
 
         if (GetFluidBoxFilter(energySource, "fluid_box", 0, out var fluid, out var filterTemperature)) {
@@ -183,7 +183,7 @@ internal partial class FactorioDataDeserializer {
                 var accumulator = GetObject<Entity, EntityAccumulator>(name);
 
                 if (table.Get("energy_source", out LuaTable? accumulatorEnergy) && accumulatorEnergy.Get("buffer_capacity", out string? capacity)) {
-                    accumulator.accumulatorCapacity = ParseEnergy(capacity);
+                    accumulator.baseAccumulatorCapacity = ParseEnergy(capacity);
                 }
 
                 break;
@@ -191,8 +191,8 @@ internal partial class FactorioDataDeserializer {
                 var reactor = GetObject<Entity, EntityReactor>(name);
                 reactor.reactorNeighborBonus = table.Get("neighbour_bonus", 1f); // Keep UK spelling for Factorio/LUA data objects
                 _ = table.Get("consumption", out usesPower);
-                reactor.power = ParseEnergy(usesPower);
-                reactor.craftingSpeed = reactor.power;
+                reactor.basePower = ParseEnergy(usesPower);
+                reactor.baseCraftingSpeed = reactor.basePower;
                 recipeCrafters.Add(reactor, SpecialNames.ReactorRecipe);
 
                 break;
@@ -202,7 +202,7 @@ internal partial class FactorioDataDeserializer {
                 beacon.profile = table.Get("profile", out LuaTable? profile) ? profile.ArrayElements<double>().Select(x => (float)x).ToArray() : [1f];
                 _ = table.Get("energy_usage", out usesPower);
                 ParseModules(table, beacon, AllowedEffects.None);
-                beacon.power = ParseEnergy(usesPower);
+                beacon.basePower = ParseEnergy(usesPower);
 
                 break;
             case "logistic-container":
@@ -249,7 +249,7 @@ internal partial class FactorioDataDeserializer {
             case "boiler":
                 var boiler = GetObject<Entity, EntityCrafter>(name);
                 _ = table.Get("energy_consumption", out usesPower);
-                boiler.power = ParseEnergy(usesPower);
+                boiler.basePower = ParseEnergy(usesPower);
                 boiler.fluidInputs = 1;
                 bool hasOutput = table.Get("mode", out string? mode) && mode == "output-to-separate-pipe";
                 _ = GetFluidBoxFilter(table, "fluid_box", 0, out Fluid? input, out var acceptTemperature);
@@ -267,11 +267,11 @@ internal partial class FactorioDataDeserializer {
                 recipe.flags |= RecipeFlags.UsesFluidTemperature;
                 // TODO: input fluid amount now depends on its temperature, using min temperature should be OK for non-modded
                 var inputEnergyPerOneFluid = (targetTemp - acceptTemperature.min) * input.heatCapacity;
-                recipe.ingredients = [new Ingredient(input, boiler.power / inputEnergyPerOneFluid) { temperature = acceptTemperature }];
+                recipe.ingredients = [new Ingredient(input, boiler.basePower / inputEnergyPerOneFluid) { temperature = acceptTemperature }];
                 var outputEnergyPerOneFluid = (targetTemp - output.temperatureRange.min) * output.heatCapacity;
-                recipe.products = [new Product(output, boiler.power / outputEnergyPerOneFluid)];
+                recipe.products = [new Product(output, boiler.basePower / outputEnergyPerOneFluid)];
                 recipe.time = 1f;
-                boiler.craftingSpeed = 1f;
+                boiler.baseCraftingSpeed = 1f;
 
                 break;
             case "assembling-machine":
@@ -280,9 +280,9 @@ internal partial class FactorioDataDeserializer {
                 var crafter = GetObject<Entity, EntityCrafter>(name);
                 _ = table.Get("energy_usage", out usesPower);
                 ParseModules(table, crafter, AllowedEffects.None);
-                crafter.power = ParseEnergy(usesPower);
-                defaultDrain = crafter.power / 30f;
-                crafter.craftingSpeed = table.Get("crafting_speed", 1f);
+                crafter.basePower = ParseEnergy(usesPower);
+                defaultDrain = crafter.basePower / 30f;
+                crafter.baseCraftingSpeed = table.Get("crafting_speed", 1f);
                 crafter.itemInputs = factorioType == "furnace" ? table.Get("source_inventory_size", 1) : table.Get("ingredient_count", 255);
 
                 if (table.Get("fluid_boxes", out LuaTable? fluidBoxes)) {
@@ -338,7 +338,7 @@ internal partial class FactorioDataDeserializer {
 
                 // generator energy input config is strange
                 if (table.Get("max_power_output", out string? maxPowerOutput)) {
-                    generator.power = ParseEnergy(maxPowerOutput);
+                    generator.basePower = ParseEnergy(maxPowerOutput);
                 }
 
                 if ((factorioVersion < v0_18 || factorioType == "burner-generator") && table.Get("burner", out LuaTable? burnerSource)) {
@@ -355,9 +355,9 @@ internal partial class FactorioDataDeserializer {
             case "mining-drill":
                 var drill = GetObject<Entity, EntityCrafter>(name);
                 _ = table.Get("energy_usage", out usesPower);
-                drill.power = ParseEnergy(usesPower);
+                drill.basePower = ParseEnergy(usesPower);
                 ParseModules(table, drill, AllowedEffects.All);
-                drill.craftingSpeed = table.Get("mining_speed", 1f);
+                drill.baseCraftingSpeed = table.Get("mining_speed", 1f);
                 _ = table.Get("resource_categories", out resourceCategories);
 
                 if (table.Get("input_fluid_box", out LuaTable? _)) {
@@ -375,17 +375,17 @@ internal partial class FactorioDataDeserializer {
             case "agricultural-tower":
                 var agriculturalTower = GetObject<Entity, EntityCrafter>(name);
                 _ = table.Get("energy_usage", out usesPower);
-                agriculturalTower.power = ParseEnergy(usesPower);
+                agriculturalTower.basePower = ParseEnergy(usesPower);
                 float radius = table.Get("radius", 1f);
-                agriculturalTower.craftingSpeed = (float)(Math.Pow(2 * radius + 1, 2) - 1);
+                agriculturalTower.baseCraftingSpeed = (float)(Math.Pow(2 * radius + 1, 2) - 1);
                 agriculturalTower.itemInputs = 1;
                 recipeCrafters.Add(agriculturalTower, SpecialNames.PlantRecipe);
                 break;
             case "offshore-pump":
                 var pump = GetObject<Entity, EntityCrafter>(name);
                 _ = table.Get("energy_usage", out usesPower);
-                pump.power = ParseEnergy(usesPower);
-                pump.craftingSpeed = table.Get("pumping_speed", 20f) / 20f;
+                pump.basePower = ParseEnergy(usesPower);
+                pump.baseCraftingSpeed = table.Get("pumping_speed", 20f) / 20f;
 
                 if (table.Get("fluid_box", out LuaTable? fluidBox) && fluidBox.Get("fluid", out string? fluidName)) {
                     var pumpingFluid = GetFluidFixedTemp(fluidName, 0);
@@ -411,8 +411,8 @@ internal partial class FactorioDataDeserializer {
                 var lab = GetObject<Entity, EntityCrafter>(name);
                 _ = table.Get("energy_usage", out usesPower);
                 ParseModules(table, lab, AllowedEffects.All ^ AllowedEffects.Quality);
-                lab.power = ParseEnergy(usesPower);
-                lab.craftingSpeed = table.Get("researching_speed", 1f);
+                lab.basePower = ParseEnergy(usesPower);
+                lab.baseCraftingSpeed = table.Get("researching_speed", 1f);
                 recipeCrafters.Add(lab, SpecialNames.Labs);
                 _ = table.Get("inputs", out LuaTable? inputs);
                 lab.inputs = inputs.ArrayElements<string>().Select(GetObject<Item>).ToArray();
@@ -425,7 +425,7 @@ internal partial class FactorioDataDeserializer {
                 solarPanel.energy = voidEntityEnergy;
                 _ = table.Get("production", out string? powerProduction);
                 recipeCrafters.Add(solarPanel, SpecialNames.GeneratorRecipe);
-                solarPanel.craftingSpeed = ParseEnergy(powerProduction) * 0.7f; // 0.7f is a solar panel ratio on nauvis
+                solarPanel.baseCraftingSpeed = ParseEnergy(powerProduction) * 0.7f; // 0.7f is a solar panel ratio on nauvis
 
                 break;
             case "electric-energy-interface":
@@ -433,8 +433,8 @@ internal partial class FactorioDataDeserializer {
                 eei.energy = voidEntityEnergy;
 
                 if (table.Get("energy_production", out string? interfaceProduction)) {
-                    eei.craftingSpeed = ParseEnergy(interfaceProduction);
-                    if (eei.craftingSpeed > 0) {
+                    eei.baseCraftingSpeed = ParseEnergy(interfaceProduction);
+                    if (eei.baseCraftingSpeed > 0) {
                         recipeCrafters.Add(eei, SpecialNames.GeneratorRecipe);
                     }
                 }

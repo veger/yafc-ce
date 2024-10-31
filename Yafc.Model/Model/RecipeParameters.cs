@@ -60,10 +60,10 @@ internal class RecipeParameters(float recipeTime, float fuelUsagePerSecondPerBui
             productivity = 0f;
         }
         else {
-            recipeTime = recipe.time / entity.target.craftingSpeed;
+            recipeTime = recipe.time / entity.GetCraftingSpeed();
             productivity = entity.target.effectReceiver.baseEffect.productivity;
             EntityEnergy energy = entity.target.energy;
-            float energyUsage = entity.target.power;
+            float energyUsage = entity.GetPower();
             float energyPerUnitOfFuel = 0f;
 
             // Special case for fuel
@@ -109,8 +109,8 @@ internal class RecipeParameters(float recipeTime, float fuelUsagePerSecondPerBui
             // Special case for generators
             if (recipe.flags.HasFlags(RecipeFlags.ScaleProductionWithPower) && energyPerUnitOfFuel > 0 && entity.target.energy.type != EntityEnergyType.Void) {
                 if (energyUsage == 0) {
-                    fuelUsagePerSecondPerBuilding = energy.fuelConsumptionLimit;
-                    recipeTime = 1f / (energy.fuelConsumptionLimit * energyPerUnitOfFuel * energy.effectivity);
+                    fuelUsagePerSecondPerBuilding = energy.FuelConsumptionLimit(entity.quality);
+                    recipeTime = 1f / (energy.FuelConsumptionLimit(entity.quality) * energyPerUnitOfFuel * energy.effectivity);
                 }
                 else {
                     recipeTime = 1f / energyUsage;
@@ -159,9 +159,9 @@ internal class RecipeParameters(float recipeTime, float fuelUsagePerSecondPerBui
                 fuelUsagePerSecondPerBuilding += energy.drain / energyPerUnitOfFuel;
             }
 
-            if (fuelUsagePerSecondPerBuilding > energy.fuelConsumptionLimit) {
-                recipeTime *= fuelUsagePerSecondPerBuilding / energy.fuelConsumptionLimit;
-                fuelUsagePerSecondPerBuilding = energy.fuelConsumptionLimit;
+            if (fuelUsagePerSecondPerBuilding > energy.FuelConsumptionLimit(entity.quality)) {
+                recipeTime *= fuelUsagePerSecondPerBuilding / energy.FuelConsumptionLimit(entity.quality);
+                fuelUsagePerSecondPerBuilding = energy.FuelConsumptionLimit(entity.quality);
                 warningFlags |= WarningFlags.FuelUsageInputLimited;
             }
         }

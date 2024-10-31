@@ -135,7 +135,7 @@ public class CostAnalysis(bool onlyCurrentMilestones) : Analysis {
                     minSize = crafter.size;
                 }
 
-                float power = crafter.energy.type == EntityEnergyType.Void ? 0f : recipe.time * crafter.power / (crafter.craftingSpeed * crafter.energy.effectivity);
+                float power = crafter.energy.type == EntityEnergyType.Void ? 0f : recipe.time * crafter.basePower / (crafter.baseCraftingSpeed * crafter.energy.effectivity);
 
                 if (power < minPower) {
                     minPower = power;

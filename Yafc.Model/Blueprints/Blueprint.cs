@@ -98,6 +98,7 @@ public class BlueprintSignal {
 public class BlueprintEntity {
     [JsonPropertyName("entity_number")] public int index { get; set; }
     public string? name { get; set; }
+    public string? quality { get; set; }
     public BlueprintPosition position { get; set; } = new BlueprintPosition();
     public int direction { get; set; }
     public string? recipe { get; set; }
