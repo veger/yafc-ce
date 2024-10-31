@@ -142,7 +142,7 @@ public class PreferencesScreen : PseudoScreen {
             }
         }
 
-        float textBoxHeight; // measure the height of a text box, for use when drawing the minForTotalItems input box.
+        float textBoxHeight; // measure the height of a text box, for use when drawing the item consumption input box.
         using (gui.EnterRow()) {
             gui.BuildText("Reactor layout:", topOffset: 0.5f);
             if (gui.BuildTextInput(settings.reactorSizeX + "x" + settings.reactorSizeY, out string newSize, null, delayed: true)) {
@@ -157,31 +157,6 @@ public class PreferencesScreen : PseudoScreen {
                 }
             }
             textBoxHeight = gui.lastRect.Height;
-        }
-
-        string ioItemMessage = "The I and O items represent the total item input or item output of a recipe row.\nRecipes with at least this many item ingredients or item products will show the pseudo-items after all their real ingredients/products.";
-        using (gui.EnterRowWithHelpIcon(ioItemMessage)) {
-            float captionWidth = gui.GetTextDimensions(out _, "Minimum recipe ingredients or products").X;
-            using (gui.EnterFixedPositioning(captionWidth, 0, new())) { // the height will grow to fit the controls
-                gui.BuildText("Minimum recipe ingredients or products");
-                using (gui.EnterRow(0)) {
-                    // Allocate the horizontal space now but draw the icons first, so the text can be drawn vertically centered.
-                    Rect textRect = gui.AllocateTextRect(out _, "to display the ", TextBlockDisplayStyle.Default());
-                    gui.BuildFactorioObjectButton(Database.itemInput, ButtonDisplayStyle.Default);
-                    gui.BuildFactorioObjectButton(Database.itemOutput, ButtonDisplayStyle.Default);
-                    textRect.Height = gui.lastRect.Height;
-                    gui.DrawText(textRect, "to display the ");
-                    gui.BuildText(" summary items");
-                }
-            }
-            float spacing = (gui.lastRect.Height - textBoxHeight) / 2;
-            using (gui.RemainingRow().EnterFixedPositioning(0, gui.lastRect.Height, new())) {
-                gui.AllocateSpacing(spacing - .5f); // draw the box vertically centered, rather than top-aligned (without this) or full height (without EnterFixedPositioning)
-                if (gui.BuildIntegerInput(prefs.minForTotalItems, out int newValue2)) {
-                    prefs.RecordUndo().minForTotalItems = newValue2;
-                    gui.Rebuild();
-                }
-            }
         }
 
         gui.AllocateSpacing();

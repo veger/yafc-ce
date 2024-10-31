@@ -134,6 +134,10 @@ public class ProductionTableView : ProjectPageView<ProductionTable> {
                             view.BuildShoppingList(recipe);
                         }
 
+                        if (imgui.BuildCheckBox("Show item Input/Output", recipe.showIO, out bool newShowIO)) {
+                            recipe.RecordUndo().showIO = newShowIO;
+                        }
+
                         if (imgui.BuildCheckBox("Enabled", recipe.enabled, out bool newEnabled)) {
                             recipe.RecordUndo().enabled = newEnabled;
                         }
@@ -538,7 +542,7 @@ goodsHaveNoProduction:;
                     grid.Next();
                     view.BuildGoodsIcon(gui, goods, link, amount, ProductDropdownType.Ingredient, recipe, recipe.linkRoot, HintLocations.OnProducingRecipes, variants);
                 }
-                if (recipe.fixedIngredient == Database.itemInput || recipe.Ingredients.Count() >= Project.current.preferences.minForTotalItems) {
+                if (recipe.fixedIngredient == Database.itemInput || recipe.showIO) {
                     grid.Next();
                     view.BuildGoodsIcon(gui, recipe.hierarchyEnabled ? Database.itemInput : null, null, recipe.Ingredients.Where(i => i.Goods is Item).Sum(i => i.Amount),
                         ProductDropdownType.Ingredient, recipe, recipe.linkRoot, HintLocations.None);
@@ -559,7 +563,7 @@ goodsHaveNoProduction:;
                     grid.Next();
                     view.BuildGoodsIcon(gui, goods, link, amount, ProductDropdownType.Product, recipe, recipe.linkRoot, HintLocations.OnConsumingRecipes);
                 }
-                if (recipe.fixedProduct == Database.itemOutput || recipe.Products.Count() >= Project.current.preferences.minForTotalItems) {
+                if (recipe.fixedProduct == Database.itemOutput || recipe.showIO) {
                     grid.Next();
                     view.BuildGoodsIcon(gui, recipe.hierarchyEnabled ? Database.itemOutput : null, null, recipe.Products.Where(i => i.Goods is Item).Sum(i => i.Amount),
                         ProductDropdownType.Product, recipe, recipe.linkRoot, HintLocations.None);
