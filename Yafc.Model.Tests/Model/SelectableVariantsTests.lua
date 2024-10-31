@@ -23,7 +23,7 @@ data = {
         max_temperature = 1000,
         heat_capacity = "0.2kJ",
         gas_temperature = 15,
-        auto_barrel = False,
+        auto_barrel = false,
         icon = "",
       }
     },
@@ -77,7 +77,7 @@ data = {
         name = "steam-turbine",
         fluid_usage_per_tick = 1,
         maximum_temperature = 500,
-        burns_fluid = False,
+        burns_fluid = false,
         fluid_box = {
           filter = "steam",
         },
@@ -93,7 +93,7 @@ defines.prototypes = {
     boiler = 0,
     generator = 0,
   },
-  item = { },
+  item = {},
   fluid = {
     fluid = 0,
   },

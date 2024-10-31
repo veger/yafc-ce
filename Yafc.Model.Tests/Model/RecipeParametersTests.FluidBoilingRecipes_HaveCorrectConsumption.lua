@@ -69,7 +69,7 @@ data = {
         max_temperature = 1000,
         heat_capacity = "0.2kJ",
         gas_temperature = 15,
-        auto_barrel = False,
+        auto_barrel = false,
         icon = "",
       },
     },
