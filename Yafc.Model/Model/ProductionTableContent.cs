@@ -358,7 +358,7 @@ public class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Productio
     /// <summary>
     /// If <see langword="true"/>, the total item consumption and production signals are shown.
     /// </summary>
-    public bool showIO { get; set; } = false;
+    public bool showTotalIO { get; set; } = false;
     /// <summary>
     /// If <see langword="true"/>, the enabled checkbox for this recipe is checked.
     /// </summary>
