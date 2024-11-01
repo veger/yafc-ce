@@ -10,7 +10,7 @@ namespace Yafc;
 
 public class ShoppingListScreen : PseudoScreen {
     private enum DisplayState { Total, Built, Missing }
-    private readonly VirtualScrollList<(FactorioObject, float)> list;
+    private readonly VirtualScrollList<(IObjectWithQuality<FactorioObject>, float)> list;
     private float shoppingCost, totalBuildings, totalModules;
     private bool decomposed = false;
     private static DisplayState displayState {
@@ -30,16 +30,16 @@ public class ShoppingListScreen : PseudoScreen {
 
     private readonly List<RecipeRow> recipes;
 
-    private ShoppingListScreen(List<RecipeRow> recipes) {
-        list = new VirtualScrollList<(FactorioObject, float)>(30f, new Vector2(float.PositiveInfinity, 2), ElementDrawer);
+    private ShoppingListScreen(List<RecipeRow> recipes) : base(42) {
+        list = new(30f, new Vector2(float.PositiveInfinity, 2), ElementDrawer);
         this.recipes = recipes;
         RebuildData();
     }
 
-    private void ElementDrawer(ImGui gui, (FactorioObject obj, float count) element, int index) {
+    private void ElementDrawer(ImGui gui, (IObjectWithQuality<FactorioObject> obj, float count) element, int index) {
         using (gui.EnterRow()) {
-            gui.BuildFactorioObjectIcon(element.obj, new IconDisplayStyle(2, MilestoneDisplay.Contained, false));
-            gui.RemainingRow().BuildText(DataUtils.FormatAmount(element.count, UnitOfMeasure.None, "x") + ": " + element.obj.locName);
+            gui.BuildFactorioObjectIcon(element.obj.target, new IconDisplayStyle(2, MilestoneDisplay.Contained, false));
+            gui.RemainingRow().BuildText(DataUtils.FormatAmount(element.count, UnitOfMeasure.None, "x") + ": " + element.obj.target.locName);
         }
         _ = gui.BuildFactorioObjectButtonBackground(gui.lastRect, element.obj);
     }
@@ -50,10 +50,10 @@ public class ShoppingListScreen : PseudoScreen {
         decomposed = false;
 
         // Count buildings and modules
-        Dictionary<FactorioObject, int> counts = [];
+        Dictionary<IObjectWithQuality<FactorioObject>, int> counts = [];
         foreach (RecipeRow recipe in recipes) {
             if (recipe.entity != null) {
-                FactorioObject shopItem = recipe.entity.target.itemsToPlace?.FirstOrDefault() ?? (FactorioObject)recipe.entity.target;
+                ObjectWithQuality<FactorioObject> shopItem = new(recipe.entity.target.itemsToPlace?.FirstOrDefault() ?? (FactorioObject)recipe.entity.target, recipe.entity.quality);
                 _ = counts.TryGetValue(shopItem, out int prev);
                 int builtCount = recipe.builtBuildings ?? (assumeAdequate ? MathUtils.Ceil(recipe.buildingCount) : 0);
                 int displayCount = displayState switch {
@@ -66,8 +66,8 @@ public class ShoppingListScreen : PseudoScreen {
                 if (recipe.usedModules.modules != null) {
                     foreach ((Module module, int moduleCount, bool beacon) in recipe.usedModules.modules) {
                         if (!beacon) {
-                            _ = counts.TryGetValue(module, out prev);
-                            counts[module] = prev + displayCount * moduleCount;
+                            _ = counts.TryGetValue(new ObjectWithQuality<FactorioObject>(module, Quality.Normal), out prev);
+                            counts[new ObjectWithQuality<FactorioObject>(module, Quality.Normal)] = prev + displayCount * moduleCount;
                         }
                     }
                 }
@@ -78,14 +78,14 @@ public class ShoppingListScreen : PseudoScreen {
         // Summarize building requirements
         float cost = 0f, buildings = 0f, modules = 0f;
         decomposed = false;
-        foreach ((FactorioObject obj, float count) in list.data) {
-            if (obj is Module module) {
+        foreach ((IObjectWithQuality<FactorioObject> obj, float count) in list.data) {
+            if (obj.target is Module module) {
                 modules += count;
             }
-            else if (obj is Entity or Item) {
+            else if (obj.target is Entity or Item) {
                 buildings += count;
             }
-            cost += obj.Cost() * count;
+            cost += obj.target.Cost() * count;
         }
         shoppingCost = cost;
         totalBuildings = buildings;
@@ -138,7 +138,7 @@ public class ShoppingListScreen : PseudoScreen {
 
     private List<(T, int)> ExportGoods<T>() where T : Goods {
         List<(T, int)> items = [];
-        foreach (var (element, amount) in list.data) {
+        foreach (((FactorioObject element, _), float amount) in list.data) {
             int rounded = MathUtils.Round(amount);
             if (rounded == 0) {
                 continue;
@@ -187,39 +187,46 @@ public class ShoppingListScreen : PseudoScreen {
 
     private void Decompose() {
         decomposed = true;
-        Queue<FactorioObject> decompositionQueue = new Queue<FactorioObject>();
-        Dictionary<FactorioObject, float> decomposeResult = [];
+        Queue<IObjectWithQuality<FactorioObject>> decompositionQueue = [];
+        Dictionary<IObjectWithQuality<FactorioObject>, float> decomposeResult = [];
 
-        void addDecomposition(FactorioObject obj, float amount) {
-            if (!decomposeResult.TryGetValue(obj, out float prev)) {
-                decompositionQueue.Enqueue(obj);
+        void addDecomposition(FactorioObject obj, Quality quality, float amount) {
+            ObjectWithQuality<FactorioObject> key = new(obj, quality);
+            if (!decomposeResult.TryGetValue(key, out float prev)) {
+                decompositionQueue.Enqueue(key);
             }
 
-            decomposeResult[obj] = prev + amount;
+            decomposeResult[key] = prev + amount;
         }
-
-        foreach (var (item, count) in list.data) {
-            addDecomposition(item, count);
+        foreach (((FactorioObject obj, Quality quality), float count) in list.data) {
+            addDecomposition(obj, quality, count);
         }
 
         int steps = 0;
         while (decompositionQueue.Count > 0) {
             var elem = decompositionQueue.Dequeue();
             float amount = decomposeResult[elem];
-            if (elem is Entity e && e.itemsToPlace.Length == 1) {
-                addDecomposition(e.itemsToPlace[0], amount);
+            if (elem.target is Entity e && e.itemsToPlace.Length == 1) {
+                addDecomposition(e.itemsToPlace[0], elem.quality, amount);
             }
-            else if (elem is Recipe rec) {
+            else if (elem.target is Recipe rec) {
                 if (rec.HasIngredientVariants()) {
                     continue;
                 }
 
                 foreach (var ingredient in rec.ingredients) {
-                    addDecomposition(ingredient.goods, ingredient.amount * amount);
+                    if (ingredient.goods is Fluid) {
+                        addDecomposition(ingredient.goods, Quality.Normal, ingredient.amount * amount);
+                    }
+                    else {
+                        addDecomposition(ingredient.goods, elem.quality, ingredient.amount * amount);
+                    }
                 }
             }
-            else if (elem is Goods g && (g.usages.Length <= 5 || (g is Item item && (item.factorioType != "item" || item.placeResult != null))) && (rec = FindSingleProduction(g.production)!) != null) {
-                addDecomposition(g.production[0], amount / rec.GetProductionPerRecipe(g));
+            else if (elem.target is Goods g && (g.usages.Length <= 5 || (g is Item item && (item.factorioType != "item" || item.placeResult != null)))
+                && (rec = FindSingleProduction(g.production)!) != null) {
+
+                addDecomposition(g.production[0], elem.quality, amount / rec.GetProductionPerRecipe(g));
             }
             else {
                 continue;
