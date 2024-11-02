@@ -124,6 +124,8 @@ public class ModuleFillerParameters : ModelObject<ModelObject> {
     private void AutoFillModules((float recipeTime, float fuelUsagePerSecondPerBuilding) partialParams, RecipeRow row,
         EntityCrafter entity, ref ModuleEffects effects, ref UsedModule used) {
 
+        Quality quality = Quality.MaxAccessible;
+
         RecipeOrTechnology recipe = row.recipe;
 
         if (autoFillPayback > 0 && (fillMiners || !recipe.flags.HasFlags(RecipeFlags.UsesMiningProductivity))) {
@@ -158,27 +160,27 @@ public class ModuleFillerParameters : ModelObject<ModelObject> {
             }
 
             float bestEconomy = 0f;
-            Module? usedModule = null;
+            ObjectWithQuality<Module>? usedModule = null;
 
             foreach (var module in Database.allModules) {
                 if (module.IsAccessibleWithCurrentMilestones() && entity.CanAcceptModule(module.moduleSpecification) && recipe.CanAcceptModule(module)) {
-                    float economy = module.moduleSpecification.productivity * productivityEconomy
-                                  + module.moduleSpecification.speed * speedEconomy
-                                  - module.moduleSpecification.consumption * effectivityEconomy;
+                    float economy = module.moduleSpecification.Productivity(quality) * productivityEconomy
+                                  + module.moduleSpecification.Speed(quality) * speedEconomy
+                                  - module.moduleSpecification.Consumption(quality) * effectivityEconomy;
 
                     if (economy > bestEconomy && module.Cost() / economy <= autoFillPayback) {
                         bestEconomy = economy;
-                        usedModule = module;
+                        usedModule = new(module, quality);
                     }
                 }
             }
 
             if (usedModule != null) {
-                int count = effects.GetModuleSoftLimit(new(usedModule, Quality.MaxAccessible), entity.moduleSlots);
+                int count = effects.GetModuleSoftLimit(usedModule, entity.moduleSlots);
 
                 if (count > 0) {
-                    effects.AddModules(new(usedModule, Quality.MaxAccessible), count);
-                    used.modules = [(new(usedModule, Quality.MaxAccessible), count, false)];
+                    effects.AddModules(usedModule, count);
+                    used.modules = [(usedModule, count, false)];
 
                     return;
                 }

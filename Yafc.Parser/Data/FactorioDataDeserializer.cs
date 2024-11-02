@@ -382,11 +382,11 @@ internal partial class FactorioDataDeserializer {
             var effect = ParseEffect(moduleEffect);
             module.moduleSpecification = new ModuleSpecification {
                 category = table.Get("category", ""),
-                consumption = effect.consumption,
-                speed = effect.speed,
-                productivity = effect.productivity,
-                pollution = effect.pollution,
-                quality = effect.quality,
+                baseConsumption = effect.consumption,
+                baseSpeed = effect.speed,
+                baseProductivity = effect.productivity,
+                basePollution = effect.pollution,
+                baseQuality = effect.quality,
             };
         }
 

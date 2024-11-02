@@ -364,24 +364,24 @@ public class ObjectTooltip : Tooltip {
             if (item is Module { moduleSpecification: ModuleSpecification moduleSpecification }) {
                 BuildSubHeader(gui, "Module parameters");
                 using (gui.EnterGroup(contentPadding)) {
-                    if (moduleSpecification.productivity != 0f) {
-                        gui.BuildText(DataUtils.FormatAmount(moduleSpecification.productivity, UnitOfMeasure.Percent, "Productivity: "));
+                    if (moduleSpecification.baseProductivity != 0f) {
+                        gui.BuildText(DataUtils.FormatAmount(moduleSpecification.baseProductivity, UnitOfMeasure.Percent, "Productivity: "));
                     }
 
-                    if (moduleSpecification.speed != 0f) {
-                        gui.BuildText(DataUtils.FormatAmount(moduleSpecification.speed, UnitOfMeasure.Percent, "Speed: "));
+                    if (moduleSpecification.baseSpeed != 0f) {
+                        gui.BuildText(DataUtils.FormatAmount(moduleSpecification.baseSpeed, UnitOfMeasure.Percent, "Speed: "));
                     }
 
-                    if (moduleSpecification.consumption != 0f) {
-                        gui.BuildText(DataUtils.FormatAmount(moduleSpecification.consumption, UnitOfMeasure.Percent, "Consumption: "));
+                    if (moduleSpecification.baseConsumption != 0f) {
+                        gui.BuildText(DataUtils.FormatAmount(moduleSpecification.baseConsumption, UnitOfMeasure.Percent, "Consumption: "));
                     }
 
-                    if (moduleSpecification.pollution != 0f) {
-                        gui.BuildText(DataUtils.FormatAmount(moduleSpecification.pollution, UnitOfMeasure.Percent, "Pollution: "));
+                    if (moduleSpecification.basePollution != 0f) {
+                        gui.BuildText(DataUtils.FormatAmount(moduleSpecification.basePollution, UnitOfMeasure.Percent, "Pollution: "));
                     }
 
-                    if (moduleSpecification.quality != 0f) {
-                        gui.BuildText(DataUtils.FormatAmount(moduleSpecification.quality, UnitOfMeasure.Percent, "Quality: "));
+                    if (moduleSpecification.baseQuality != 0f) {
+                        gui.BuildText(DataUtils.FormatAmount(moduleSpecification.baseQuality, UnitOfMeasure.Percent, "Quality: "));
                     }
                 }
             }

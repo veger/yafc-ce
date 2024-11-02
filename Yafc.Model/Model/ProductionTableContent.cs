@@ -15,42 +15,42 @@ public struct ModuleEffects {
     public readonly float energyUsageMod => MathF.Max(1f + consumption, 0.2f);
     public void AddModules(ObjectWithQuality<Module> module, float count, AllowedEffects allowedEffects) {
         ModuleSpecification spec = module.target.moduleSpecification;
+        Quality quality = module.quality;
         if (allowedEffects.HasFlags(AllowedEffects.Speed)) {
-            speed += spec.speed * count;
+            speed += spec.Speed(quality) * count;
         }
 
-        if (allowedEffects.HasFlags(AllowedEffects.Productivity) && spec.productivity > 0f) {
-            productivity += spec.productivity * count;
+        if (allowedEffects.HasFlags(AllowedEffects.Productivity) && spec.baseProductivity > 0f) {
+            productivity += spec.Productivity(quality) * count;
         }
 
         if (allowedEffects.HasFlags(AllowedEffects.Consumption)) {
-            consumption += spec.consumption * count;
+            consumption += spec.Consumption(quality) * count;
         }
     }
 
     public void AddModules(ObjectWithQuality<Module> module, float count) {
         ModuleSpecification spec = module.target.moduleSpecification;
-        speed += spec.speed * count;
+        Quality quality = module.quality;
+        speed += spec.Speed(quality) * count;
 
-        if (spec.productivity > 0f) {
-            productivity += spec.productivity * count;
+        if (spec.baseProductivity > 0f) {
+            productivity += spec.Productivity(quality) * count;
         }
 
-        consumption += spec.consumption * count;
+        consumption += spec.Consumption(quality) * count;
     }
 
     public readonly int GetModuleSoftLimit(ObjectWithQuality<Module> module, int hardLimit) {
         ModuleSpecification spec = module.target.moduleSpecification;
-        if (spec == null) {
-            return 0;
-        }
+        Quality quality = module.quality;
 
-        if (spec.productivity > 0f || spec.speed > 0f || spec.pollution < 0f) {
+        if (spec.baseProductivity > 0f || spec.baseSpeed > 0f || spec.basePollution < 0f) {
             return hardLimit;
         }
 
-        if (spec.consumption < 0f) {
-            return MathUtils.Clamp(MathUtils.Ceil(-(consumption + 0.8f) / spec.consumption), 0, hardLimit);
+        if (spec.baseConsumption < 0f) {
+            return MathUtils.Clamp(MathUtils.Ceil(-(consumption + 0.8f) / spec.Consumption(quality)), 0, hardLimit);
         }
 
         return 0;
@@ -541,12 +541,7 @@ public class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Productio
         CreateUndoSnapshot();
         modules = null;
     }
-    public void SetFixedModule(ObjectWithQuality<Module>? module) {
-        if (module == null) {
-            RemoveFixedModules();
-            return;
-        }
-
+    public void SetFixedModule(ObjectWithQuality<Module> module) {
         ModuleTemplateBuilder builder = modules?.GetBuilder() ?? new();
         builder.list = [(module, 0)];
         this.RecordUndo().modules = builder.Build(this);

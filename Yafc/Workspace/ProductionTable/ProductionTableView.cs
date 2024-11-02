@@ -688,13 +688,25 @@ goodsHaveNoProduction:;
                 .Where(x => x.filterEntities.Count == 0 || x.filterEntities.Contains(recipe.entity?.target!))
                 .OrderByDescending(x => x.template.IsCompatibleWith(recipe))];
 
+            Quality quality = Quality.Normal;
             gui.ShowDropDown(dropGui => {
                 if (recipe.modules != null && dropGui.BuildButton("Use default modules").WithTooltip(dropGui, "Shortcut: right-click") && dropGui.CloseDropdown()) {
                     recipe.RemoveFixedModules();
                 }
 
                 if (recipe.entity?.target.moduleSlots > 0) {
-                    dropGui.BuildInlineObjectListAndButton(modules, m => recipe.SetFixedModule(new(m, Quality.Normal)), new("Select fixed module", DataUtils.FavoriteModule));
+                    if (recipe.modules?.list.Count > 0) {
+                        quality = recipe.modules.list[0].module.quality;
+                        if (dropGui.BuildQualityList(quality, out Quality newQuality) && dropGui.CloseDropdown()) {
+                            ModuleTemplateBuilder builder = recipe.modules.GetBuilder();
+                            builder.list[0] = builder.list[0] with { module = builder.list[0].module.With(newQuality) };
+                            recipe.RecordUndo().modules = builder.Build(recipe);
+                        }
+                    }
+                    else {
+                        _ = dropGui.BuildQualityList(quality, out quality);
+                    }
+                    dropGui.BuildInlineObjectListAndButton(modules, m => recipe.SetFixedModule(new(m, quality)), new("Select fixed module", DataUtils.FavoriteModule));
                 }
 
                 if (moduleTemplateList.data.Count > 0) {

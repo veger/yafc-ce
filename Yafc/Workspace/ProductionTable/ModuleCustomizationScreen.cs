@@ -204,16 +204,19 @@ public class ModuleCustomizationScreen : PseudoScreenWithResult<ModuleTemplateBu
             switch (gui.BuildFactorioObjectWithEditableAmount(module, amount, ButtonDisplayStyle.ProductionTableUnscaled)) {
                 case GoodsWithAmountEvent.LeftButtonClick:
                     int idx = i; // Capture the current value of i.
-                    SelectSingleObjectPanel.SelectWithNone(GetModules(beacon), "Select module", sel => {
+
+                    gui.BuildObjectQualitySelectDropDownWithNone(GetModules(beacon), sel => {
                         if (sel == null) {
                             list.RemoveAt(idx);
                         }
                         else {
-                            list[idx] = (new(sel, Quality.Normal), list[idx].fixedCount);
+                            list[idx] = (sel, list[idx].fixedCount);
                         }
-
                         gui.Rebuild();
-                    }, DataUtils.FavoriteModule);
+                    }, new("Select module", DataUtils.FavoriteModule), list[idx].module.quality, quality => {
+                        list[idx] = list[idx] with { module = new(list[idx].module.target, quality) };
+                        gui.Rebuild();
+                    });
                     break;
 
                 case GoodsWithAmountEvent.TextEditing when amount.Value >= 0:
@@ -236,10 +239,10 @@ public class ModuleCustomizationScreen : PseudoScreenWithResult<ModuleTemplateBu
 
         grid.Next();
         if (gui.BuildButton(Icon.Plus, SchemeColor.Primary, SchemeColor.PrimaryAlt, size: 2.5f)) {
-            gui.BuildObjectSelectDropDown(GetModules(beacon), sel => {
-                list.Add((new(sel, Quality.Normal), 0));
+            gui.BuildObjectQualitySelectDropDown(GetModules(beacon), sel => {
+                list.Add(new(sel, 0));
                 gui.Rebuild();
-            }, new("Select module", DataUtils.FavoriteModule));
+            }, new("Select module", DataUtils.FavoriteModule), Quality.Normal);
         }
     }
 

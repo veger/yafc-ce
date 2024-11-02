@@ -441,23 +441,23 @@ public abstract class EntityWithModules : Entity {
     public int moduleSlots { get; internal set; }
 
     public static bool CanAcceptModule(ModuleSpecification module, AllowedEffects effects, string[]? allowedModuleCategories) {
-        if (module.productivity > 0f && (effects & AllowedEffects.Productivity) == 0) {
+        if (module.baseProductivity > 0f && (effects & AllowedEffects.Productivity) == 0) {
             return false;
         }
 
-        if (module.consumption < 0f && (effects & AllowedEffects.Consumption) == 0) {
+        if (module.baseConsumption < 0f && (effects & AllowedEffects.Consumption) == 0) {
             return false;
         }
 
-        if (module.pollution < 0f && (effects & AllowedEffects.Pollution) == 0) {
+        if (module.basePollution < 0f && (effects & AllowedEffects.Pollution) == 0) {
             return false;
         }
 
-        if (module.speed > 0f && (effects & AllowedEffects.Speed) == 0) {
+        if (module.baseSpeed > 0f && (effects & AllowedEffects.Speed) == 0) {
             return false;
         }
 
-        if (module.quality > 0f && (effects & AllowedEffects.Quality) == 0) {
+        if (module.baseQuality > 0f && (effects & AllowedEffects.Quality) == 0) {
             return false;
         }
 
@@ -518,7 +518,7 @@ public sealed class Quality : FactorioObject {
             collector.Add([previousQuality], DependencyList.Flags.Source);
         }
         if (level != 0) {
-            collector.Add(Database.allModules.Where(m => m.moduleSpecification.quality > 0).ToArray(), DependencyList.Flags.Source);
+            collector.Add(Database.allModules.Where(m => m.moduleSpecification.baseQuality > 0).ToArray(), DependencyList.Flags.Source);
         }
     }
 
@@ -526,6 +526,9 @@ public sealed class Quality : FactorioObject {
     internal float ApplyStandardBonus(float baseValue) => baseValue * (1 + .3f * level);
     // applies the +100% per level accumulator capacity bonus
     internal float ApplyAccumulatorCapacityBonus(float baseValue) => baseValue * (1 + level);
+    // applies the standard +30% per level bonus, but with the exception that the result is floored to the nearest hundredth
+    // Modules use this: a 25% normal bonus is a 32% uncommon bonus, not 32.5%.
+    internal float ApplyModuleBonus(float baseValue) => MathF.Floor(ApplyStandardBonus(baseValue) * 100) / 100;
 }
 
 /// <summary>
@@ -702,11 +705,16 @@ public class EntityEnergy {
 
 public class ModuleSpecification {
     public string category { get; internal set; } = null!;
-    public float consumption { get; internal set; }
-    public float speed { get; internal set; }
-    public float productivity { get; internal set; }
-    public float pollution { get; internal set; }
-    public float quality { get; internal set; }
+    public float baseConsumption { get; internal set; }
+    public float baseSpeed { get; internal set; }
+    public float baseProductivity { get; internal set; }
+    public float basePollution { get; internal set; }
+    public float baseQuality { get; internal set; }
+    public float Consumption(Quality quality) => baseConsumption >= 0 ? baseConsumption : quality.ApplyModuleBonus(baseConsumption);
+    public float Speed(Quality quality) => baseSpeed <= 0 ? baseSpeed : quality.ApplyModuleBonus(baseSpeed);
+    public float Productivity(Quality quality) => baseProductivity <= 0 ? baseProductivity : quality.ApplyModuleBonus(baseProductivity);
+    public float Pollution(Quality quality) => basePollution >= 0 ? basePollution : quality.ApplyModuleBonus(basePollution);
+    public float Quality(Quality quality) => baseQuality <= 0 ? baseQuality : quality.ApplyModuleBonus(baseQuality);
 }
 
 public struct TemperatureRange(int min, int max) {

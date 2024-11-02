@@ -320,6 +320,20 @@ public static class ImmediateWidgets {
     public static void BuildObjectSelectDropDownWithNone<T>(this ImGui gui, ICollection<T> list, Action<T?> selectItem, ObjectSelectOptions<T> options, float width = 20f) where T : FactorioObject
         => gui.ShowDropDown(imGui => imGui.BuildInlineObjectListAndButtonWithNone(list, selectItem, options), width);
 
+    /// <summary>Shows a dropdown containing the (partial) <paramref name="list"/> of elements, with an action for when an element is selected.
+    /// Also shows the available quality levels, and allows the user to select a quality.</summary>
+    /// <param name="selectQuality">This will be called, and the dropdown will be closed, when the user selects a quality.</param>
+    /// <param name="width">Width of the popup. Make sure the header text fits!</param>
+    public static void BuildObjectQualitySelectDropDownWithNone<T>(this ImGui gui, ICollection<T> list, Action<ObjectWithQuality<T>?> selectItem, ObjectSelectOptions<T> options,
+        Quality quality, Action<Quality> selectQuality, float width = 20f) where T : FactorioObject
+
+        => gui.ShowDropDown(gui => {
+            if (gui.BuildQualityList(quality, out quality) && gui.CloseDropdown()) {
+                selectQuality(quality);
+            }
+            gui.BuildInlineObjectListAndButtonWithNone(list, i => selectItem((i, quality)), options);
+        }, width);
+
     /// <summary>Draws a button displaying the icon belonging to a <see cref="FactorioObject"/>, or an empty box as a placeholder if no object is available.
     /// Also draws an editable textbox under the button, containing the supplied <paramref name="amount"/>.</summary>
     /// <param name="obj">Draw the icon for this object, or an empty box if this is <see langword="null"/>.</param>
@@ -354,26 +368,46 @@ public static class ImmediateWidgets {
     /// <param name="newQuality">The <see cref="Quality"/> selected by the user.</param>
     /// <param name="header">The header text to draw, defaults to "Select quality"</param>
     /// <returns><see langword="true"/> if the user selected a quality. <see langword="false"/> if they did not, or if the loaded mods do not provide multiple qualitites.</returns>
-    public static bool BuildQualityList(this ImGui gui, Quality? quality, [NotNullWhen(true), NotNullIfNotNull(nameof(quality))] out Quality? newQuality, string header = "Select quality") {
+    public static bool BuildQualityList(this ImGui gui, Quality? quality, [NotNullWhen(true), NotNullIfNotNull(nameof(quality))] out Quality? newQuality, string header = "Select quality", bool drawCentered = false) {
         newQuality = quality;
         if (Quality.Normal.nextQuality == null) {
             return false; // Nothing to do; normal quality is the only one defined.
         }
-        gui.BuildText(header, Font.productionTableHeader);
-        using ImGuiUtils.InlineGridBuilder grid = gui.EnterInlineGrid(2, .5f);
-        Quality? drawQuality = Quality.Normal;
-        while (drawQuality != null) {
-            grid.Next();
-            if (quality == drawQuality) {
-                _ = gui.BuildFactorioObjectButton(drawQuality, ButtonDisplayStyle.Default with { BackgroundColor = SchemeColor.Primary });
-            }
-            else if (gui.BuildFactorioObjectButton(drawQuality, ButtonDisplayStyle.Default) == Click.Left) {
-                newQuality = drawQuality;
-                return true;
-            }
-            drawQuality = drawQuality.nextQuality;
+
+        if (drawCentered) {
+            gui.BuildText(header, TextBlockDisplayStyle.Centered with { Font = Font.productionTableHeader });
         }
-        return false;
+        else {
+            gui.BuildText(header, Font.productionTableHeader);
+        }
+
+        using ImGui.OverlappingAllocations controller = gui.StartOverlappingAllocations(false);
+        drawGrid(gui, ref newQuality);
+        float width = gui.lastRect.Width;
+        controller.StartNextAllocatePass(true);
+        using (gui.EnterRow(0)) {
+            if (drawCentered) {
+                gui.AllocateRect((gui.statePosition.Width - width) / 2, 0);
+            }
+            return drawGrid(gui, ref newQuality);
+        }
+
+        static bool drawGrid(ImGui gui, ref Quality? newQuality) {
+            using ImGuiUtils.InlineGridBuilder grid = gui.EnterInlineGrid(2, .5f);
+            Quality? drawQuality = Quality.Normal;
+            while (drawQuality != null) {
+                grid.Next();
+                if (newQuality == drawQuality) {
+                    _ = gui.BuildFactorioObjectButton(drawQuality, ButtonDisplayStyle.Default with { BackgroundColor = SchemeColor.Primary });
+                }
+                else if (gui.BuildFactorioObjectButton(drawQuality, ButtonDisplayStyle.Default) == Click.Left) {
+                    newQuality = drawQuality;
+                    return true;
+                }
+                drawQuality = drawQuality.nextQuality;
+            }
+            return false;
+        }
     }
 }
 
