@@ -30,7 +30,6 @@ public record BeaconConfiguration(EntityBeacon? beacon, int beaconCount, Module?
 /// The settings (used by root <see cref="ProductionTable"/>s) for what modules and beacons should be used for a recipe, in the absence of any per-<see cref="RecipeRow"/> settings.
 /// </summary>
 /// <remarks>This class handles its own <see cref="DataUtils.RecordUndo{T}(T, bool)"/> calls.</remarks>
-[Serializable]
 public class ModuleFillerParameters : ModelObject<ModelObject> {
     private bool _fillMiners;
     private float _autoFillPayback;

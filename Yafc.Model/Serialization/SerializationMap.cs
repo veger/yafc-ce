@@ -48,8 +48,8 @@ internal abstract class SerializationMap {
         UndoSnapshotReader snapshotReader = new(snapshot);
         ReadUndo(target, snapshotReader);
     }
-    public abstract void BuildUndo(object target, UndoSnapshotBuilder builder);
-    public abstract void ReadUndo(object target, UndoSnapshotReader reader);
+    public abstract void BuildUndo(object? target, UndoSnapshotBuilder builder);
+    public abstract void ReadUndo(object? target, UndoSnapshotReader reader);
 
     private static readonly Dictionary<Type, SerializationMap> undoBuilders = [];
     protected static int deserializingCount;
@@ -77,24 +77,28 @@ internal static class SerializationMap<T> where T : class {
     private static readonly ulong requiredConstructorFieldMask;
 
     public class SpecificSerializationMap : SerializationMap {
-        public override void BuildUndo(object target, UndoSnapshotBuilder builder) {
-            T t = (T)target;
+        public override void BuildUndo(object? target, UndoSnapshotBuilder builder) {
+            T? t = (T?)target;
 
-            foreach (var property in properties) {
-                if (property.type == PropertyType.Normal) {
-                    property.SerializeToUndoBuilder(t, builder);
+            if (t != null) {
+                foreach (var property in properties) {
+                    if (property.type == PropertyType.Normal) {
+                        property.SerializeToUndoBuilder(t, builder);
+                    }
                 }
             }
         }
 
-        public override void ReadUndo(object target, UndoSnapshotReader reader) {
+        public override void ReadUndo(object? target, UndoSnapshotReader reader) {
             try {
                 deserializingCount++;
-                T t = (T)target;
+                T? t = (T?)target;
 
-                foreach (var property in properties) {
-                    if (property.type == PropertyType.Normal) {
-                        property.DeserializeFromUndoBuilder(t, reader);
+                if (t != null) {
+                    foreach (var property in properties) {
+                        if (property.type == PropertyType.Normal) {
+                            property.DeserializeFromUndoBuilder(t, reader);
+                        }
                     }
                 }
             }

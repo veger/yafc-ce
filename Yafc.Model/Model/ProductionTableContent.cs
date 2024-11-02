@@ -58,7 +58,6 @@ public struct ModuleEffects {
 /// One module that is (or will be) applied to a <see cref="RecipeRow"/>, and the number of times it should appear.
 /// </summary>
 /// <remarks>Immutable. To modify, modify the owning <see cref="ModuleTemplate"/>.</remarks>
-[Serializable]
 public class RecipeRowCustomModule(ModuleTemplate owner, Module module, int fixedCount = 0) : ModelObject<ModuleTemplate>(owner) {
     public Module module { get; } = module ?? throw new ArgumentNullException(nameof(module));
     public int fixedCount { get; } = fixedCount;
