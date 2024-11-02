@@ -529,6 +529,8 @@ public sealed class Quality : FactorioObject {
     // applies the standard +30% per level bonus, but with the exception that the result is floored to the nearest hundredth
     // Modules use this: a 25% normal bonus is a 32% uncommon bonus, not 32.5%.
     internal float ApplyModuleBonus(float baseValue) => MathF.Floor(ApplyStandardBonus(baseValue) * 100) / 100;
+    // applies the .2 per level beacon transmission bonus
+    internal float ApplyBeaconBonus(float baseValue) => baseValue + level * .2f;
 }
 
 /// <summary>
@@ -643,7 +645,8 @@ public class EntityReactor : EntityCrafter {
 }
 
 public class EntityBeacon : EntityWithModules {
-    public float beaconEfficiency { get; internal set; }
+    public float baseBeaconEfficiency { get; internal set; }
+    public float BeaconEfficiency(Quality quality) => quality.ApplyBeaconBonus(baseBeaconEfficiency);
     public float[] profile { get; internal set; } = null!;
 
     public float GetProfile(int numberOfBeacons) {

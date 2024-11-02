@@ -639,7 +639,7 @@ goodsHaveNoProduction:;
                         wasBeacon = true;
 
                         if (recipe.usedModules.beacon != null) {
-                            drawItem(gui, new ObjectWithQuality<FactorioObject>(recipe.usedModules.beacon, Quality.Normal), recipe.usedModules.beaconCount);
+                            drawItem(gui, recipe.usedModules.beacon, recipe.usedModules.beaconCount);
                         }
                     }
                     drawItem(gui, module, count);

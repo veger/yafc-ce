@@ -109,7 +109,8 @@ public class ModuleCustomizationScreen : PseudoScreenWithResult<ModuleTemplateBu
 
                 var defaultFiller = recipe?.GetModuleFiller();
                 if (defaultFiller?.GetBeaconsForCrafter(recipe?.entity?.target) is BeaconConfiguration { beacon: not null, beaconModule: not null } beaconsToUse) {
-                    effects.AddModules(beaconsToUse.beaconModule, beaconsToUse.beacon.beaconEfficiency * beaconsToUse.beacon.GetProfile(beaconsToUse.beaconCount) * beaconsToUse.beacon.moduleSlots * beaconsToUse.beaconCount);
+                    EntityBeacon beacon = beaconsToUse.beacon.target;
+                    effects.AddModules(beaconsToUse.beaconModule, beaconsToUse.beacon.GetBeaconEfficiency() * beacon.GetProfile(beaconsToUse.beaconCount) * beacon.moduleSlots * beaconsToUse.beaconCount);
                 }
             }
             else {
@@ -117,7 +118,7 @@ public class ModuleCustomizationScreen : PseudoScreenWithResult<ModuleTemplateBu
                     SelectBeacon(gui);
                 }
 
-                string modulesNotBeacons = "Input the amount of modules, not the amount of beacons. Single beacon can hold " + modules.beacon.moduleSlots + " modules.";
+                string modulesNotBeacons = "Input the amount of modules, not the amount of beacons. Single beacon can hold " + modules.beacon.target.moduleSlots + " modules.";
                 gui.BuildText(modulesNotBeacons, TextBlockDisplayStyle.WrappedText);
                 DrawRecipeModules(gui, modules.beacon, ref effects);
             }
@@ -170,22 +171,25 @@ public class ModuleCustomizationScreen : PseudoScreenWithResult<ModuleTemplateBu
 
     private void SelectBeacon(ImGui gui) {
         if (modules!.beacon is null) { // null-forgiving: Both calls are from places where we know modules is not null
-            gui.BuildObjectSelectDropDown(Database.allBeacons, sel => {
+            gui.BuildObjectQualitySelectDropDown(Database.allBeacons, sel => {
                 modules.beacon = sel;
                 contents.Rebuild();
-            }, new("Select beacon"));
+            }, new("Select beacon"), Quality.Normal);
         }
         else {
-            gui.BuildObjectSelectDropDownWithNone(Database.allBeacons, sel => {
+            gui.BuildObjectQualitySelectDropDownWithNone(Database.allBeacons, sel => {
                 modules.beacon = sel;
                 contents.Rebuild();
-            }, new("Select beacon"));
+            }, new("Select beacon"), modules.beacon.quality, quality => {
+                modules.beacon = modules.beacon.With(quality);
+                contents.Rebuild();
+            });
         }
     }
 
-    private ICollection<Module> GetModules(EntityBeacon? beacon) {
+    private Module[] GetModules(ObjectWithQuality<EntityBeacon>? beacon) {
         var modules = (beacon == null && recipe is { recipe: Recipe rec }) ? Database.allModules.Where(rec.CanAcceptModule).ToArray() : Database.allModules;
-        EntityWithModules? filter = (EntityWithModules?)beacon ?? recipe?.entity?.target;
+        EntityWithModules? filter = (EntityWithModules?)beacon?.target ?? recipe?.entity?.target;
         if (filter == null) {
             return modules;
         }
@@ -193,7 +197,7 @@ public class ModuleCustomizationScreen : PseudoScreenWithResult<ModuleTemplateBu
         return modules.Where(x => filter.CanAcceptModule(x.moduleSpecification)).ToArray();
     }
 
-    private void DrawRecipeModules(ImGui gui, EntityBeacon? beacon, ref ModuleEffects effects) {
+    private void DrawRecipeModules(ImGui gui, ObjectWithQuality<EntityBeacon>? beacon, ref ModuleEffects effects) {
         int remainingModules = recipe?.entity?.target.moduleSlots ?? 0;
         using var grid = gui.EnterInlineGrid(3f, 1f);
         var list = beacon != null ? modules!.beaconList : modules!.list;// null-forgiving: Both calls are from places where we know modules is not null
@@ -232,8 +236,8 @@ public class ModuleCustomizationScreen : PseudoScreenWithResult<ModuleTemplateBu
                 }
             }
             else {
-                int beaconCount = (modules.beaconList.Sum(x => x.fixedCount) - 1) / beacon.moduleSlots + 1;
-                effects.AddModules(module, fixedCount * beacon.beaconEfficiency * beacon.GetProfile(beaconCount));
+                int beaconCount = (modules.beaconList.Sum(x => x.fixedCount) - 1) / beacon.target.moduleSlots + 1;
+                effects.AddModules(module, fixedCount * beacon.GetBeaconEfficiency() * beacon.target.GetProfile(beaconCount));
             }
         }
 

@@ -156,7 +156,7 @@ public class ProjectPageSettingsPanel : PseudoScreen {
         public ObjectWithQuality? Building { get; }
         public float BuildingCount { get; }
         public IEnumerable<ObjectWithQuality> Modules { get; }
-        public string? Beacon { get; }
+        public ObjectWithQuality? Beacon { get; }
         public int BeaconCount { get; }
         public IEnumerable<ObjectWithQuality> BeaconModules { get; }
         public ExportMaterial Fuel { get; }
@@ -170,7 +170,7 @@ public class ProjectPageSettingsPanel : PseudoScreen {
             Fuel = new ExportMaterial(row.fuel?.name ?? "<No fuel selected>", row.FuelInformation.Amount);
             Inputs = row.Ingredients.Select(i => new ExportMaterial(i.Goods?.name ?? "Recipe disabled", i.Amount));
             Outputs = row.Products.Select(p => new ExportMaterial(p.Goods?.name ?? "Recipe disabled", p.Amount));
-            Beacon = row.usedModules.beacon?.name;
+            Beacon = row.usedModules.beacon;
             BeaconCount = row.usedModules.beaconCount;
 
             if (row.usedModules.modules is null) {
@@ -279,5 +279,6 @@ public class ProjectPageSettingsPanel : PseudoScreen {
     private record struct ObjectWithQuality(string Name, string Quality) {
         public static implicit operator ObjectWithQuality?(ObjectWithQuality<EntityCrafter>? value) => value == null ? default(ObjectWithQuality?) : new ObjectWithQuality(value.target.name, value.quality.name);
         public static implicit operator ObjectWithQuality(ObjectWithQuality<Module> value) => new ObjectWithQuality(value.target.name, value.quality.name);
+        public static implicit operator ObjectWithQuality?(ObjectWithQuality<EntityBeacon>? value) => value == null ? default(ObjectWithQuality?) : new ObjectWithQuality(value.target.name, value.quality.name);
     }
 }

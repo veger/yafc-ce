@@ -17,7 +17,7 @@ public class ProductionTableContentTests {
         table.AddRecipe(Database.recipes.all.Single(r => r.name == "recipe"), DataUtils.DeterministicComparer);
         RecipeRow row = table.GetAllRecipes().Single();
 
-        table.modules.beacon = Database.allBeacons.Single();
+        table.modules.beacon = new(Database.allBeacons.Single(), Quality.Normal);
         table.modules.beaconModule = new(Database.allModules.Single(m => m.name == "speed-module"), Quality.Normal);
         table.modules.beaconsPerBuilding = 2;
         table.modules.autoFillPayback = MathF.Sqrt(float.MaxValue);
@@ -82,13 +82,13 @@ public class ProductionTableContentTests {
                                     // Pre-emptive code for if ProductionTable.modules is made writable.
                                     // The ProductionTable.modules setter must notify all relevant recipes if it is added.
                                     _ = method.Invoke(table, [new ModuleFillerParameters(table) {
-                                        beacon = beacon,
+                                        beacon = new(beacon, Quality.Normal),
                                         beaconModule = new(module, Quality.Normal),
                                         beaconsPerBuilding = beaconCount,
                                     }]);
                                 }
                                 else {
-                                    table.modules.beacon = beacon;
+                                    table.modules.beacon = new(beacon, Quality.Normal);
                                     table.modules.beaconModule = new(module, Quality.Normal);
                                     table.modules.beaconsPerBuilding = beaconCount;
                                 }

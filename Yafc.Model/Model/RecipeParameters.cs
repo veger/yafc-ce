@@ -29,7 +29,7 @@ public enum WarningFlags {
 
 public struct UsedModule {
     public (ObjectWithQuality<Module> module, int count, bool beacon)[]? modules;
-    public Entity? beacon;
+    public ObjectWithQuality<EntityBeacon>? beacon;
     public int beaconCount;
 }
 

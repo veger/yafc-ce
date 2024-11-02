@@ -75,7 +75,7 @@ public class ModuleTemplate : ModelObject<ModelObject> {
     /// <summary>
     /// The beacon to use, if any, for the associated <see cref="RecipeRow"/>.
     /// </summary>
-    public EntityBeacon? beacon { get; }
+    public ObjectWithQuality<EntityBeacon>? beacon { get; }
     /// <summary>
     /// The modules, if any, to directly insert into the crafting entity.
     /// </summary>
@@ -85,7 +85,7 @@ public class ModuleTemplate : ModelObject<ModelObject> {
     /// </summary>
     public ReadOnlyCollection<RecipeRowCustomModule> beaconList { get; private set; } = new([]); // Must be a distinct collection object to accommodate the deserializer.
 
-    private ModuleTemplate(ModelObject owner, EntityBeacon? beacon) : base(owner) => this.beacon = beacon;
+    private ModuleTemplate(ModelObject owner, ObjectWithQuality<EntityBeacon>? beacon) : base(owner) => this.beacon = beacon;
 
     public bool IsCompatibleWith([NotNullWhen(true)] RecipeRow? row) {
         if (row?.entity == null) {
@@ -141,7 +141,7 @@ public class ModuleTemplate : ModelObject<ModelObject> {
         if (beacon != null) {
             int beaconCount = CalcBeaconCount();
             if (beaconCount > 0) {
-                float beaconEfficiency = beacon.beaconEfficiency * beacon.GetProfile(beaconCount);
+                float beaconEfficiency = beacon.GetBeaconEfficiency() * beacon.target.GetProfile(beaconCount);
                 foreach (var module in beaconList) {
                     beaconedModules += module.fixedCount;
                     buffer.Add((module.module, module.fixedCount, true));
@@ -170,7 +170,7 @@ public class ModuleTemplate : ModelObject<ModelObject> {
             moduleCount += element.fixedCount;
         }
 
-        return ((moduleCount - 1) / beacon.moduleSlots) + 1;
+        return ((moduleCount - 1) / beacon.target.moduleSlots) + 1;
     }
 
     /// <summary>
@@ -203,7 +203,7 @@ public class ModuleTemplateBuilder {
     /// <summary>
     /// The beacon to be stored in <see cref="ModuleTemplate.beacon"/> after building.
     /// </summary>
-    public EntityBeacon? beacon { get; set; }
+    public ObjectWithQuality<EntityBeacon>? beacon { get; set; }
     /// <summary>
     /// The list of <see cref="Module"/>s and counts to be stored in <see cref="ModuleTemplate.list"/> after building.
     /// </summary>

@@ -277,7 +277,7 @@ public class ObjectTooltip : Tooltip {
                 miscText = "Swing time: " + DataUtils.FormatAmount(inserter.inserterSwingTime, UnitOfMeasure.Second);
                 break;
             case EntityBeacon beacon:
-                miscText = "Beacon efficiency: " + DataUtils.FormatAmount(beacon.beaconEfficiency, UnitOfMeasure.Percent);
+                miscText = "Beacon efficiency: " + DataUtils.FormatAmount(beacon.baseBeaconEfficiency, UnitOfMeasure.Percent);
                 break;
             case EntityAccumulator accumulator:
                 miscText = "Accumulator charge: " + DataUtils.FormatAmount(accumulator.baseAccumulatorCapacity, UnitOfMeasure.Megajoule);

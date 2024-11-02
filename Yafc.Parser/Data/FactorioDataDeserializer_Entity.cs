@@ -198,7 +198,7 @@ internal partial class FactorioDataDeserializer {
                 break;
             case "beacon":
                 var beacon = GetObject<Entity, EntityBeacon>(name);
-                beacon.beaconEfficiency = table.Get("distribution_effectivity", 0f);
+                beacon.baseBeaconEfficiency = table.Get("distribution_effectivity", 0f);
                 beacon.profile = table.Get("profile", out LuaTable? profile) ? profile.ArrayElements<double>().Select(x => (float)x).ToArray() : [1f];
                 _ = table.Get("energy_usage", out usesPower);
                 ParseModules(table, beacon, AllowedEffects.None);
