@@ -12,7 +12,7 @@ namespace Yafc.Model;
 /// <param name="beaconCount">The number of beacons to use. The total number of modules in beacons is this value times the number of modules that can be placed in a beacon.</param>
 /// <param name="beaconModule">The module to place in the beacon.</param>
 [Serializable]
-public record BeaconOverrideConfiguration(EntityBeacon beacon, int beaconCount, Module beaconModule);
+public record BeaconOverrideConfiguration(EntityBeacon beacon, int beaconCount, ObjectWithQuality<Module> beaconModule);
 
 /// <summary>
 /// The result of applying the various beacon preferences to a crafter; this may result in a desired configuration where the beacon or module is not specified.
@@ -21,7 +21,7 @@ public record BeaconOverrideConfiguration(EntityBeacon beacon, int beaconCount, 
 /// <param name="beaconCount">The number of beacons to use. The total number of modules in beacons is this value times the number of modules that can be placed in a beacon.</param>
 /// <param name="beaconModule">The module to place in the beacon, or <see langword="null"/> if no beacons or beacon modules should be used.</param>
 [Serializable]
-public record BeaconConfiguration(EntityBeacon? beacon, int beaconCount, Module? beaconModule) {
+public record BeaconConfiguration(EntityBeacon? beacon, int beaconCount, ObjectWithQuality<Module>? beaconModule) {
     public static implicit operator BeaconConfiguration(BeaconOverrideConfiguration beaconConfiguration) =>
         new(beaconConfiguration.beacon, beaconConfiguration.beaconCount, beaconConfiguration.beaconModule);
 }
@@ -33,9 +33,9 @@ public record BeaconConfiguration(EntityBeacon? beacon, int beaconCount, Module?
 public class ModuleFillerParameters : ModelObject<ModelObject> {
     private bool _fillMiners;
     private float _autoFillPayback;
-    private Module? _fillerModule;
+    private ObjectWithQuality<Module>? _fillerModule;
     private EntityBeacon? _beacon;
-    private Module? _beaconModule;
+    private ObjectWithQuality<Module>? _beaconModule;
     private int _beaconsPerBuilding = 8;
 
     public ModuleFillerParameters(ModelObject owner) : base(owner) => overrideCrafterBeacons.OverrideSettingChanging += ModuleFillerParametersChanging;
@@ -48,7 +48,7 @@ public class ModuleFillerParameters : ModelObject<ModelObject> {
         get => _autoFillPayback;
         set => ChangeModuleFillerParameters(ref _autoFillPayback, value);
     }
-    public Module? fillerModule {
+    public ObjectWithQuality<Module>? fillerModule {
         get => _fillerModule;
         set => ChangeModuleFillerParameters(ref _fillerModule, value);
     }
@@ -56,7 +56,7 @@ public class ModuleFillerParameters : ModelObject<ModelObject> {
         get => _beacon;
         set => ChangeModuleFillerParameters(ref _beacon, value);
     }
-    public Module? beaconModule {
+    public ObjectWithQuality<Module>? beaconModule {
         get => _beaconModule;
         set => ChangeModuleFillerParameters(ref _beaconModule, value);
     }
@@ -115,7 +115,7 @@ public class ModuleFillerParameters : ModelObject<ModelObject> {
     internal void AutoFillBeacons(RecipeOrTechnology recipe, EntityCrafter entity, ref ModuleEffects effects, ref UsedModule used) {
         BeaconConfiguration beaconsToUse = GetBeaconsForCrafter(entity);
         if (!recipe.flags.HasFlags(RecipeFlags.UsesMiningProductivity) && beaconsToUse.beacon is EntityBeacon beacon && beaconsToUse.beaconModule != null) {
-            effects.AddModules(beaconsToUse.beaconModule.moduleSpecification, beaconsToUse.beaconCount * beacon.beaconEfficiency * beacon.GetProfile(beaconsToUse.beaconCount) * beacon.moduleSlots, entity.allowedEffects);
+            effects.AddModules(beaconsToUse.beaconModule, beaconsToUse.beaconCount * beacon.beaconEfficiency * beacon.GetProfile(beaconsToUse.beaconCount) * beacon.moduleSlots, entity.allowedEffects);
             used.beacon = beacon;
             used.beaconCount = beaconsToUse.beaconCount;
         }
@@ -174,18 +174,18 @@ public class ModuleFillerParameters : ModelObject<ModelObject> {
             }
 
             if (usedModule != null) {
-                int count = effects.GetModuleSoftLimit(usedModule.moduleSpecification, entity.moduleSlots);
+                int count = effects.GetModuleSoftLimit(new(usedModule, Quality.MaxAccessible), entity.moduleSlots);
 
                 if (count > 0) {
-                    effects.AddModules(usedModule.moduleSpecification, count);
-                    used.modules = [(usedModule, count, false)];
+                    effects.AddModules(new(usedModule, Quality.MaxAccessible), count);
+                    used.modules = [(new(usedModule, Quality.MaxAccessible), count, false)];
 
                     return;
                 }
             }
         }
 
-        if (fillerModule?.moduleSpecification != null && entity.CanAcceptModule(fillerModule.moduleSpecification) && recipe.CanAcceptModule(fillerModule)) {
+        if (fillerModule != null && entity.CanAcceptModule(fillerModule) && recipe.CanAcceptModule(fillerModule)) {
             AddModuleSimple(fillerModule, ref effects, entity, ref used);
         }
     }
@@ -195,12 +195,10 @@ public class ModuleFillerParameters : ModelObject<ModelObject> {
         AutoFillModules(partialParams, row, entity, ref effects, ref used);
     }
 
-    private static void AddModuleSimple(Module module, ref ModuleEffects effects, EntityCrafter entity, ref UsedModule used) {
-        if (module.moduleSpecification != null) {
-            int fillerLimit = effects.GetModuleSoftLimit(module.moduleSpecification, entity.moduleSlots);
-            effects.AddModules(module.moduleSpecification, fillerLimit);
-            used.modules = [(module, fillerLimit, false)];
-        }
+    private static void AddModuleSimple(ObjectWithQuality<Module> module, ref ModuleEffects effects, EntityCrafter entity, ref UsedModule used) {
+        int fillerLimit = effects.GetModuleSoftLimit(module, entity.moduleSlots);
+        effects.AddModules(module, fillerLimit);
+        used.modules = [(module, fillerLimit, false)];
     }
 }
 

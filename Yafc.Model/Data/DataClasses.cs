@@ -141,7 +141,8 @@ public abstract class RecipeOrTechnology : FactorioObject {
         return true;
     }
 
-    public virtual bool CanAcceptModule(Item _) => true;
+    public bool CanAcceptModule(ObjectWithQuality<Module> module) => CanAcceptModule(module.target);
+    public virtual bool CanAcceptModule(Module _) => true;
 }
 
 public enum FactorioObjectSpecialType {
@@ -176,7 +177,7 @@ public class Recipe : RecipeOrTechnology {
         }
     }
 
-    public override bool CanAcceptModule(Item module) => EntityWithModules.CanAcceptModule(((Module)module).moduleSpecification, allowedEffects, allowedModuleCategories);
+    public override bool CanAcceptModule(Module module) => EntityWithModules.CanAcceptModule(module.moduleSpecification, allowedEffects, allowedModuleCategories);
 }
 
 public class Mechanics : Recipe {
@@ -467,6 +468,7 @@ public abstract class EntityWithModules : Entity {
         return true;
     }
 
+    public bool CanAcceptModule<T>(ObjectWithQuality<T> module) where T : Module => CanAcceptModule(module.target.moduleSpecification);
     public bool CanAcceptModule(ModuleSpecification module) => CanAcceptModule(module, allowedEffects, allowedModuleCategories);
 }
 

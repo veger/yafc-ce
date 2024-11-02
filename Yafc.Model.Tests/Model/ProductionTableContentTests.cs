@@ -18,7 +18,7 @@ public class ProductionTableContentTests {
         RecipeRow row = table.GetAllRecipes().Single();
 
         table.modules.beacon = Database.allBeacons.Single();
-        table.modules.beaconModule = Database.allModules.Single(m => m.name == "speed-module");
+        table.modules.beaconModule = new(Database.allModules.Single(m => m.name == "speed-module"), Quality.Normal);
         table.modules.beaconsPerBuilding = 2;
         table.modules.autoFillPayback = MathF.Sqrt(float.MaxValue);
 
@@ -37,7 +37,7 @@ public class ProductionTableContentTests {
                         ModuleTemplateBuilder builder = new();
 
                         if (module != null) {
-                            builder.list.Add((module, 0));
+                            builder.list.Add((new(module, Quality.Normal), 0));
                         }
 
                         row.modules = builder.Build(row);
@@ -83,13 +83,13 @@ public class ProductionTableContentTests {
                                     // The ProductionTable.modules setter must notify all relevant recipes if it is added.
                                     _ = method.Invoke(table, [new ModuleFillerParameters(table) {
                                         beacon = beacon,
-                                        beaconModule = module,
+                                        beaconModule = new(module, Quality.Normal),
                                         beaconsPerBuilding = beaconCount,
                                     }]);
                                 }
                                 else {
                                     table.modules.beacon = beacon;
-                                    table.modules.beaconModule = module;
+                                    table.modules.beaconModule = new(module, Quality.Normal);
                                     table.modules.beaconsPerBuilding = beaconCount;
                                 }
                                 table.Solve((ProjectPage)table.owner).Wait();

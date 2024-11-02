@@ -155,10 +155,10 @@ public class ProjectPageSettingsPanel : PseudoScreen {
         public string Recipe { get; }
         public ObjectWithQuality? Building { get; }
         public float BuildingCount { get; }
-        public IEnumerable<string> Modules { get; }
+        public IEnumerable<ObjectWithQuality> Modules { get; }
         public string? Beacon { get; }
         public int BeaconCount { get; }
-        public IEnumerable<string> BeaconModules { get; }
+        public IEnumerable<ObjectWithQuality> BeaconModules { get; }
         public ExportMaterial Fuel { get; }
         public IEnumerable<ExportMaterial> Inputs { get; }
         public IEnumerable<ExportMaterial> Outputs { get; }
@@ -177,15 +177,15 @@ public class ProjectPageSettingsPanel : PseudoScreen {
                 Modules = BeaconModules = [];
             }
             else {
-                List<string> modules = [];
-                List<string> beaconModules = [];
+                List<ObjectWithQuality> modules = [];
+                List<ObjectWithQuality> beaconModules = [];
 
                 foreach (var (module, count, isBeacon) in row.usedModules.modules) {
                     if (isBeacon) {
-                        beaconModules.AddRange(Enumerable.Repeat(module.name, count));
+                        beaconModules.AddRange(Enumerable.Repeat<ObjectWithQuality>(module, count));
                     }
                     else {
-                        modules.AddRange(Enumerable.Repeat(module.name, count));
+                        modules.AddRange(Enumerable.Repeat<ObjectWithQuality>(module, count));
                     }
                 }
 
@@ -278,5 +278,6 @@ public class ProjectPageSettingsPanel : PseudoScreen {
 
     private record struct ObjectWithQuality(string Name, string Quality) {
         public static implicit operator ObjectWithQuality?(ObjectWithQuality<EntityCrafter>? value) => value == null ? default(ObjectWithQuality?) : new ObjectWithQuality(value.target.name, value.quality.name);
+        public static implicit operator ObjectWithQuality(ObjectWithQuality<Module> value) => new ObjectWithQuality(value.target.name, value.quality.name);
     }
 }

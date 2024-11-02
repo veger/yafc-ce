@@ -491,11 +491,13 @@ goodsHaveNoProduction:;
                             var modules = recipe.usedModules.modules;
 
                             if (modules != null) {
-                                entity.items = [];
-
+                                int idx = 0;
                                 foreach (var (module, count, beacon) in modules) {
                                     if (!beacon) {
-                                        entity.items[module.name] = count;
+                                        BlueprintItem item = new BlueprintItem { id = { name = module.target.name, quality = module.quality.name } };
+                                        item.items.inInventory.AddRange(Enumerable.Range(idx, count).Select(i => new BlueprintInventoryItem { stack = i }));
+                                        entity.items.Add(item);
+                                        idx += count;
                                     }
                                 }
                             }
@@ -637,14 +639,14 @@ goodsHaveNoProduction:;
                         wasBeacon = true;
 
                         if (recipe.usedModules.beacon != null) {
-                            drawItem(gui, recipe.usedModules.beacon, recipe.usedModules.beaconCount);
+                            drawItem(gui, new ObjectWithQuality<FactorioObject>(recipe.usedModules.beacon, Quality.Normal), recipe.usedModules.beaconCount);
                         }
                     }
                     drawItem(gui, module, count);
                 }
             }
 
-            void drawItem(ImGui gui, FactorioObject? item, int count) {
+            void drawItem(ImGui gui, IObjectWithQuality<FactorioObject>? item, int count) {
                 grid.Next();
                 switch (gui.BuildFactorioObjectWithAmount(item, count, ButtonDisplayStyle.ProductionTableUnscaled)) {
                     case Click.Left:
@@ -692,7 +694,7 @@ goodsHaveNoProduction:;
                 }
 
                 if (recipe.entity?.target.moduleSlots > 0) {
-                    dropGui.BuildInlineObjectListAndButton(modules, recipe.SetFixedModule, new("Select fixed module", DataUtils.FavoriteModule));
+                    dropGui.BuildInlineObjectListAndButton(modules, m => recipe.SetFixedModule(new(m, Quality.Normal)), new("Select fixed module", DataUtils.FavoriteModule));
                 }
 
                 if (moduleTemplateList.data.Count > 0) {

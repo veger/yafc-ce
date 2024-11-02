@@ -64,10 +64,10 @@ public class ShoppingListScreen : PseudoScreen {
                 };
                 counts[shopItem] = prev + displayCount;
                 if (recipe.usedModules.modules != null) {
-                    foreach ((Module module, int moduleCount, bool beacon) in recipe.usedModules.modules) {
+                    foreach ((ObjectWithQuality<Module> module, int moduleCount, bool beacon) in recipe.usedModules.modules) {
                         if (!beacon) {
-                            _ = counts.TryGetValue(new ObjectWithQuality<FactorioObject>(module, Quality.Normal), out prev);
-                            counts[new ObjectWithQuality<FactorioObject>(module, Quality.Normal)] = prev + displayCount * moduleCount;
+                            _ = counts.TryGetValue(module, out prev);
+                            counts[module] = prev + displayCount * moduleCount;
                         }
                     }
                 }

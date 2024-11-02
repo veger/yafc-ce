@@ -109,7 +109,7 @@ public class ModuleCustomizationScreen : PseudoScreenWithResult<ModuleTemplateBu
 
                 var defaultFiller = recipe?.GetModuleFiller();
                 if (defaultFiller?.GetBeaconsForCrafter(recipe?.entity?.target) is BeaconConfiguration { beacon: not null, beaconModule: not null } beaconsToUse) {
-                    effects.AddModules(beaconsToUse.beaconModule.moduleSpecification, beaconsToUse.beacon.beaconEfficiency * beaconsToUse.beacon.GetProfile(beaconsToUse.beaconCount) * beaconsToUse.beacon.moduleSlots * beaconsToUse.beaconCount);
+                    effects.AddModules(beaconsToUse.beaconModule, beaconsToUse.beacon.beaconEfficiency * beaconsToUse.beacon.GetProfile(beaconsToUse.beaconCount) * beaconsToUse.beacon.moduleSlots * beaconsToUse.beaconCount);
                 }
             }
             else {
@@ -199,7 +199,7 @@ public class ModuleCustomizationScreen : PseudoScreenWithResult<ModuleTemplateBu
         var list = beacon != null ? modules!.beaconList : modules!.list;// null-forgiving: Both calls are from places where we know modules is not null
         for (int i = 0; i < list.Count; i++) {
             grid.Next();
-            (Module module, int fixedCount) = list[i];
+            (ObjectWithQuality<Module> module, int fixedCount) = list[i];
             DisplayAmount amount = fixedCount;
             switch (gui.BuildFactorioObjectWithEditableAmount(module, amount, ButtonDisplayStyle.ProductionTableUnscaled)) {
                 case GoodsWithAmountEvent.LeftButtonClick:
@@ -209,7 +209,7 @@ public class ModuleCustomizationScreen : PseudoScreenWithResult<ModuleTemplateBu
                             list.RemoveAt(idx);
                         }
                         else {
-                            list[idx] = (sel, list[idx].fixedCount);
+                            list[idx] = (new(sel, Quality.Normal), list[idx].fixedCount);
                         }
 
                         gui.Rebuild();
@@ -224,20 +224,20 @@ public class ModuleCustomizationScreen : PseudoScreenWithResult<ModuleTemplateBu
             if (beacon == null) {
                 int count = Math.Min(remainingModules, fixedCount > 0 ? fixedCount : int.MaxValue);
                 if (count > 0) {
-                    effects.AddModules(module.moduleSpecification, count);
+                    effects.AddModules(module, count);
                     remainingModules -= count;
                 }
             }
             else {
                 int beaconCount = (modules.beaconList.Sum(x => x.fixedCount) - 1) / beacon.moduleSlots + 1;
-                effects.AddModules(module.moduleSpecification, fixedCount * beacon.beaconEfficiency * beacon.GetProfile(beaconCount));
+                effects.AddModules(module, fixedCount * beacon.beaconEfficiency * beacon.GetProfile(beaconCount));
             }
         }
 
         grid.Next();
         if (gui.BuildButton(Icon.Plus, SchemeColor.Primary, SchemeColor.PrimaryAlt, size: 2.5f)) {
             gui.BuildObjectSelectDropDown(GetModules(beacon), sel => {
-                list.Add((sel, 0));
+                list.Add((new(sel, Quality.Normal), 0));
                 gui.Rebuild();
             }, new("Select module", DataUtils.FavoriteModule));
         }
