@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Text.Json;
 using Yafc.UI;
 [assembly: InternalsVisibleTo("Yafc.Parser")]
 
@@ -513,6 +514,84 @@ public sealed class Quality : FactorioObject {
             collector.Add(Database.allModules.Where(m => m.moduleSpecification.quality > 0).ToArray(), DependencyList.Flags.Source);
         }
     }
+}
+
+/// <summary>
+/// Represents a <see cref="FactorioObject"/> with an attached <see cref="Quality"/> modifier.
+/// </summary>
+/// <typeparam name="T">The concrete type of the quality-modified object.</typeparam>
+public interface IObjectWithQuality<out T> : IFactorioObjectWrapper where T : FactorioObject {
+    /// <summary>
+    /// Gets the <typeparamref name="T"/> object managed by this instance.
+    /// </summary>
+    new T target { get; }
+    /// <summary>
+    /// Gets the <see cref="Quality"/> of the object managed by this instance.
+    /// </summary>
+    Quality quality { get; }
+}
+
+public static class ObjectWithQualityExtensions {
+    // This method cannot be declared on the interface.
+    public static void Deconstruct<T>(this IObjectWithQuality<T> value, out T obj, out Quality quality) where T : FactorioObject {
+        obj = value.target;
+        quality = value.quality;
+    }
+}
+
+/// <summary>
+/// Represents a <see cref="FactorioObject"/> with an attached <see cref="Quality"/> modifier.
+/// </summary>
+/// <typeparam name="T">The concrete type of the quality-modified object.</typeparam>
+/// <param name="target">The object to be associated with a quality modifier. If this parameter might be <see langword="null"/>,
+/// use the implicit conversion from <see cref="ValueTuple{T1, T2}"/> instead.</param>
+/// <param name="quality">The quality for this object.</param>
+[Serializable]
+public sealed class ObjectWithQuality<T>(T target, Quality quality) : IObjectWithQuality<T>, ICustomJsonDeserializer<ObjectWithQuality<T>> where T : FactorioObject {
+    /// <inheritdoc/>
+    public T target { get; } = target ?? throw new ArgumentNullException(nameof(target));
+    /// <inheritdoc/>
+    public Quality quality { get; } = quality ?? throw new ArgumentNullException(nameof(quality));
+
+    /// <summary>
+    /// Creates a new <see cref="ObjectWithQuality{T}"/> with the current <see cref="target"/> and the specified <see cref="Quality"/>.
+    /// </summary>
+    public ObjectWithQuality<T> With(Quality quality) => new(target, quality);
+
+    string IFactorioObjectWrapper.text => ((IFactorioObjectWrapper)target).text;
+    FactorioObject IFactorioObjectWrapper.target => target;
+    float IFactorioObjectWrapper.amount => ((IFactorioObjectWrapper)target).amount;
+
+    public static implicit operator ObjectWithQuality<T>?((T? entity, Quality quality) value) => value.entity == null ? null : new(value.entity, value.quality);
+
+    /// <inheritdoc/>
+    public static bool Deserialize(ref Utf8JsonReader reader, DeserializationContext context, out ObjectWithQuality<T>? result) {
+        if (reader.TokenType == JsonTokenType.String) {
+            // Read the old `"entity": "Entity.solar-panel"` format.
+            if (Database.objectsByTypeName[reader.GetString()!] is not T obj) {
+                context.Error($"Could not convert '{reader.GetString()}' to a {typeof(T).Name}.", ErrorSeverity.MinorDataLoss);
+                result = null;
+                return true;
+            }
+            result = new(obj, Quality.Normal);
+            return true;
+        }
+        // This is probably the current `"entity": { "target": "Entity.solar-panel", "quality": "Quality.rare" }` format.
+        result = default;
+        return false;
+    }
+
+    // Ensure ObjectWithQuality<X> equals ObjectWithQuality<Y> as long as the properties are equal, regardless of X and Y.
+    public override bool Equals(object? obj) => Equals(obj as IObjectWithQuality<FactorioObject>);
+    public bool Equals(IObjectWithQuality<FactorioObject>? other) => other is not null && target == other.target && quality == other.quality;
+    public override int GetHashCode() => HashCode.Combine(target, quality);
+
+    public static bool operator ==(ObjectWithQuality<T>? left, ObjectWithQuality<T>? right) => left == (IObjectWithQuality<T>?)right;
+    public static bool operator ==(ObjectWithQuality<T>? left, IObjectWithQuality<T>? right) => (left is null && right is null) || (left is not null && left.Equals(right));
+    public static bool operator ==(IObjectWithQuality<T>? left, ObjectWithQuality<T>? right) => right == left;
+    public static bool operator !=(ObjectWithQuality<T>? left, ObjectWithQuality<T>? right) => !(left == right);
+    public static bool operator !=(ObjectWithQuality<T>? left, IObjectWithQuality<T>? right) => !(left == right);
+    public static bool operator !=(IObjectWithQuality<T>? left, ObjectWithQuality<T>? right) => !(left == right);
 }
 
 public class Effect {
