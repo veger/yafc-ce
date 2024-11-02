@@ -324,6 +324,7 @@ public static class ImGuiUtils {
 
     public struct InlineGridBuilder : IDisposable {
         private ImGui.Context savedContext;
+        private readonly RectAllocator savedAllocator;
         private readonly ImGui gui;
         private readonly int elementsPerRow;
         private readonly float elementWidth;
@@ -332,6 +333,7 @@ public static class ImGuiUtils {
 
         internal InlineGridBuilder(ImGui gui, float elementWidth, float spacing, int elementsPerRow) {
             savedContext = default;
+            savedAllocator = gui.allocator;
             this.gui = gui;
             this.spacing = spacing;
             gui.allocator = RectAllocator.LeftAlign;
@@ -360,7 +362,10 @@ public static class ImGuiUtils {
             savedContext.SetManualRect(new Rect((elementWidth + spacing) * currentRowIndex, 0f, elementWidth, 0f), RectAllocator.Stretch);
         }
 
-        public readonly void Dispose() => savedContext.Dispose();
+        public readonly void Dispose() {
+            savedContext.Dispose();
+            gui.allocator = savedAllocator;
+        }
     }
 
     public static InlineGridBuilder EnterInlineGrid(this ImGui gui, float elementWidth, float spacing = 0f, int maxElemCount = 0) => new InlineGridBuilder(
