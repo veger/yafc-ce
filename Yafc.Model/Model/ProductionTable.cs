@@ -105,7 +105,7 @@ public class ProductionTable : ProjectPageContents, IComparer<ProductionTableFlo
                 goto match;
             }
 
-            if (recipe.recipe.Match(query) || recipe.fuel.Match(query) || recipe.entity.Match(query)) {
+            if (recipe.recipe.Match(query) || recipe.fuel.Match(query) || (recipe.entity?.target).Match(query)) {
                 goto match;
             }
 
@@ -154,12 +154,12 @@ match:
         EntityCrafter? selectedFuelCrafter = GetSelectedFuelCrafter(recipe, selectedFuel);
         EntityCrafter? spentFuelRecipeCrafter = GetSpentFuelCrafter(recipe, spentFuel);
 
-        recipeRow.entity = selectedFuelCrafter ?? spentFuelRecipeCrafter ?? recipe.crafters.AutoSelect(DataUtils.FavoriteCrafter);
+        recipeRow.entity = (selectedFuelCrafter ?? spentFuelRecipeCrafter ?? recipe.crafters.AutoSelect(DataUtils.FavoriteCrafter), Quality.Normal);
 
         if (recipeRow.entity != null) {
             recipeRow.fuel = GetSelectedFuel(selectedFuel, recipeRow)
                 ?? GetFuelForSpentFuel(spentFuel, recipeRow)
-                ?? recipeRow.entity.energy?.fuels.AutoSelect(DataUtils.FavoriteFuel);
+                ?? recipeRow.entity.target.energy?.fuels.AutoSelect(DataUtils.FavoriteFuel);
         }
 
         foreach (Ingredient ingredient in recipeRow.recipe.ingredients) {
@@ -189,13 +189,13 @@ match:
             return null;
         }
 
-        return recipeRow.entity?.energy.fuels.Where(e => spentFuel.miscSources.Contains(e))
+        return recipeRow.entity?.target.energy.fuels.Where(e => spentFuel.miscSources.Contains(e))
             .AutoSelect(DataUtils.FavoriteFuel);
     }
 
     private static Goods? GetSelectedFuel(Goods? selectedFuel, [NotNull] RecipeRow recipeRow) =>
         // Skipping AutoSelect since there will only be one result at most.
-        recipeRow.entity?.energy?.fuels.FirstOrDefault(e => e == selectedFuel);
+        recipeRow.entity?.target.energy?.fuels.FirstOrDefault(e => e == selectedFuel);
 
     /// <summary>
     /// Get all <see cref="RecipeRow"/>s contained in this <see cref="ProductionTable"/>, in a depth-first ordering. (The same as in the UI when all nested tables are expanded.)

@@ -478,7 +478,7 @@ public class EntityCrafter : EntityWithModules {
         get => _craftingSpeed * (1 + (factorioType == "lab" ? Project.current.settings.researchSpeedBonus : 0));
         internal set => _craftingSpeed = value;
     }
-    public EffectReceiver? effectReceiver { get; internal set; } = null!;
+    public EffectReceiver effectReceiver { get; internal set; } = null!;
 }
 
 public sealed class Quality : FactorioObject {

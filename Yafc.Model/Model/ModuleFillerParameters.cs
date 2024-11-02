@@ -93,7 +93,7 @@ public class ModuleFillerParameters : ModelObject<ModelObject> {
 
         Action? result = null;
         foreach (RecipeRow recipe in table.GetAllRecipes()) {
-            if (crafter == null || crafter == recipe.entity) {
+            if (crafter == null || crafter == recipe.entity?.target) {
                 result += recipe.ModuleFillerParametersChanging();
             }
         }

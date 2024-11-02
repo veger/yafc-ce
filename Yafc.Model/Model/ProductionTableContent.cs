@@ -94,7 +94,7 @@ public class ModuleTemplate : ModelObject<ModelObject> {
         int totalModules = 0;
 
         foreach (var module in list) {
-            bool isCompatibleWithModule = row.recipe.CanAcceptModule(module.module) && row.entity.CanAcceptModule(module.module.moduleSpecification);
+            bool isCompatibleWithModule = row.recipe.CanAcceptModule(module.module) && row.entity.target.CanAcceptModule(module.module.moduleSpecification);
 
             if (module.fixedCount == 0) {
                 hasFloodfillModules = true;
@@ -109,7 +109,7 @@ public class ModuleTemplate : ModelObject<ModelObject> {
             }
         }
 
-        return (!hasFloodfillModules || hasCompatibleFloodfill) && row.entity.moduleSlots >= totalModules;
+        return (!hasFloodfillModules || hasCompatibleFloodfill) && row.entity.target.moduleSlots >= totalModules;
     }
 
     internal void GetModulesInfo(RecipeRow row, EntityCrafter entity, ref ModuleEffects effects, ref UsedModule used, ModuleFillerParameters? filler) {
@@ -238,7 +238,7 @@ public interface IGroupedElement<TGroup> {
 }
 
 public class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<ProductionTable> {
-    private EntityCrafter? _entity;
+    private ObjectWithQuality<EntityCrafter>? _entity;
     private Goods? _fuel;
     private float _fixedBuildings;
     private Goods? _fixedProduct;
@@ -246,7 +246,7 @@ public class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Productio
 
     public RecipeOrTechnology recipe { get; }
     // Variable parameters
-    public EntityCrafter? entity {
+    public ObjectWithQuality<EntityCrafter>? entity {
         get => _entity;
         set {
             if (_entity == value) {
@@ -260,7 +260,11 @@ public class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Productio
                 return;
             }
 
-            if (fixedBuildings == 0 || (fixedFuel && !(value?.energy.fuels ?? []).Contains(_fuel))) {
+            // By default show the total item consumption and production signals for unloading crafters (miners, recyclers, etc) when they output multiple products.
+            // Don't turn the setting on when just changing the quality, though.
+            showTotalIO |= (value?.target != _entity?.target) && value?.target.hasVectorToPlaceResult == true && recipe.products.Length > 1;
+
+            if (fixedBuildings == 0 || (fixedFuel && !(value?.target.energy.fuels ?? []).Contains(_fuel))) {
                 // We're either changing both the entity and the fuel (changing between electric, fluid-burning, item-burning, heat-powered, and steam-powered crafter categories),
                 // or fixedBuilding is zero.
                 // Don't try to preserve fuel consumption in these cases.
@@ -272,9 +276,6 @@ public class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Productio
                     _entity = value;
                 }
             }
-
-            // By default show the total item consumption and production signals for unloading crafters (miners, recyclers, etc) when they output multiple products.
-            showTotalIO |= value?.hasVectorToPlaceResult == true && recipe.products.Length > 1;
         }
     }
     public Goods? fuel {
@@ -642,7 +643,7 @@ public class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Productio
                 }
             }
 
-            if (oldFuel != null && (row._entity?.energy.fuels ?? []).Contains(oldFuel)) {
+            if (oldFuel != null && (row._entity?.target.energy.fuels ?? []).Contains(oldFuel)) {
                 row.fuel = oldFuel; // step 4
             }
         }

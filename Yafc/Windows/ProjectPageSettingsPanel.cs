@@ -153,7 +153,7 @@ public class ProjectPageSettingsPanel : PseudoScreen {
 
     private class ExportRecipe {
         public string Recipe { get; }
-        public string Building { get; }
+        public ObjectWithQuality? Building { get; }
         public float BuildingCount { get; }
         public IEnumerable<string> Modules { get; }
         public string? Beacon { get; }
@@ -165,7 +165,7 @@ public class ProjectPageSettingsPanel : PseudoScreen {
 
         public ExportRecipe(RecipeRow row) {
             Recipe = row.recipe.name;
-            Building = row.entity?.name ?? "<No building selected>";
+            Building = row.entity;
             BuildingCount = row.buildingCount;
             Fuel = new ExportMaterial(row.fuel?.name ?? "<No fuel selected>", row.FuelInformation.Amount);
             Inputs = row.Ingredients.Select(i => new ExportMaterial(i.Goods?.name ?? "Recipe disabled", i.Amount));
@@ -274,5 +274,9 @@ public class ProjectPageSettingsPanel : PseudoScreen {
         if (collector.severity > ErrorSeverity.None) {
             ErrorListPanel.Show(collector);
         }
+    }
+
+    private record struct ObjectWithQuality(string Name, string Quality) {
+        public static implicit operator ObjectWithQuality?(ObjectWithQuality<EntityCrafter>? value) => value == null ? default(ObjectWithQuality?) : new ObjectWithQuality(value.target.name, value.quality.name);
     }
 }

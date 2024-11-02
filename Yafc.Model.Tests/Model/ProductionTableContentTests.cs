@@ -28,7 +28,7 @@ public class ProductionTableContentTests {
         // assert will ensure the currently fixed value has not changed by more than 0.01%.
         static void testCombinations(RecipeRow row, ProductionTable table, Action assert) {
             foreach (EntityCrafter crafter in Database.allCrafters) {
-                row.entity = crafter;
+                row.entity = (crafter, Quality.Normal);
 
                 foreach (Goods fuel in crafter.energy.fuels) {
                     row.fuel = fuel;
@@ -70,7 +70,7 @@ public class ProductionTableContentTests {
         // Call assert for each combination. assert will ensure the currently fixed value has not changed by more than 0.01%.
         void testCombinations(RecipeRow row, ProductionTable table, Action assert) {
             foreach (EntityCrafter crafter in Database.allCrafters) {
-                row.entity = crafter;
+                row.entity = (crafter, Quality.Normal);
 
                 foreach (Goods fuel in crafter.energy.fuels) {
                     row.fuel = fuel;
@@ -140,7 +140,7 @@ public class ProductionTableContentTests {
 
         // The complicated tests for when the fixed value is expected to reset when fixed fuels are involved.
         Action testFuel(RecipeRow row, ProductionTable table) => () => {
-            if (row.entity.energy.fuels.Contains(oldFuel)) {
+            if (row.entity.target.energy.fuels.Contains(oldFuel)) {
                 Assert.Equal(fuelAmount, row.FuelInformation.Amount, fuelAmount * .0001);
                 assertCalls++;
             }

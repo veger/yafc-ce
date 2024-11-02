@@ -53,7 +53,7 @@ public class ShoppingListScreen : PseudoScreen {
         Dictionary<FactorioObject, int> counts = [];
         foreach (RecipeRow recipe in recipes) {
             if (recipe.entity != null) {
-                FactorioObject shopItem = recipe.entity.itemsToPlace?.FirstOrDefault() ?? (FactorioObject)recipe.entity;
+                FactorioObject shopItem = recipe.entity.target.itemsToPlace?.FirstOrDefault() ?? (FactorioObject)recipe.entity.target;
                 _ = counts.TryGetValue(shopItem, out int prev);
                 int builtCount = recipe.builtBuildings ?? (assumeAdequate ? MathUtils.Ceil(recipe.buildingCount) : 0);
                 int displayCount = displayState switch {

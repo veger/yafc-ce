@@ -90,7 +90,7 @@ public class ModuleCustomizationScreen : PseudoScreenWithResult<ModuleTemplateBu
         }
         else {
             ModuleEffects effects = new ModuleEffects();
-            if (recipe == null || recipe.entity?.moduleSlots > 0) {
+            if (recipe == null || recipe.entity?.target.moduleSlots > 0) {
                 gui.BuildText("Internal modules:", Font.subheader);
                 gui.BuildText("Leave zero amount to fill the remaining slots");
                 DrawRecipeModules(gui, null, ref effects);
@@ -108,7 +108,7 @@ public class ModuleCustomizationScreen : PseudoScreenWithResult<ModuleTemplateBu
                 }
 
                 var defaultFiller = recipe?.GetModuleFiller();
-                if (defaultFiller?.GetBeaconsForCrafter(recipe?.entity) is BeaconConfiguration { beacon: not null, beaconModule: not null } beaconsToUse) {
+                if (defaultFiller?.GetBeaconsForCrafter(recipe?.entity?.target) is BeaconConfiguration { beacon: not null, beaconModule: not null } beaconsToUse) {
                     effects.AddModules(beaconsToUse.beaconModule.moduleSpecification, beaconsToUse.beacon.beaconEfficiency * beaconsToUse.beacon.GetProfile(beaconsToUse.beaconCount) * beaconsToUse.beacon.moduleSlots * beaconsToUse.beaconCount);
                 }
             }
@@ -123,7 +123,7 @@ public class ModuleCustomizationScreen : PseudoScreenWithResult<ModuleTemplateBu
             }
 
             if (recipe != null) {
-                float craftingSpeed = (recipe.entity?.craftingSpeed ?? 1f) * effects.speedMod;
+                float craftingSpeed = (recipe.entity?.target.craftingSpeed ?? 1f) * effects.speedMod;
                 gui.BuildText("Current effects:", Font.subheader);
                 gui.BuildText("Productivity bonus: " + DataUtils.FormatAmount(effects.productivity, UnitOfMeasure.Percent));
                 gui.BuildText("Speed bonus: " + DataUtils.FormatAmount(effects.speedMod - 1, UnitOfMeasure.Percent) + " (Crafting speed: " +
@@ -132,7 +132,7 @@ public class ModuleCustomizationScreen : PseudoScreenWithResult<ModuleTemplateBu
                 string energyUsageLine = "Energy usage: " + DataUtils.FormatAmount(effects.energyUsageMod, UnitOfMeasure.Percent);
 
                 if (recipe.entity != null) {
-                    float power = effects.energyUsageMod * recipe.entity.power / recipe.entity.energy.effectivity;
+                    float power = effects.energyUsageMod * recipe.entity.target.power / recipe.entity.target.energy.effectivity;
                     if (!recipe.recipe.flags.HasFlagAny(RecipeFlags.UsesFluidTemperature | RecipeFlags.ScaleProductionWithPower) && recipe.entity != null) {
                         energyUsageLine += " (" + DataUtils.FormatAmount(power, UnitOfMeasure.Megawatt) + " per building)";
                     }
@@ -185,7 +185,7 @@ public class ModuleCustomizationScreen : PseudoScreenWithResult<ModuleTemplateBu
 
     private ICollection<Module> GetModules(EntityBeacon? beacon) {
         var modules = (beacon == null && recipe is { recipe: Recipe rec }) ? Database.allModules.Where(rec.CanAcceptModule).ToArray() : Database.allModules;
-        var filter = ((EntityWithModules?)beacon) ?? recipe?.entity;
+        EntityWithModules? filter = (EntityWithModules?)beacon ?? recipe?.entity?.target;
         if (filter == null) {
             return modules;
         }
@@ -194,7 +194,7 @@ public class ModuleCustomizationScreen : PseudoScreenWithResult<ModuleTemplateBu
     }
 
     private void DrawRecipeModules(ImGui gui, EntityBeacon? beacon, ref ModuleEffects effects) {
-        int remainingModules = recipe?.entity?.moduleSlots ?? 0;
+        int remainingModules = recipe?.entity?.target.moduleSlots ?? 0;
         using var grid = gui.EnterInlineGrid(3f, 1f);
         var list = beacon != null ? modules!.beaconList : modules!.list;// null-forgiving: Both calls are from places where we know modules is not null
         for (int i = 0; i < list.Count; i++) {
