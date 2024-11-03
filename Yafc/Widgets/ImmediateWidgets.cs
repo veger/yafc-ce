@@ -174,28 +174,24 @@ public static class ImmediateWidgets {
         return gui.BuildFactorioObjectButtonBackground(gui.lastRect, obj);
     }
 
-    public static bool BuildInlineObjectList<T>(this ImGui gui, IEnumerable<T> list, IComparer<T> ordering, string header, [NotNullWhen(true)] out T? selected, int maxCount = 10,
-        Predicate<T>? checkMark = null, Func<T, string>? extra = null) where T : FactorioObject {
-        gui.BuildText(header, Font.productionTableHeader);
-        IEnumerable<T> sortedList;
+    internal static bool BuildInlineObjectList<T>(this ImGui gui, IEnumerable<T> list, [NotNullWhen(true)] out T? selected, ObjectSelectOptions<T> options) where T : FactorioObject {
+        gui.BuildText(options.Header, Font.productionTableHeader);
+        IEnumerable<T> sortedList = list;
 
-        if (ordering == DataUtils.AlreadySortedRecipe) {
-            sortedList = list.AsEnumerable();
-        }
-        else {
-            sortedList = list.OrderBy(e => e, ordering ?? DataUtils.DefaultOrdering);
+        if (options.Ordering != DataUtils.AlreadySortedRecipe) {
+            sortedList = list.Order(options.Ordering);
         }
 
         selected = null;
 
-        foreach (var elem in sortedList.Take(maxCount)) {
-            string? extraText = extra?.Invoke(elem);
+        foreach (T elem in sortedList.Take(options.MaxCount)) {
+            string? extraText = options.ExtraText?.Invoke(elem);
 
             if (gui.BuildFactorioObjectButtonWithText(elem, extraText) == Click.Left) {
                 selected = elem;
             }
 
-            if (checkMark != null && gui.isBuilding && checkMark(elem)) {
+            if (gui.isBuilding && (options.Checkmark?.Invoke(elem) ?? false)) {
                 gui.DrawIcon(Rect.Square(gui.lastRect.Right - 1f, gui.lastRect.Center.Y, 1.5f), Icon.Check, SchemeColor.Green);
             }
         }
@@ -203,33 +199,29 @@ public static class ImmediateWidgets {
         return selected != null;
     }
 
-    public static void BuildInlineObjectListAndButton<T>(this ImGui gui, ICollection<T> list, IComparer<T> ordering, Action<T> selectItem, string header,
-        int count = 6, bool multiple = false, Predicate<T>? checkMark = null, Func<T, string>? extra = null) where T : FactorioObject {
-
+    public static void BuildInlineObjectListAndButton<T>(this ImGui gui, ICollection<T> list, Action<T> selectItem, ObjectSelectOptions<T> options) where T : FactorioObject {
         using (gui.EnterGroup(default, RectAllocator.Stretch)) {
-            if (gui.BuildInlineObjectList(list, ordering, header, out var selected, count, checkMark, extra)) {
+            if (gui.BuildInlineObjectList(list, out var selected, options)) {
                 selectItem(selected);
-                if (!multiple || !InputSystem.Instance.control) {
+                if (!options.Multiple || !InputSystem.Instance.control) {
                     _ = gui.CloseDropdown();
                 }
             }
 
-            if (list.Count > count && gui.BuildButton("See full list") && gui.CloseDropdown()) {
-                if (multiple) {
-                    SelectMultiObjectPanel.Select(list, header, selectItem, ordering, checkMark);
+            if (list.Count > options.MaxCount && gui.BuildButton("See full list") && gui.CloseDropdown()) {
+                if (options.Multiple) {
+                    SelectMultiObjectPanel.Select(list, options.Header, selectItem, options.Ordering, options.Checkmark);
                 }
                 else {
-                    SelectSingleObjectPanel.Select(list, header, selectItem, ordering);
+                    SelectSingleObjectPanel.Select(list, options.Header, selectItem, options.Ordering);
                 }
             }
         }
     }
 
-    public static void BuildInlineObjectListAndButtonWithNone<T>(this ImGui gui, ICollection<T> list, IComparer<T> ordering, Action<T?> selectItem, string header,
-        int count = 6, Func<T, string>? extra = null) where T : FactorioObject {
-
+    public static void BuildInlineObjectListAndButtonWithNone<T>(this ImGui gui, ICollection<T> list, Action<T?> selectItem, ObjectSelectOptions<T> options) where T : FactorioObject {
         using (gui.EnterGroup(default, RectAllocator.Stretch)) {
-            if (gui.BuildInlineObjectList(list, ordering, header, out var selected, count, null, extra)) {
+            if (gui.BuildInlineObjectList(list, out var selected, options)) {
                 selectItem(selected);
                 _ = gui.CloseDropdown();
             }
@@ -237,8 +229,8 @@ public static class ImmediateWidgets {
                 selectItem(null);
             }
 
-            if (list.Count > count && gui.BuildButton("See full list") && gui.CloseDropdown()) {
-                SelectSingleObjectPanel.SelectWithNone(list, header, selectItem, ordering);
+            if (list.Count > options.MaxCount && gui.BuildButton("See full list") && gui.CloseDropdown()) {
+                SelectSingleObjectPanel.SelectWithNone(list, options.Header, selectItem, options.Ordering);
             }
         }
     }
@@ -293,20 +285,15 @@ public static class ImmediateWidgets {
     }
 
     /// <summary>Shows a dropdown containing the (partial) <paramref name="list"/> of elements, with an action for when an element is selected.</summary>
-    /// <param name="count">Maximum number of elements in the list. If there are more another popup can be opened by the user to show the full list.</param>
     /// <param name="width">Width of the popup. Make sure the header text fits!</param>
-    public static void BuildObjectSelectDropDown<T>(this ImGui gui, ICollection<T> list, IComparer<T> ordering, Action<T> selectItem, string header, float width = 20f,
-        int count = 6, bool multiple = false, Predicate<T>? checkMark = null, Func<T, string>? extra = null) where T : FactorioObject
+    public static void BuildObjectSelectDropDown<T>(this ImGui gui, ICollection<T> list, Action<T> selectItem, ObjectSelectOptions<T> options, float width = 20f) where T : FactorioObject
+        => gui.ShowDropDown(imGui => imGui.BuildInlineObjectListAndButton(list, selectItem, options), width);
 
-        => gui.ShowDropDown(imGui => imGui.BuildInlineObjectListAndButton(list, ordering, selectItem, header, count, multiple, checkMark, extra), width);
-
-    /// <summary>Shows a dropdown containing the (partial) <paramref name="list"/> of elements, with an action for when an element is selected. An additional "Clear" or "None" option will also be displayed.</summary>
-    /// <param name="count">Maximum number of elements in the list. If there are more another popup can be opened by the user to show the full list.</param>
+    /// <summary>Shows a dropdown containing the (partial) <paramref name="list"/> of elements, with an action for when an element is selected.
+    /// An additional "Clear" or "None" option will also be displayed.</summary>
     /// <param name="width">Width of the popup. Make sure the header text fits!</param>
-    public static void BuildObjectSelectDropDownWithNone<T>(this ImGui gui, ICollection<T> list, IComparer<T> ordering, Action<T?> selectItem, string header, float width = 20f,
-        int count = 6, Func<T, string>? extra = null) where T : FactorioObject
-
-        => gui.ShowDropDown(imGui => imGui.BuildInlineObjectListAndButtonWithNone(list, ordering, selectItem, header, count, extra), width);
+    public static void BuildObjectSelectDropDownWithNone<T>(this ImGui gui, ICollection<T> list, Action<T?> selectItem, ObjectSelectOptions<T> options, float width = 20f) where T : FactorioObject
+        => gui.ShowDropDown(imGui => imGui.BuildInlineObjectListAndButtonWithNone(list, selectItem, options), width);
 
     /// <summary>Draws a button displaying the icon belonging to a <see cref="FactorioObject"/>, or an empty box as a placeholder if no object is available.
     /// Also draws an editable textbox under the button, containing the supplied <paramref name="amount"/>.</summary>
@@ -352,4 +339,22 @@ public record DisplayAmount(float Value, UnitOfMeasure Unit = UnitOfMeasure.None
     /// </summary>
     /// <param name="value">The initial value to be displayed to the user.</param>
     public static implicit operator DisplayAmount(float value) => new(value);
+}
+
+/// <summary>
+/// Encapsulates the options for drawing an object selection list. 
+/// </summary>
+/// <typeparam name="T">The type of <see cref="FactorioObject"/> to be selected</typeparam>
+/// <param name="Header">The header text to display</param>
+/// <param name="Ordering">The sort order to use when displaying the items. Defaults to <see cref="DataUtils.DefaultOrdering"/>.</param>
+/// <param name="MaxCount">Maximum number of elements in the list. If there are more, another popup can be opened by the user to show the full list.</param>
+/// <param name="Multiple">If <see langword="true"/>, this popup (and its subsequent <see cref="SelectObjectPanel{T}"/>, if applicable) allow selection of multiple items.
+/// Not used (treated as <see langword="false"/>) when selecting with a 'None' item.</param>
+/// <param name="Checkmark">If not <see langword="null"/>, this will be called to determine if a checkmark should be drawn on the item.
+/// Not used when selecting with a 'None' item or when <paramref name="Multiple"/> is <see langword="false"/>.</param>
+/// <param name="ExtraText">If not <see langword="null"/>, this will be called to get extra text to be displayed right-justified after the item's name.</param>
+public sealed record ObjectSelectOptions<T>(string Header, [AllowNull] IComparer<T> Ordering = null, int MaxCount = 6, bool Multiple = false, Predicate<T>? Checkmark = null,
+    Func<T, string>? ExtraText = null) where T : FactorioObject {
+
+    public IComparer<T> Ordering { get; init; } = Ordering ?? DataUtils.DefaultOrdering;
 }

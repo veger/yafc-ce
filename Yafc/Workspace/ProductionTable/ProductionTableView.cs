@@ -381,16 +381,15 @@ goodsHaveNoProduction:;
         }
 
         private static void ShowAccumulatorDropdown(ImGui gui, RecipeRow recipe, Entity currentAccumulator) => gui.ShowDropDown(imGui
-            => imGui.BuildInlineObjectListAndButton<EntityAccumulator>(Database.allAccumulators, DataUtils.DefaultOrdering,
-                newAccumulator => recipe.RecordUndo().ChangeVariant(currentAccumulator, newAccumulator), "Select accumulator",
-                extra: x => DataUtils.FormatAmount(x.accumulatorCapacity, UnitOfMeasure.Megajoule)));
+            => imGui.BuildInlineObjectListAndButton(Database.allAccumulators, newAccumulator => recipe.RecordUndo().ChangeVariant(currentAccumulator, newAccumulator),
+                new("Select accumulator", ExtraText: x => DataUtils.FormatAmount(x.accumulatorCapacity, UnitOfMeasure.Megajoule))));
 
         private static void ShowEntityDropdown(ImGui imgui, RecipeRow recipe) => imgui.ShowDropDown(gui => {
             EntityCrafter? favoriteCrafter = recipe.recipe.crafters.AutoSelect(DataUtils.FavoriteCrafter);
             if (favoriteCrafter == recipe.entity?.target) { favoriteCrafter = null; }
             bool willResetFixed = favoriteCrafter == null, willResetBuilt = willResetFixed && recipe.fixedBuildings == 0;
 
-            gui.BuildInlineObjectListAndButton(recipe.recipe.crafters, DataUtils.FavoriteCrafter, sel => {
+            gui.BuildInlineObjectListAndButton(recipe.recipe.crafters, sel => {
                 if (recipe.entity?.target == sel) {
                     return;
                 }
@@ -400,7 +399,7 @@ goodsHaveNoProduction:;
                 if (!sel.energy.fuels.Contains(recipe.fuel)) {
                     recipe.fuel = recipe.entity.target.energy.fuels.AutoSelect(DataUtils.FavoriteFuel);
                 }
-            }, "Select crafting entity", extra: x => DataUtils.FormatAmount(x.craftingSpeed, UnitOfMeasure.Percent));
+            }, new("Select crafting entity", DataUtils.FavoriteCrafter, ExtraText: x => DataUtils.FormatAmount(x.craftingSpeed, UnitOfMeasure.Percent)));
 
             gui.AllocateSpacing(0.5f);
 
@@ -669,7 +668,7 @@ goodsHaveNoProduction:;
                 }
 
                 if (recipe.entity?.target.moduleSlots > 0) {
-                    dropGui.BuildInlineObjectListAndButton(modules, DataUtils.FavoriteModule, recipe.SetFixedModule, "Select fixed module");
+                    dropGui.BuildInlineObjectListAndButton(modules, recipe.SetFixedModule, new("Select fixed module", DataUtils.FavoriteModule));
                 }
 
                 if (moduleTemplateList.data.Count > 0) {
@@ -830,8 +829,8 @@ goodsHaveNoProduction:;
                          : g => DataUtils.FormatAmount(g.fuelValue, UnitOfMeasure.Megajoule);
 
                     BuildFavorites(gui, recipe.fuel, "Add fuel to favorites");
-                    gui.BuildInlineObjectListAndButton(energy.fuels, DataUtils.FavoriteFuel,
-                        fuel => recipe.RecordUndo().fuel = fuel, "Select fuel", extra: fuelDisplayFunc);
+                    gui.BuildInlineObjectListAndButton(energy.fuels, fuel => recipe.RecordUndo().fuel = fuel,
+                        new("Select fuel", DataUtils.FavoriteFuel, ExtraText: fuelDisplayFunc));
                 }
             }
 
@@ -875,7 +874,7 @@ goodsHaveNoProduction:;
                 }
             }
             else if (type <= ProductDropdownType.Ingredient && allProduction.Length > 0) {
-                gui.BuildInlineObjectListAndButton(allProduction, comparer, addRecipe, "Add production recipe", 6, true, recipeExists);
+                gui.BuildInlineObjectListAndButton(allProduction, addRecipe, new("Add production recipe", comparer, 6, true, recipeExists));
                 numberOfShownRecipes += allProduction.Length;
 
                 if (link == null) {
@@ -895,36 +894,36 @@ goodsHaveNoProduction:;
             if (type <= ProductDropdownType.Ingredient && spentFuelRecipes.Length > 0) {
                 gui.BuildInlineObjectListAndButton(
                     spentFuelRecipes,
-                    DataUtils.AlreadySortedRecipe,
                     (x) => { spentFuel = goods; addRecipe(x); },
-                    "Produce it as a spent fuel",
+                    new("Produce it as a spent fuel",
+                    DataUtils.AlreadySortedRecipe,
                     3,
                     true,
-                    recipeExists);
+                    recipeExists));
                 numberOfShownRecipes += spentFuelRecipes.Length;
             }
 
             if (type >= ProductDropdownType.Product && goods.usages.Length > 0) {
                 gui.BuildInlineObjectListAndButton(
                     goods.usages,
-                    DataUtils.DefaultRecipeOrdering,
                     addRecipe,
-                    "Add consumption recipe",
+                    new("Add consumption recipe",
+                    DataUtils.DefaultRecipeOrdering,
                     6,
                     true,
-                    recipeExists);
+                    recipeExists));
                 numberOfShownRecipes += goods.usages.Length;
             }
 
             if (type >= ProductDropdownType.Product && fuelUseList.Length > 0) {
                 gui.BuildInlineObjectListAndButton(
                     fuelUseList,
-                    DataUtils.AlreadySortedRecipe,
                     (x) => { selectedFuel = goods; addRecipe(x); },
-                    "Add fuel usage",
+                    new("Add fuel usage",
+                    DataUtils.AlreadySortedRecipe,
                     6,
                     true,
-                    recipeExists);
+                    recipeExists));
                 numberOfShownRecipes += fuelUseList.Length;
             }
 
@@ -936,7 +935,7 @@ goodsHaveNoProduction:;
             }
 
             if (type >= ProductDropdownType.Product && allProduction.Length > 0) {
-                gui.BuildInlineObjectListAndButton(allProduction, comparer, addRecipe, "Add production recipe", 1, true, recipeExists);
+                gui.BuildInlineObjectListAndButton(allProduction, addRecipe, new("Add production recipe", comparer, 1, true, recipeExists));
                 numberOfShownRecipes += allProduction.Length;
             }
 

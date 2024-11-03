@@ -170,16 +170,16 @@ public class ModuleCustomizationScreen : PseudoScreenWithResult<ModuleTemplateBu
 
     private void SelectBeacon(ImGui gui) {
         if (modules!.beacon is null) { // null-forgiving: Both calls are from places where we know modules is not null
-            gui.BuildObjectSelectDropDown<EntityBeacon>(Database.allBeacons, DataUtils.DefaultOrdering, sel => {
+            gui.BuildObjectSelectDropDown(Database.allBeacons, sel => {
                 modules.beacon = sel;
                 contents.Rebuild();
-            }, "Select beacon");
+            }, new("Select beacon"));
         }
         else {
-            gui.BuildObjectSelectDropDownWithNone<EntityBeacon>(Database.allBeacons, DataUtils.DefaultOrdering, sel => {
+            gui.BuildObjectSelectDropDownWithNone(Database.allBeacons, sel => {
                 modules.beacon = sel;
                 contents.Rebuild();
-            }, "Select beacon");
+            }, new("Select beacon"));
         }
     }
 
@@ -236,10 +236,10 @@ public class ModuleCustomizationScreen : PseudoScreenWithResult<ModuleTemplateBu
 
         grid.Next();
         if (gui.BuildButton(Icon.Plus, SchemeColor.Primary, SchemeColor.PrimaryAlt, size: 2.5f)) {
-            gui.BuildObjectSelectDropDown(GetModules(beacon), DataUtils.FavoriteModule, sel => {
+            gui.BuildObjectSelectDropDown(GetModules(beacon), sel => {
                 list.Add((sel, 0));
                 gui.Rebuild();
-            }, "Select module");
+            }, new("Select module", DataUtils.FavoriteModule));
         }
     }
 
