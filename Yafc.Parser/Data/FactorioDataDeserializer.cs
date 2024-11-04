@@ -117,7 +117,11 @@ internal partial class FactorioDataDeserializer {
         raw = (LuaTable?)data["raw"] ?? throw new ArgumentException("Could not load data.raw from data argument", nameof(data));
         LuaTable itemPrototypes = (LuaTable?)prototypes?["item"] ?? throw new ArgumentException("Could not load prototypes.item from data argument", nameof(prototypes));
 
-        foreach (object prototypeName in itemPrototypes.ObjectElements.Keys) {
+        foreach (object prototypeName in Item.ExplicitPrototypeLoadOrder.Intersect(itemPrototypes.ObjectElements.Keys)) {
+            DeserializePrototypes(raw, (string)prototypeName, DeserializeItem, progress, errorCollector);
+        }
+
+        foreach (object prototypeName in itemPrototypes.ObjectElements.Keys.Except(Item.ExplicitPrototypeLoadOrder)) {
             DeserializePrototypes(raw, (string)prototypeName, DeserializeItem, progress, errorCollector);
         }
 
