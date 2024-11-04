@@ -53,7 +53,7 @@ public static class ImGuiUtils {
             case ImGuiAction.MouseDown:
                 return gui.actionParameter == button && gui.ConsumeMouseDown(rect, button) ? ButtonEvent.MouseDown : ButtonEvent.None;
             case ImGuiAction.MouseUp:
-                return gui.actionParameter == button && gui.ConsumeMouseUp(rect, true, button) ? ButtonEvent.Click : ButtonEvent.None;
+                return gui.actionParameter == button && gui.ConsumeMouseUp(rect) ? ButtonEvent.Click : ButtonEvent.None;
             case ImGuiAction.Build:
                 var color = gui.IsMouseOver(rect) ? (down != SchemeColor.None && gui.IsMouseDown(rect, button)) ? down : over : normal;
                 gui.DrawRectangle(rect, color);

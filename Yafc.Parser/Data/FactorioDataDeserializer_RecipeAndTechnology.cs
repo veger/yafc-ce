@@ -107,7 +107,7 @@ internal partial class FactorioDataDeserializer {
 
     private void LoadTechnologyData(Technology technology, LuaTable table, ErrorCollector errorCollector) {
         if (table.Get("unit", out LuaTable? unit)) {
-            technology.ingredients = LoadResearchIngredientList(unit, technology.typeDotName, errorCollector);
+            technology.ingredients = LoadResearchIngredientList(unit);
             recipeCategories.Add(SpecialNames.Labs, technology);
         }
         else if (table.Get("research_trigger", out LuaTable? researchTriggerTable)) {
@@ -256,7 +256,7 @@ internal partial class FactorioDataDeserializer {
         }).Where(x => x is not null).ToArray() ?? [];
     }
 
-    private Ingredient[] LoadResearchIngredientList(LuaTable table, string typeDotName, ErrorCollector errorCollector) {
+    private Ingredient[] LoadResearchIngredientList(LuaTable table) {
         _ = table.Get("ingredients", out LuaTable? ingredientsList);
         return ingredientsList?.ArrayElements<LuaTable>().Select(table => {
             if (table.Get(1, out string? name) && table.Get(2, out int amount)) {
