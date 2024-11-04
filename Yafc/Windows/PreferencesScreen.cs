@@ -30,25 +30,25 @@ public class PreferencesScreen : PseudoScreen {
     }
 
     private static void DrawProgression(ImGui gui) {
-        var prefs = Project.current.preferences;
+        ProjectPreferences preferences = Project.current.preferences;
 
-        ChooseObject(gui, "Default belt:", Database.allBelts, prefs.defaultBelt, s => {
-            prefs.RecordUndo().defaultBelt = s;
+        ChooseObject(gui, "Default belt:", Database.allBelts, preferences.defaultBelt, s => {
+            preferences.RecordUndo().defaultBelt = s;
             gui.Rebuild();
         });
-        ChooseObject(gui, "Default inserter:", Database.allInserters, prefs.defaultInserter, s => {
-            prefs.RecordUndo().defaultInserter = s;
+        ChooseObject(gui, "Default inserter:", Database.allInserters, preferences.defaultInserter, s => {
+            preferences.RecordUndo().defaultInserter = s;
             gui.Rebuild();
         });
 
         using (gui.EnterRow()) {
             gui.BuildText("Inserter capacity:", topOffset: 0.5f);
-            if (gui.BuildIntegerInput(prefs.inserterCapacity, out int newCapacity)) {
-                prefs.RecordUndo().inserterCapacity = newCapacity;
+            if (gui.BuildIntegerInput(preferences.inserterCapacity, out int newCapacity)) {
+                preferences.RecordUndo().inserterCapacity = newCapacity;
             }
         }
-        ChooseObjectWithNone(gui, "Target technology for cost analysis: ", Database.technologies.all, prefs.targetTechnology, x => {
-            prefs.RecordUndo().targetTechnology = x;
+        ChooseObjectWithNone(gui, "Target technology for cost analysis: ", Database.technologies.all, preferences.targetTechnology, x => {
+            preferences.RecordUndo().targetTechnology = x;
             gui.Rebuild();
         }, width: 25f);
 
@@ -91,36 +91,36 @@ public class PreferencesScreen : PseudoScreen {
     }
 
     private static void DrawGeneral(ImGui gui) {
-        var prefs = Project.current.preferences;
-        var settings = Project.current.settings;
+        ProjectPreferences preferences = Project.current.preferences;
+        ProjectSettings settings = Project.current.settings;
 
         gui.BuildText("Unit of time:", Font.subheader);
         using (gui.EnterRow()) {
-            if (gui.BuildRadioButton("Second", prefs.time == 1)) {
-                prefs.RecordUndo(true).time = 1;
+            if (gui.BuildRadioButton("Second", preferences.time == 1)) {
+                preferences.RecordUndo(true).time = 1;
             }
 
-            if (gui.BuildRadioButton("Minute", prefs.time == 60)) {
-                prefs.RecordUndo(true).time = 60;
+            if (gui.BuildRadioButton("Minute", preferences.time == 60)) {
+                preferences.RecordUndo(true).time = 60;
             }
 
-            if (gui.BuildRadioButton("Hour", prefs.time == 3600)) {
-                prefs.RecordUndo(true).time = 3600;
+            if (gui.BuildRadioButton("Hour", preferences.time == 3600)) {
+                preferences.RecordUndo(true).time = 3600;
             }
 
-            if (gui.BuildRadioButton("Custom", prefs.time is not 1 and not 60 and not 3600)) {
-                prefs.RecordUndo(true).time = 0;
+            if (gui.BuildRadioButton("Custom", preferences.time is not 1 and not 60 and not 3600)) {
+                preferences.RecordUndo(true).time = 0;
             }
 
-            if (gui.BuildIntegerInput(prefs.time, out int newTime)) {
-                prefs.RecordUndo(true).time = newTime;
+            if (gui.BuildIntegerInput(preferences.time, out int newTime)) {
+                preferences.RecordUndo(true).time = newTime;
             }
         }
         gui.AllocateSpacing(1f);
         gui.BuildText("Item production/consumption:", Font.subheader);
-        BuildUnitPerTime(gui, false, prefs);
+        BuildUnitPerTime(gui, false, preferences);
         gui.BuildText("Fluid production/consumption:", Font.subheader);
-        BuildUnitPerTime(gui, true, prefs);
+        BuildUnitPerTime(gui, true, preferences);
 
         using (gui.EnterRowWithHelpIcon("0% for off, 100% for old default")) {
             gui.BuildText("Pollution cost modifier", topOffset: 0.5f);
@@ -135,9 +135,9 @@ public class PreferencesScreen : PseudoScreen {
 
         using (gui.EnterRowWithHelpIcon(iconScaleMessage)) {
             gui.BuildText("Display scale for linkable icons", topOffset: 0.5f);
-            DisplayAmount amount = new(prefs.iconScale, UnitOfMeasure.Percent);
+            DisplayAmount amount = new(preferences.iconScale, UnitOfMeasure.Percent);
             if (gui.BuildFloatInput(amount, TextBoxDisplayStyle.DefaultTextInput) && amount.Value > 0 && amount.Value <= 1) {
-                prefs.RecordUndo().iconScale = amount.Value;
+                preferences.RecordUndo().iconScale = amount.Value;
                 gui.Rebuild();
             }
         }

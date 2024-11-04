@@ -237,13 +237,13 @@ internal partial class FactorioDataDeserializer {
         _ = SDL.SDL_SetSurfaceBlendMode(targetSurface, SDL.SDL_BlendMode.SDL_BLENDMODE_BLEND);
 
         foreach (var icon in spec) {
-            var modpath = FactorioDataSource.ResolveModPath("", icon.path);
+            var modPath = FactorioDataSource.ResolveModPath("", icon.path);
 
-            if (!cache.TryGetValue(modpath, out nint image)) {
-                byte[] imageSource = FactorioDataSource.ReadModFile(modpath.mod, modpath.path);
+            if (!cache.TryGetValue(modPath, out nint image)) {
+                byte[] imageSource = FactorioDataSource.ReadModFile(modPath.mod, modPath.path);
 
                 if (imageSource == null) {
-                    image = cache[modpath] = IntPtr.Zero;
+                    image = cache[modPath] = IntPtr.Zero;
                 }
                 else {
                     fixed (byte* data = imageSource) {
@@ -265,7 +265,7 @@ internal partial class FactorioDataDeserializer {
                                 image = SoftwareScaler.DownscaleIcon(image, iconSize);
                             }
                         }
-                        cache[modpath] = image;
+                        cache[modPath] = image;
                     }
                 }
             }

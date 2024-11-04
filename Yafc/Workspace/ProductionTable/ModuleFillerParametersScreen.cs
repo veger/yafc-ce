@@ -122,7 +122,7 @@ public class ModuleFillerParametersScreen : PseudoScreen {
 
         gui.AllocateSpacing();
         gui.BuildText("Filler module:", Font.subheader);
-        gui.BuildText("Use this module when aufofill doesn't add anything (for example when productivity modules doesn't fit)", TextBlockDisplayStyle.WrappedText);
+        gui.BuildText("Use this module when autofill doesn't add anything (for example when productivity modules doesn't fit)", TextBlockDisplayStyle.WrappedText);
         if (gui.BuildFactorioObjectButtonWithText(modules.fillerModule) == Click.Left) {
             SelectSingleObjectPanel.SelectQualityWithNone(Database.allModules, "Select filler module", select => modules.fillerModule = select, modules.fillerModule?.quality);
         }

@@ -79,7 +79,7 @@ public class ProductionTableContentTests {
                         for (int beaconCount = 0; beaconCount < 13; beaconCount++) {
                             for (float payback = 1; payback < float.MaxValue; payback *= 16) {
                                 if (table.GetType().GetProperty("modules").SetMethod is MethodInfo method) {
-                                    // Pre-emptive code for if ProductionTable.modules is made writable.
+                                    // Preemptive code for if ProductionTable.modules is made writable.
                                     // The ProductionTable.modules setter must notify all relevant recipes if it is added.
                                     _ = method.Invoke(table, [new ModuleFillerParameters(table) {
                                         beacon = new(beacon, Quality.Normal),
@@ -103,7 +103,7 @@ public class ProductionTableContentTests {
     }
 
     /// <summary>
-    /// Run the preceeding tests for fixed buildings, fuel, ingredients, and products.
+    /// Run the preceding tests for fixed buildings, fuel, ingredients, and products.
     /// </summary>
     /// <param name="row">The row containing the recipe to test with fixed amounts.</param>
     /// <param name="testCombinations">An action that loops through the various combinations of entities, beacons, etc, and calls its third parameter for each combination.</param>

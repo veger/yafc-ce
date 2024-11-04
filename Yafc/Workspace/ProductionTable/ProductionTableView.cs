@@ -35,7 +35,7 @@ public class ProductionTableView : ProjectPageView<ProductionTable> {
             gui.spacing = 0f;
 
             if (row.subgroup != null) {
-                if (gui.BuildButton(row.subgroup.expanded ? Icon.ShevronDown : Icon.ShevronRight)) {
+                if (gui.BuildButton(row.subgroup.expanded ? Icon.ChevronDown : Icon.ChevronRight)) {
                     if (InputSystem.Instance.control) {
                         toggleAll(!row.subgroup.expanded, view.model);
                     }
@@ -1311,9 +1311,9 @@ goodsHaveNoProduction:;
     private void BuildShoppingList(RecipeRow? recipeRoot) => ShoppingListScreen.Show(recipeRoot == null ? GetRecipesRecursive() : GetRecipesRecursive(recipeRoot));
 
     private static void BuildBeltInserterInfo(ImGui gui, float amount, float buildingCount) {
-        var prefs = Project.current.preferences;
-        var belt = prefs.defaultBelt;
-        var inserter = prefs.defaultInserter;
+        var preferences = Project.current.preferences;
+        var belt = preferences.defaultBelt;
+        var inserter = preferences.defaultInserter;
 
         if (belt == null || inserter == null) {
             return;
@@ -1333,7 +1333,7 @@ goodsHaveNoProduction:;
         }
 
         using (gui.EnterRow()) {
-            int capacity = prefs.inserterCapacity;
+            int capacity = preferences.inserterCapacity;
             float inserterBase = inserter.inserterSwingTime * amount / capacity;
             click |= gui.BuildFactorioObjectButton(inserter, ButtonDisplayStyle.Default) == Click.Left;
             string text = DataUtils.FormatAmount(inserterBase, UnitOfMeasure.None);

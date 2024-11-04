@@ -276,7 +276,7 @@ public static partial class Ui {
         }
     }
 
-    public static void CloseWidowOfType(Type type) {
+    public static void CloseWindowOfType(Type type) {
         foreach (var (_, v) in windows) {
             if (v.GetType() == type) {
                 v.Close();

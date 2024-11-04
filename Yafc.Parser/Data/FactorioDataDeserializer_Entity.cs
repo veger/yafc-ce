@@ -547,13 +547,13 @@ internal partial class FactorioDataDeserializer {
 
         switch (type) {
             case "variable":
-                string varname = expression.Get("variable_name", "");
+                string varName = expression.Get("variable_name", "");
 
-                if (varname is "x" or "y" or "distance") {
+                if (varName is "x" or "y" or "distance") {
                     return EstimationDistanceFromCenter;
                 }
 
-                if (((LuaTable?)raw["noise-expression"]).Get(varname, out LuaTable? noiseExpr)) {
+                if (((LuaTable?)raw["noise-expression"]).Get(varName, out LuaTable? noiseExpr)) {
                     return EstimateArgument(noiseExpr, "expression");
                 }
 

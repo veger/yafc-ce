@@ -207,20 +207,20 @@ public partial class ImGui {
 
     public readonly struct Context : IDisposable {
         private readonly ImGui gui;
-        private readonly CopyableState state;
+        private readonly CopyableState oldState;
         private readonly Padding padding;
 
         public Context(ImGui gui, Padding padding) {
             this.gui = gui;
             this.padding = padding;
-            ref var cstate = ref gui.state;
-            state = cstate;
-            cstate.contextRect = default;
-            cstate.hasContent = false;
-            cstate.left += padding.left;
-            cstate.right -= padding.right;
-            cstate.top += padding.top;
-            cstate.bottom -= padding.bottom;
+            ref CopyableState state = ref gui.state;
+            oldState = state;
+            state.contextRect = default;
+            state.hasContent = false;
+            state.left += padding.left;
+            state.right -= padding.right;
+            state.top += padding.top;
+            state.bottom -= padding.bottom;
         }
 
         public void Dispose() {
@@ -230,7 +230,7 @@ public partial class ImGui {
 
             var rect = gui.state.contextRect;
             bool hasContent = gui.state.hasContent;
-            gui.state = state;
+            gui.state = oldState;
             rect.X -= padding.left;
             rect.Y -= padding.top;
             rect.Width += padding.left + padding.right;
@@ -246,7 +246,7 @@ public partial class ImGui {
         }
 
         public void SetManualRect(Rect rect, RectAllocator allocator = RectAllocator.FixedRect) {
-            rect += new Vector2(state.left, state.top);
+            rect += new Vector2(oldState.left, oldState.top);
             gui.spacing = 0f;
             SetManualRectRaw(rect, allocator);
         }
@@ -254,12 +254,12 @@ public partial class ImGui {
         public void SetWidth(float width) => gui.state.right = gui.state.left + width;
 
         public void SetManualRectRaw(Rect rect, RectAllocator allocator = RectAllocator.FixedRect) {
-            ref var cstate = ref gui.state;
-            cstate.left = rect.X + padding.left;
-            cstate.right = cstate.left + rect.Width;
-            cstate.top = rect.Y + padding.top;
-            cstate.bottom = cstate.top + rect.Height;
-            cstate.allocator = allocator;
+            ref CopyableState state = ref gui.state;
+            state.left = rect.X + padding.left;
+            state.right = state.left + rect.Width;
+            state.top = rect.Y + padding.top;
+            state.bottom = state.top + rect.Height;
+            state.allocator = allocator;
         }
     }
 

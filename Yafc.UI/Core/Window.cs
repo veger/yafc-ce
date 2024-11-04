@@ -47,7 +47,7 @@ public abstract class Window : IDisposable {
 
         _ = SDL.SDL_SetRenderDrawBlendMode(surface.renderer, SDL.SDL_BlendMode.SDL_BLENDMODE_BLEND);
         id = SDL.SDL_GetWindowID(window);
-        Ui.CloseWidowOfType(GetType());
+        Ui.CloseWindowOfType(GetType());
         Ui.RegisterWindow(id, this);
         visible = true;
     }

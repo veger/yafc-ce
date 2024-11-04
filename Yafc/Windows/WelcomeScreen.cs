@@ -245,7 +245,7 @@ public class WelcomeScreen : WindowUtility, IProgress<(string, string)>, IKeyboa
         if (!Program.hasOverriddenFont) {
             gui.AllocateSpacing(0.5f);
 
-            string nonEuLanguageMessage = "To select languages with non-european glyphs you need to override used font first. Download or locate a font that has your language glyphs.";
+            string nonEuLanguageMessage = "To select languages with non-European glyphs you need to override used font first. Download or locate a font that has your language glyphs.";
             gui.BuildText(nonEuLanguageMessage, TextBlockDisplayStyle.WrappedText);
             gui.AllocateSpacing(0.5f);
         }

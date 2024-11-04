@@ -30,21 +30,21 @@ public class DependencyExplorer : PseudoScreen {
 
     public DependencyExplorer(FactorioObject current) : base(60f) {
         dependencies = new ScrollArea(30f, DrawDependencies);
-        dependents = new ScrollArea(30f, DrawDependants);
+        dependents = new ScrollArea(30f, DrawDependents);
         this.current = current;
     }
 
     public static void Show(FactorioObject target) => _ = MainScreen.Instance.ShowPseudoScreen(new DependencyExplorer(target));
 
     private void DrawFactorioObject(ImGui gui, FactorioId id) {
-        var fobj = Database.objects[id];
+        FactorioObject obj = Database.objects[id];
         using (gui.EnterGroup(listPad, RectAllocator.LeftRow)) {
-            gui.BuildFactorioObjectIcon(fobj);
-            string text = fobj.locName + " (" + fobj.type + ")";
-            gui.RemainingRow(0.5f).BuildText(text, TextBlockDisplayStyle.WrappedText with { Color = fobj.IsAccessible() ? SchemeColor.BackgroundText : SchemeColor.BackgroundTextFaint });
+            gui.BuildFactorioObjectIcon(obj);
+            string text = obj.locName + " (" + obj.type + ")";
+            gui.RemainingRow(0.5f).BuildText(text, TextBlockDisplayStyle.WrappedText with { Color = obj.IsAccessible() ? SchemeColor.BackgroundText : SchemeColor.BackgroundTextFaint });
         }
-        if (gui.BuildFactorioObjectButtonBackground(gui.lastRect, fobj, tooltipOptions: new() { ShowTypeInHeader = true }) == Click.Left) {
-            Change(fobj);
+        if (gui.BuildFactorioObjectButtonBackground(gui.lastRect, obj, tooltipOptions: new() { ShowTypeInHeader = true }) == Click.Left) {
+            Change(obj);
         }
     }
 
@@ -86,7 +86,7 @@ public class DependencyExplorer : PseudoScreen {
         }
     }
 
-    private void DrawDependants(ImGui gui) {
+    private void DrawDependents(ImGui gui) {
         gui.spacing = 0f;
         foreach (var reverseDependency in Dependencies.reverseDependencies[current].OrderByDescending(x => CostAnalysis.Instance.flow[x])) {
             DrawFactorioObject(gui, reverseDependency);
