@@ -27,9 +27,9 @@ internal static class FactorioPropertyTree {
     }
 
     public static object? ReadModSettings(BinaryReader reader, LuaContext context) {
-        var major = reader.ReadInt16();
-        var minor = reader.ReadInt16();
-        var patch = reader.ReadInt32();
+        short major = reader.ReadInt16();
+        short minor = reader.ReadInt16();
+        int patch = reader.ReadInt32();
         _ = reader.ReadBoolean();
 
         if (major != 2) {

@@ -345,7 +345,7 @@ internal partial class FactorioDataDeserializer {
                             entityPlacers.Add(GetObject<Entity>(name), item);
                         }
                     }
-                    if (plantResults.TryGetValue(item, out var plantResultName)) {
+                    if (plantResults.TryGetValue(item, out string? plantResultName)) {
                         item.plantResult = GetObject<Entity>(plantResultName);
                         entityPlacers.Add(GetObject<Entity>(plantResultName), item);
                     }

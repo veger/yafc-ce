@@ -18,49 +18,49 @@ public class LocalisedStringParserTests {
 
     [Fact]
     public void Parse_JustString() {
-        var localised = LocalisedStringParser.Parse("test");
+        string localised = LocalisedStringParser.Parse("test");
         Assert.Equal("test", localised);
     }
 
     [Fact]
     public void Parse_RemoveRichText() {
-        var localised = LocalisedStringParser.Parse("[color=#ffffff]iron[/color] [color=1,0,0]plate[.color] [item=iron-plate]");
+        string localised = LocalisedStringParser.Parse("[color=#ffffff]iron[/color] [color=1,0,0]plate[.color] [item=iron-plate]");
         Assert.Equal("iron plate ", localised);
     }
 
     [Fact]
     public void Parse_NoParameters() {
-        var localised = LocalisedStringParser.Parse("not-enough-ingredients", []);
+        string localised = LocalisedStringParser.Parse("not-enough-ingredients", []);
         Assert.Equal("Not enough ingredients.", localised);
     }
 
     [Fact]
     public void Parse_Parameter() {
-        var localised = LocalisedStringParser.Parse("si-unit-kilometer-per-hour", ["100"]);
+        string localised = LocalisedStringParser.Parse("si-unit-kilometer-per-hour", ["100"]);
         Assert.Equal("100 km/h", localised);
     }
 
     [Fact]
     public void Parse_LinkItem() {
-        var localised = LocalisedStringParser.Parse("item-name.big-iron-plate", []);
+        string localised = LocalisedStringParser.Parse("item-name.big-iron-plate", []);
         Assert.Equal("Big Iron plate", localised);
     }
 
     [Fact]
     public void Parse_PluralSpecial() {
-        var localised = LocalisedStringParser.Parse("hours", ["1"]);
+        string localised = LocalisedStringParser.Parse("hours", ["1"]);
         Assert.Equal("1 hour", localised);
     }
 
     [Fact]
     public void Parse_PluralRest() {
-        var localised = LocalisedStringParser.Parse("hours", ["2"]);
+        string localised = LocalisedStringParser.Parse("hours", ["2"]);
         Assert.Equal("2 hours", localised);
     }
 
     [Fact]
     public void Parse_PluralWithParameter() {
-        var localised = LocalisedStringParser.Parse("connecting", ["1"]);
+        string localised = LocalisedStringParser.Parse("connecting", ["1"]);
         Assert.Equal("1 player is connecting", localised);
     }
 
@@ -69,7 +69,7 @@ public class LocalisedStringParserTests {
     [InlineData(22, "option 2")]
     [InlineData(5, "option 3")]
     public void Parse_PluralEndsIn(int n, string expectedResult) {
-        var localised = LocalisedStringParser.Parse("ends.in", [n.ToString()]);
+        string localised = LocalisedStringParser.Parse("ends.in", [n.ToString()]);
         Assert.Equal(expectedResult, localised);
     }
 }

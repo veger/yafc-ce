@@ -218,7 +218,7 @@ public class ObjectTooltip : Tooltip {
                         gui.BuildText(DataUtils.FormatAmount(crafter.CraftingSpeed(quality), UnitOfMeasure.Percent, "Crafting speed: "));
                     }
 
-                    var productivity = crafter.effectReceiver?.baseEffect.productivity ?? 0;
+                    float productivity = crafter.effectReceiver?.baseEffect.productivity ?? 0;
                     if (productivity != 0f) {
                         gui.BuildText(DataUtils.FormatAmount(productivity, UnitOfMeasure.Percent, "Crafting productivity: "));
                     }
@@ -446,7 +446,7 @@ public class ObjectTooltip : Tooltip {
             BuildIconRow(gui, recipe.crafters, 2);
         }
 
-        var allowedModules = Database.allModules.Where(recipe.CanAcceptModule).ToList();
+        List<Module> allowedModules = Database.allModules.Where(recipe.CanAcceptModule).ToList();
 
         if (allowedModules.Count > 0) {
             BuildSubHeader(gui, "Allowed modules");
