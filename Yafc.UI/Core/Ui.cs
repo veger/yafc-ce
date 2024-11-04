@@ -38,13 +38,13 @@ public static partial class Ui {
         _ = SDL_image.IMG_Init(SDL_image.IMG_InitFlags.IMG_INIT_PNG | SDL_image.IMG_InitFlags.IMG_INIT_JPG);
         asyncCallbacksAdded = SDL.SDL_RegisterEvents(1);
         SynchronizationContext.SetSynchronizationContext(new UiSynchronizationContext());
-        mainThreadId = Thread.CurrentThread.ManagedThreadId;
+        mainThreadId = Environment.CurrentManagedThreadId;
     }
 
     public static long time { get; private set; }
     private static readonly Stopwatch timeWatch = Stopwatch.StartNew();
 
-    public static bool IsMainThread() => Thread.CurrentThread.ManagedThreadId == mainThreadId;
+    public static bool IsMainThread() => Environment.CurrentManagedThreadId == mainThreadId;
 
     private static int mainThreadId;
     private static uint asyncCallbacksAdded;
