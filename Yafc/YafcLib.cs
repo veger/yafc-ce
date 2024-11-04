@@ -12,8 +12,8 @@ using Yafc.UI;
 namespace Yafc;
 
 public static class YafcLib {
-    public static Version version { get; private set; }
-    public static string initialWorkDir;
+    internal static Version version { get; private set; }
+    internal static string initialWorkDir { get; private set; }
 
     static YafcLib() {
         initialWorkDir = Directory.GetCurrentDirectory();

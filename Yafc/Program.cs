@@ -6,7 +6,7 @@ using Yafc.UI;
 namespace Yafc;
 
 public static class Program {
-    public static bool hasOverriddenFont;
+    internal static bool hasOverriddenFont { get; private set; }
 
     private static void Main(string[] args) {
         YafcLib.RegisterDefaultAnalysis();
