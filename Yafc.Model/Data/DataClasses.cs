@@ -414,8 +414,8 @@ public class Entity : FactorioObject {
     public float basePower { get; internal set; }
     public float Power(Quality quality)
         => factorioType is "boiler" or "reactor" or "generator" or "burner-generator" ? quality.ApplyStandardBonus(basePower)
+        : factorioType is "beacon" ? basePower * quality.BeaconConsumptionFactor
         : basePower;
-
     public EntityEnergy energy { get; internal set; } = null!; // TODO: Prove that this is always properly initialized. (Do we need an EntityWithEnergy type?)
     public Item[] itemsToPlace { get; internal set; } = null!; // null-forgiving: This is initialized in CalculateMaps.
     public int size { get; internal set; }
@@ -531,6 +531,11 @@ public sealed class Quality : FactorioObject {
     internal float ApplyModuleBonus(float baseValue) => MathF.Floor(ApplyStandardBonus(baseValue) * 100) / 100;
     // applies the .2 per level beacon transmission bonus
     internal float ApplyBeaconBonus(float baseValue) => baseValue + level * .2f;
+
+    public float StandardBonus => .3f * level;
+    public float AccumulatorCapacityBonus => level;
+    public float BeaconTransmissionBonus => .2f * level;
+    public float BeaconConsumptionFactor { get; internal set; }
 }
 
 /// <summary>
