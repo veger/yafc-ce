@@ -103,30 +103,30 @@ internal static class LocalisedStringParser {
                 case "CONTROL_MODIFIER":
                 case "ALT_CONTROL_LEFT_CLICK":
                 case "ALT_CONTROL_RIGHT_CLICK":
-                    ReadExtraParameter();
+                    readExtraParameter();
                     result.Append(format[start..(end + 2)]);
                     break;
                 case "ALT_CONTROL":
-                    ReadExtraParameter();
-                    ReadExtraParameter();
+                    readExtraParameter();
+                    readExtraParameter();
                     result.Append(format[start..(end + 2)]);
                     break;
                 case "ENTITY":
                 case "ITEM":
                 case "TILE":
                 case "FLUID":
-                    string name = ReadExtraParameter();
+                    string name = readExtraParameter();
                     result.Append(ParseKey($"{type.ToLower()}-name.{name}", []));
                     break;
                 case "plural_for_parameter":
-                    string deciderIdx = ReadExtraParameter();
+                    string deciderIdx = readExtraParameter();
                     string? decider = parameters[int.Parse(deciderIdx) - 1];
                     if (decider == null) {
                         return null;
                     }
 
-                    var plurals = ReadPluralOptions();
-                    string? selected = SelectPluralOption(decider, plurals);
+                    var plurals = readPluralOptions();
+                    string? selected = selectPluralOption(decider, plurals);
                     if (selected == null) {
                         return null;
                     }
@@ -150,21 +150,21 @@ internal static class LocalisedStringParser {
             }
             cursor = end + 2;
 
-            string ReadExtraParameter() {
+            string readExtraParameter() {
                 int end2 = format.IndexOf("__", end + 2);
                 string result = format[(end + 2)..end2];
                 end = end2;
                 return result;
             }
 
-            (Func<string, bool> Pattern, string Result)[] ReadPluralOptions() {
+            (Func<string, bool> Pattern, string Result)[] readPluralOptions() {
                 int end2 = format.IndexOf("}__", end + 3);
                 string[] options = format[(end + 3)..end2].Split('|');
                 end = end2 + 1;
-                return options.Select(ReadPluralOption).ToArray();
+                return options.Select(readPluralOption).ToArray();
             }
 
-            (Func<string, bool> Pattern, string Result) ReadPluralOption(string option) {
+            (Func<string, bool> Pattern, string Result) readPluralOption(string option) {
                 string[] sides = option.Split('=');
                 if (sides.Length != 2) {
                     throw new FormatException($"Invalid plural format: {option}");
@@ -173,10 +173,10 @@ internal static class LocalisedStringParser {
                 string pattern = sides[0];
                 string result = sides[1];
                 string[] alternatives = pattern.Split(',');
-                return (x => alternatives.Any(a => Match(a, x)), result);
+                return (x => alternatives.Any(a => match(a, x)), result);
             }
 
-            string? SelectPluralOption(string decider, (Func<string, bool> Pattern, string Result)[] options) {
+            string? selectPluralOption(string decider, (Func<string, bool> Pattern, string Result)[] options) {
                 foreach (var option in options) {
                     if (option.Pattern(decider)) {
                         return option.Result;
@@ -186,7 +186,7 @@ internal static class LocalisedStringParser {
                 return null;
             }
 
-            static bool Match(string pattern, string text) {
+            static bool match(string pattern, string text) {
                 const string ends_in_prefix = "ends in ";
                 if (pattern == "rest") {
                     return true;
