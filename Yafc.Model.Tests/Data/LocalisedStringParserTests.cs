@@ -4,17 +4,15 @@ using Yafc.Parser;
 namespace Yafc.Model.Data.Tests;
 
 public class LocalisedStringParserTests {
-    public LocalisedStringParserTests() {
-        FactorioLocalization.Initialize(new System.Collections.Generic.Dictionary<string, string>() {
-            ["hours"] = "__1__ __plural_for_parameter__1__{1=hour|rest=hours}__",
-            ["si-unit-kilometer-per-hour"] = "__1__ km/h",
-            ["not-enough-ingredients"] = "Not enough ingredients.",
-            ["item-name.iron-plate"] = "Iron plate",
-            ["item-name.big-iron-plate"] = "Big __ITEM__iron-plate__",
-            ["connecting"] = "__plural_for_parameter__1__{1=__1__ player is|rest=__1__ players are}__ connecting",
-            ["ends.in"] = "__plural_for_parameter__1__{ends in 12=option 1|ends in 2=option 2|rest=option 3}__"
-        });
-    }
+    public LocalisedStringParserTests() => FactorioLocalization.Initialize(new System.Collections.Generic.Dictionary<string, string>() {
+        ["hours"] = "__1__ __plural_for_parameter__1__{1=hour|rest=hours}__",
+        ["si-unit-kilometer-per-hour"] = "__1__ km/h",
+        ["not-enough-ingredients"] = "Not enough ingredients.",
+        ["item-name.iron-plate"] = "Iron plate",
+        ["item-name.big-iron-plate"] = "Big __ITEM__iron-plate__",
+        ["connecting"] = "__plural_for_parameter__1__{1=__1__ player is|rest=__1__ players are}__ connecting",
+        ["ends.in"] = "__plural_for_parameter__1__{ends in 12=option 1|ends in 2=option 2|rest=option 3}__"
+    });
 
     [Fact]
     public void Parse_JustString() {

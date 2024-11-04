@@ -347,15 +347,13 @@ internal partial class FactorioDataDeserializer {
         return float.Parse(energy[..^1]) * 1e-6f;
     }
 
-    private static Effect ParseEffect(LuaTable table) {
-        return new Effect {
-            consumption = table.Get("consumption", 0f),
-            speed = table.Get("speed", 0f),
-            productivity = table.Get("productivity", 0f),
-            pollution = table.Get("pollution", 0f),
-            quality = table.Get("quality", 0f),
-        };
-    }
+    private static Effect ParseEffect(LuaTable table) => new Effect {
+        consumption = table.Get("consumption", 0f),
+        speed = table.Get("speed", 0f),
+        productivity = table.Get("productivity", 0f),
+        pollution = table.Get("pollution", 0f),
+        quality = table.Get("quality", 0f),
+    };
 
     private static EffectReceiver ParseEffectReceiver(LuaTable? table) {
         if (table == null) {

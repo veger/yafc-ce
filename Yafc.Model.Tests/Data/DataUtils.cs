@@ -4,9 +4,7 @@ using Xunit;
 namespace Yafc.Model.Data.Tests;
 
 public class DataUtilsTests {
-    public DataUtilsTests() {
-        Project.current = new();
-    }
+    public DataUtilsTests() => Project.current = new();
 
     [Fact]
     public void TryParseAmount_IsInverseOfFormatValue() {
