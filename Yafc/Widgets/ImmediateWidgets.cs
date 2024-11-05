@@ -61,24 +61,24 @@ public enum Click {
 public static class ImmediateWidgets {
     /// <summary>Draws the icon belonging to a <see cref="FactorioObject"/>, or an empty box as a placeholder if no object is available.</summary>
     /// <param name="obj">Draw the icon for this object, or an empty box if this is <see langword="null"/>.</param>
-    public static void BuildFactorioObjectIcon(this ImGui gui, FactorioObject? obj, IconDisplayStyle? displayStyle = null) {
+    public static void BuildFactorioObjectIcon(this ImGui gui, IFactorioObjectWrapper? obj, IconDisplayStyle? displayStyle = null) {
         displayStyle ??= IconDisplayStyle.Default;
         if (obj == null) {
             gui.BuildIcon(Icon.Empty, displayStyle.Size, SchemeColor.BackgroundTextFaint);
             return;
         }
 
-        var color = obj.IsAccessible() ? SchemeColor.Source : SchemeColor.SourceFaint;
+        SchemeColor color = obj.target.IsAccessible() ? SchemeColor.Source : SchemeColor.SourceFaint;
         if (displayStyle.UseScaleSetting) {
             Rect rect = gui.AllocateRect(displayStyle.Size, displayStyle.Size, RectAlignment.Middle);
-            gui.DrawIcon(rect.Expand(displayStyle.Size * (Project.current.preferences.iconScale - 1) / 2), obj.icon, color);
+            gui.DrawIcon(rect.Expand(displayStyle.Size * (Project.current.preferences.iconScale - 1) / 2), obj.target.icon, color);
         }
         else {
-            gui.BuildIcon(obj.icon, displayStyle.Size, color);
+            gui.BuildIcon(obj.target.icon, displayStyle.Size, color);
         }
         if (gui.isBuilding && displayStyle.MilestoneDisplay != MilestoneDisplay.None) {
             bool contain = (displayStyle.MilestoneDisplay & MilestoneDisplay.Contained) != 0;
-            FactorioObject? milestone = Milestones.Instance.GetHighest(obj, displayStyle.MilestoneDisplay >= MilestoneDisplay.Always);
+            FactorioObject? milestone = Milestones.Instance.GetHighest(obj.target, displayStyle.MilestoneDisplay >= MilestoneDisplay.Always);
             if (milestone != null) {
                 Vector2 psize = new Vector2(displayStyle.Size / 2f);
                 var delta = contain ? psize : psize / 2f;
@@ -86,6 +86,15 @@ public static class ImmediateWidgets {
                 var icon = milestone == Database.voidEnergy ? DataUtils.HandIcon : milestone.icon;
                 gui.DrawIcon(milestoneIcon, icon, color);
             }
+        }
+
+        Quality? quality = (obj as IObjectWithQuality<FactorioObject>)?.quality;
+        if (gui.isBuilding && quality != null && quality != Quality.Normal) {
+            Vector2 psize = new Vector2(displayStyle.Size / 2.5f);
+            Vector2 delta = new(0, psize.Y);
+            Rect qualityRect = new Rect(gui.lastRect.BottomLeft - delta, psize);
+
+            gui.DrawIcon(qualityRect, quality.icon, SchemeColor.Source);
         }
     }
 
@@ -99,7 +108,7 @@ public static class ImmediateWidgets {
         return false;
     }
 
-    public static Click BuildFactorioObjectButtonBackground(this ImGui gui, Rect rect, FactorioObject? obj, SchemeColor bgColor = SchemeColor.None,
+    public static Click BuildFactorioObjectButtonBackground(this ImGui gui, Rect rect, IFactorioObjectWrapper? obj, SchemeColor bgColor = SchemeColor.None,
         ObjectTooltipOptions tooltipOptions = default) {
 
         SchemeColor overColor;
@@ -111,7 +120,7 @@ public static class ImmediateWidgets {
             overColor = bgColor + 1;
         }
 
-        if (MainScreen.Instance.IsSameObjectHovered(gui, obj)) {
+        if (MainScreen.Instance.IsSameObjectHovered(gui, obj?.target)) {
             bgColor = overColor;
         }
 
@@ -122,12 +131,12 @@ public static class ImmediateWidgets {
         }
         else if (evt == ButtonEvent.Click) {
             if (gui.actionParameter == SDL.SDL_BUTTON_MIDDLE && obj != null) {
-                if (obj.showInExplorers) {
-                    if (obj is Goods goods && obj.IsAccessible()) {
+                if (obj.target.showInExplorers) {
+                    if (obj.target is Goods goods && obj.target.IsAccessible()) {
                         NeverEnoughItemsPanel.Show(goods);
                     }
                     else {
-                        DependencyExplorer.Show(obj);
+                        DependencyExplorer.Show(obj.target);
                     }
                 }
             }
@@ -144,17 +153,17 @@ public static class ImmediateWidgets {
 
     /// <summary>Draws a button displaying the icon belonging to a <see cref="FactorioObject"/>, or an empty box as a placeholder if no object is available.</summary>
     /// <param name="obj">Draw the icon for this object, or an empty box if this is <see langword="null"/>.</param>
-    public static Click BuildFactorioObjectButton(this ImGui gui, FactorioObject? obj, ButtonDisplayStyle displayStyle, ObjectTooltipOptions tooltipOptions = default) {
+    public static Click BuildFactorioObjectButton(this ImGui gui, IFactorioObjectWrapper? obj, ButtonDisplayStyle displayStyle, ObjectTooltipOptions tooltipOptions = default) {
         gui.BuildFactorioObjectIcon(obj, displayStyle);
         return gui.BuildFactorioObjectButtonBackground(gui.lastRect, obj, displayStyle.BackgroundColor, tooltipOptions);
     }
 
-    public static Click BuildFactorioObjectButtonWithText(this ImGui gui, FactorioObject? obj, string? extraText = null, IconDisplayStyle? iconDisplayStyle = null) {
+    public static Click BuildFactorioObjectButtonWithText(this ImGui gui, IFactorioObjectWrapper? obj, string? extraText = null, IconDisplayStyle? iconDisplayStyle = null) {
         iconDisplayStyle ??= IconDisplayStyle.Default;
         using (gui.EnterRow()) {
             gui.BuildFactorioObjectIcon(obj, iconDisplayStyle);
             var color = gui.textColor;
-            if (obj != null && !obj.IsAccessible()) {
+            if (obj != null && !obj.target.IsAccessible()) {
                 color += 1;
             }
 
@@ -168,34 +177,30 @@ public static class ImmediateWidgets {
                 gui.BuildText(extraText, TextBlockDisplayStyle.Default(color));
             }
             _ = gui.RemainingRow();
-            gui.BuildText(obj == null ? "None" : obj.locName, TextBlockDisplayStyle.WrappedText with { Color = color });
+            gui.BuildText(obj == null ? "None" : obj.target.locName, TextBlockDisplayStyle.WrappedText with { Color = color });
         }
 
         return gui.BuildFactorioObjectButtonBackground(gui.lastRect, obj);
     }
 
-    public static bool BuildInlineObjectList<T>(this ImGui gui, IEnumerable<T> list, IComparer<T> ordering, string header, [NotNullWhen(true)] out T? selected, int maxCount = 10,
-        Predicate<T>? checkMark = null, Func<T, string>? extra = null) where T : FactorioObject {
-        gui.BuildText(header, Font.productionTableHeader);
-        IEnumerable<T> sortedList;
+    internal static bool BuildInlineObjectList<T>(this ImGui gui, IEnumerable<T> list, [NotNullWhen(true)] out T? selected, ObjectSelectOptions<T> options) where T : FactorioObject {
+        gui.BuildText(options.Header, Font.productionTableHeader);
+        IEnumerable<T> sortedList = list;
 
-        if (ordering == DataUtils.AlreadySortedRecipe) {
-            sortedList = list.AsEnumerable();
-        }
-        else {
-            sortedList = list.OrderBy(e => e, ordering ?? DataUtils.DefaultOrdering);
+        if (options.Ordering != DataUtils.AlreadySortedRecipe) {
+            sortedList = list.Order(options.Ordering);
         }
 
         selected = null;
 
-        foreach (var elem in sortedList.Take(maxCount)) {
-            string? extraText = extra?.Invoke(elem);
+        foreach (T elem in sortedList.Take(options.MaxCount)) {
+            string? extraText = options.ExtraText?.Invoke(elem);
 
             if (gui.BuildFactorioObjectButtonWithText(elem, extraText) == Click.Left) {
                 selected = elem;
             }
 
-            if (checkMark != null && gui.isBuilding && checkMark(elem)) {
+            if (gui.isBuilding && (options.Checkmark?.Invoke(elem) ?? false)) {
                 gui.DrawIcon(Rect.Square(gui.lastRect.Right - 1f, gui.lastRect.Center.Y, 1.5f), Icon.Check, SchemeColor.Green);
             }
         }
@@ -203,33 +208,29 @@ public static class ImmediateWidgets {
         return selected != null;
     }
 
-    public static void BuildInlineObjectListAndButton<T>(this ImGui gui, ICollection<T> list, IComparer<T> ordering, Action<T> selectItem, string header,
-        int count = 6, bool multiple = false, Predicate<T>? checkMark = null, Func<T, string>? extra = null) where T : FactorioObject {
-
+    public static void BuildInlineObjectListAndButton<T>(this ImGui gui, ICollection<T> list, Action<T> selectItem, ObjectSelectOptions<T> options) where T : FactorioObject {
         using (gui.EnterGroup(default, RectAllocator.Stretch)) {
-            if (gui.BuildInlineObjectList(list, ordering, header, out var selected, count, checkMark, extra)) {
+            if (gui.BuildInlineObjectList(list, out var selected, options)) {
                 selectItem(selected);
-                if (!multiple || !InputSystem.Instance.control) {
+                if (!options.Multiple || !InputSystem.Instance.control) {
                     _ = gui.CloseDropdown();
                 }
             }
 
-            if (list.Count > count && gui.BuildButton("See full list") && gui.CloseDropdown()) {
-                if (multiple) {
-                    SelectMultiObjectPanel.Select(list, header, selectItem, ordering, checkMark);
+            if (list.Count > options.MaxCount && gui.BuildButton("See full list") && gui.CloseDropdown()) {
+                if (options.Multiple) {
+                    SelectMultiObjectPanel.Select(list, options.Header, selectItem, options.Ordering, options.Checkmark);
                 }
                 else {
-                    SelectSingleObjectPanel.Select(list, header, selectItem, ordering);
+                    SelectSingleObjectPanel.Select(list, options.Header, selectItem, options.Ordering);
                 }
             }
         }
     }
 
-    public static void BuildInlineObjectListAndButtonWithNone<T>(this ImGui gui, ICollection<T> list, IComparer<T> ordering, Action<T?> selectItem, string header,
-        int count = 6, Func<T, string>? extra = null) where T : FactorioObject {
-
+    public static void BuildInlineObjectListAndButtonWithNone<T>(this ImGui gui, ICollection<T> list, Action<T?> selectItem, ObjectSelectOptions<T> options) where T : FactorioObject {
         using (gui.EnterGroup(default, RectAllocator.Stretch)) {
-            if (gui.BuildInlineObjectList(list, ordering, header, out var selected, count, null, extra)) {
+            if (gui.BuildInlineObjectList(list, out var selected, options)) {
                 selectItem(selected);
                 _ = gui.CloseDropdown();
             }
@@ -237,8 +238,8 @@ public static class ImmediateWidgets {
                 selectItem(null);
             }
 
-            if (list.Count > count && gui.BuildButton("See full list") && gui.CloseDropdown()) {
-                SelectSingleObjectPanel.SelectWithNone(list, header, selectItem, ordering);
+            if (list.Count > options.MaxCount && gui.BuildButton("See full list") && gui.CloseDropdown()) {
+                SelectSingleObjectPanel.SelectWithNone(list, options.Header, selectItem, options.Ordering);
             }
         }
     }
@@ -248,7 +249,8 @@ public static class ImmediateWidgets {
     /// <param name="goods">Draw the icon for this object, or an empty box if this is <see langword="null"/>.</param>
     /// <param name="amount">Display this value and unit.</param>
     /// <param name="useScale">If <see langword="true"/>, this icon will be displayed at <see cref="ProjectPreferences.iconScale"/>, instead of at 100% scale.</param>
-    public static Click BuildFactorioObjectWithAmount(this ImGui gui, FactorioObject? goods, DisplayAmount amount, ButtonDisplayStyle buttonDisplayStyle, TextBlockDisplayStyle? textDisplayStyle = null, ObjectTooltipOptions tooltipOptions = default) {
+    public static Click BuildFactorioObjectWithAmount(this ImGui gui, IFactorioObjectWrapper? goods, DisplayAmount amount, ButtonDisplayStyle buttonDisplayStyle,
+        TextBlockDisplayStyle? textDisplayStyle = null, ObjectTooltipOptions tooltipOptions = default) {
         textDisplayStyle ??= new(Alignment: RectAlignment.Middle);
         using (gui.EnterFixedPositioning(buttonDisplayStyle.Size, buttonDisplayStyle.Size, default)) {
             gui.allocator = RectAllocator.Stretch;
@@ -266,7 +268,7 @@ public static class ImmediateWidgets {
         }
     }
 
-    public static void ShowPrecisionValueTooltip(ImGui gui, DisplayAmount amount, FactorioObject goods) {
+    public static void ShowPrecisionValueTooltip(ImGui gui, DisplayAmount amount, IFactorioObjectWrapper goods) {
         string text;
         switch (amount.Unit) {
             case UnitOfMeasure.PerSecond:
@@ -277,7 +279,7 @@ public static class ImmediateWidgets {
                 string perHour = DataUtils.FormatAmountRaw(amount.Value, 3600f, "/h", DataUtils.PreciseFormat);
                 text = perSecond + "\n" + perMinute + "\n" + perHour;
 
-                if (goods is Item item) {
+                if (goods.target is Item item) {
                     text += DataUtils.FormatAmount(MathF.Abs(item.stackSize / amount.Value), UnitOfMeasure.Second, "\n", " per stack");
                 }
 
@@ -293,20 +295,44 @@ public static class ImmediateWidgets {
     }
 
     /// <summary>Shows a dropdown containing the (partial) <paramref name="list"/> of elements, with an action for when an element is selected.</summary>
-    /// <param name="count">Maximum number of elements in the list. If there are more another popup can be opened by the user to show the full list.</param>
     /// <param name="width">Width of the popup. Make sure the header text fits!</param>
-    public static void BuildObjectSelectDropDown<T>(this ImGui gui, ICollection<T> list, IComparer<T> ordering, Action<T> selectItem, string header, float width = 20f,
-        int count = 6, bool multiple = false, Predicate<T>? checkMark = null, Func<T, string>? extra = null) where T : FactorioObject
+    public static void BuildObjectSelectDropDown<T>(this ImGui gui, ICollection<T> list, Action<T> selectItem, ObjectSelectOptions<T> options, float width = 20f) where T : FactorioObject
+        => gui.ShowDropDown(imGui => imGui.BuildInlineObjectListAndButton(list, selectItem, options), width);
 
-        => gui.ShowDropDown(imGui => imGui.BuildInlineObjectListAndButton(list, ordering, selectItem, header, count, multiple, checkMark, extra), width);
-
-    /// <summary>Shows a dropdown containing the (partial) <paramref name="list"/> of elements, with an action for when an element is selected. An additional "Clear" or "None" option will also be displayed.</summary>
-    /// <param name="count">Maximum number of elements in the list. If there are more another popup can be opened by the user to show the full list.</param>
+    /// <summary>Shows a dropdown containing the (partial) <paramref name="list"/> of elements, with an action for when an element is selected.
+    /// Also shows the available quality levels, and allows the user to select a quality. May or may not close after the user selects a quality, depending on <paramref name="selectQuality"/>.</summary>
+    /// <param name="selectQuality">If not <see langword="null"/>, this will be called, and the dropdown will be closed, when the user selects a quality.
+    /// In general, set this parameter when modifying an existing object, and leave it <see langword="null"/> when setting a new object.</param>
     /// <param name="width">Width of the popup. Make sure the header text fits!</param>
-    public static void BuildObjectSelectDropDownWithNone<T>(this ImGui gui, ICollection<T> list, IComparer<T> ordering, Action<T?> selectItem, string header, float width = 20f,
-        int count = 6, Func<T, string>? extra = null) where T : FactorioObject
+    public static void BuildObjectQualitySelectDropDown<T>(this ImGui gui, ICollection<T> list, Action<ObjectWithQuality<T>> selectItem, ObjectSelectOptions<T> options,
+        Quality quality, Action<Quality>? selectQuality = null, float width = 20f) where T : FactorioObject
 
-        => gui.ShowDropDown(imGui => imGui.BuildInlineObjectListAndButtonWithNone(list, ordering, selectItem, header, count, extra), width);
+        => gui.ShowDropDown(gui => {
+            if (gui.BuildQualityList(quality, out quality) && selectQuality != null && gui.CloseDropdown()) {
+                selectQuality(quality);
+            }
+            gui.BuildInlineObjectListAndButton(list, i => selectItem(new(i, quality)), options);
+        }, width);
+
+    /// <summary>Shows a dropdown containing the (partial) <paramref name="list"/> of elements, with an action for when an element is selected.
+    /// An additional "Clear" or "None" option will also be displayed.</summary>
+    /// <param name="width">Width of the popup. Make sure the header text fits!</param>
+    public static void BuildObjectSelectDropDownWithNone<T>(this ImGui gui, ICollection<T> list, Action<T?> selectItem, ObjectSelectOptions<T> options, float width = 20f) where T : FactorioObject
+        => gui.ShowDropDown(imGui => imGui.BuildInlineObjectListAndButtonWithNone(list, selectItem, options), width);
+
+    /// <summary>Shows a dropdown containing the (partial) <paramref name="list"/> of elements, with an action for when an element is selected.
+    /// Also shows the available quality levels, and allows the user to select a quality.</summary>
+    /// <param name="selectQuality">This will be called, and the dropdown will be closed, when the user selects a quality.</param>
+    /// <param name="width">Width of the popup. Make sure the header text fits!</param>
+    public static void BuildObjectQualitySelectDropDownWithNone<T>(this ImGui gui, ICollection<T> list, Action<ObjectWithQuality<T>?> selectItem, ObjectSelectOptions<T> options,
+        Quality quality, Action<Quality> selectQuality, float width = 20f) where T : FactorioObject
+
+        => gui.ShowDropDown(gui => {
+            if (gui.BuildQualityList(quality, out quality) && gui.CloseDropdown()) {
+                selectQuality(quality);
+            }
+            gui.BuildInlineObjectListAndButtonWithNone(list, i => selectItem((i, quality)), options);
+        }, width);
 
     /// <summary>Draws a button displaying the icon belonging to a <see cref="FactorioObject"/>, or an empty box as a placeholder if no object is available.
     /// Also draws an editable textbox under the button, containing the supplied <paramref name="amount"/>.</summary>
@@ -315,7 +341,7 @@ public static class ImmediateWidgets {
     /// <param name="amount">Display this value and unit. If the user edits the value, the new value will be stored in <see cref="DisplayAmount.Value"/> before returning.</param>
     /// <param name="allowScroll">If <see langword="true"/>, the default, the user can adjust the value by using the scroll wheel while hovering over the editable text.
     /// If <see langword="false"/>, the scroll wheel will be ignored when hovering.</param>
-    public static GoodsWithAmountEvent BuildFactorioObjectWithEditableAmount(this ImGui gui, FactorioObject? obj, DisplayAmount amount, ButtonDisplayStyle buttonDisplayStyle,
+    public static GoodsWithAmountEvent BuildFactorioObjectWithEditableAmount(this ImGui gui, IFactorioObjectWrapper? obj, DisplayAmount amount, ButtonDisplayStyle buttonDisplayStyle,
         bool allowScroll = true, ObjectTooltipOptions tooltipOptions = default, SetKeyboardFocus setKeyboardFocus = SetKeyboardFocus.No) {
 
         using var group = gui.EnterGroup(default, RectAllocator.Stretch, spacing: 0f);
@@ -333,6 +359,55 @@ public static class ImmediateWidgets {
         }
 
         return evt;
+    }
+
+    /// <summary>
+    /// Builds a selection list for the available qualities, assuming multiple qualities are available.
+    /// </summary>
+    /// <param name="quality">The <see cref="Quality"/> to initially display selected, if any.</param>
+    /// <param name="newQuality">The <see cref="Quality"/> selected by the user.</param>
+    /// <param name="header">The header text to draw, defaults to "Select quality"</param>
+    /// <returns><see langword="true"/> if the user selected a quality. <see langword="false"/> if they did not, or if the loaded mods do not provide multiple qualitites.</returns>
+    public static bool BuildQualityList(this ImGui gui, Quality? quality, [NotNullWhen(true), NotNullIfNotNull(nameof(quality))] out Quality? newQuality, string header = "Select quality", bool drawCentered = false) {
+        newQuality = quality;
+        if (Quality.Normal.nextQuality == null) {
+            return false; // Nothing to do; normal quality is the only one defined.
+        }
+
+        if (drawCentered) {
+            gui.BuildText(header, TextBlockDisplayStyle.Centered with { Font = Font.productionTableHeader });
+        }
+        else {
+            gui.BuildText(header, Font.productionTableHeader);
+        }
+
+        using ImGui.OverlappingAllocations controller = gui.StartOverlappingAllocations(false);
+        drawGrid(gui, ref newQuality);
+        float width = gui.lastRect.Width;
+        controller.StartNextAllocatePass(true);
+        using (gui.EnterRow(0)) {
+            if (drawCentered) {
+                gui.AllocateRect((gui.statePosition.Width - width) / 2, 0);
+            }
+            return drawGrid(gui, ref newQuality);
+        }
+
+        static bool drawGrid(ImGui gui, ref Quality? newQuality) {
+            using ImGuiUtils.InlineGridBuilder grid = gui.EnterInlineGrid(2, .5f);
+            Quality? drawQuality = Quality.Normal;
+            while (drawQuality != null) {
+                grid.Next();
+                if (newQuality == drawQuality) {
+                    _ = gui.BuildFactorioObjectButton(drawQuality, ButtonDisplayStyle.Default with { BackgroundColor = SchemeColor.Primary });
+                }
+                else if (gui.BuildFactorioObjectButton(drawQuality, ButtonDisplayStyle.Default) == Click.Left) {
+                    newQuality = drawQuality;
+                    return true;
+                }
+                drawQuality = drawQuality.nextQuality;
+            }
+            return false;
+        }
     }
 }
 
@@ -352,4 +427,22 @@ public record DisplayAmount(float Value, UnitOfMeasure Unit = UnitOfMeasure.None
     /// </summary>
     /// <param name="value">The initial value to be displayed to the user.</param>
     public static implicit operator DisplayAmount(float value) => new(value);
+}
+
+/// <summary>
+/// Encapsulates the options for drawing an object selection list. 
+/// </summary>
+/// <typeparam name="T">The type of <see cref="FactorioObject"/> to be selected</typeparam>
+/// <param name="Header">The header text to display</param>
+/// <param name="Ordering">The sort order to use when displaying the items. Defaults to <see cref="DataUtils.DefaultOrdering"/>.</param>
+/// <param name="MaxCount">Maximum number of elements in the list. If there are more, another popup can be opened by the user to show the full list.</param>
+/// <param name="Multiple">If <see langword="true"/>, this popup (and its subsequent <see cref="SelectObjectPanel{T}"/>, if applicable) allow selection of multiple items.
+/// Not used (treated as <see langword="false"/>) when selecting with a 'None' item.</param>
+/// <param name="Checkmark">If not <see langword="null"/>, this will be called to determine if a checkmark should be drawn on the item.
+/// Not used when selecting with a 'None' item or when <paramref name="Multiple"/> is <see langword="false"/>.</param>
+/// <param name="ExtraText">If not <see langword="null"/>, this will be called to get extra text to be displayed right-justified after the item's name.</param>
+public sealed record ObjectSelectOptions<T>(string Header, [AllowNull] IComparer<T> Ordering = null, int MaxCount = 6, bool Multiple = false, Predicate<T>? Checkmark = null,
+    Func<T, string>? ExtraText = null) where T : FactorioObject {
+
+    public IComparer<T> Ordering { get; init; } = Ordering ?? DataUtils.DefaultOrdering;
 }

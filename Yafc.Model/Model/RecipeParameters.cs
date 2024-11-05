@@ -28,8 +28,8 @@ public enum WarningFlags {
 }
 
 public struct UsedModule {
-    public (Module module, int count, bool beacon)[]? modules;
-    public Entity? beacon;
+    public (ObjectWithQuality<Module> module, int count, bool beacon)[]? modules;
+    public ObjectWithQuality<EntityBeacon>? beacon;
     public int beaconCount;
 }
 
@@ -47,7 +47,7 @@ internal class RecipeParameters(float recipeTime, float fuelUsagePerSecondPerBui
 
     public static RecipeParameters CalculateParameters(RecipeRow row) {
         WarningFlags warningFlags = 0;
-        EntityCrafter? entity = row.entity;
+        ObjectWithQuality<EntityCrafter>? entity = row.entity;
         RecipeOrTechnology recipe = row.recipe;
         Goods? fuel = row.fuel;
         float recipeTime, fuelUsagePerSecondPerBuilding = 0, productivity;
@@ -60,10 +60,10 @@ internal class RecipeParameters(float recipeTime, float fuelUsagePerSecondPerBui
             productivity = 0f;
         }
         else {
-            recipeTime = recipe.time / entity.craftingSpeed;
-            productivity = entity.effectReceiver?.baseEffect.productivity ?? 0;
-            var energy = entity.energy;
-            float energyUsage = entity.power;
+            recipeTime = recipe.time / entity.GetCraftingSpeed();
+            productivity = entity.target.effectReceiver.baseEffect.productivity;
+            EntityEnergy energy = entity.target.energy;
+            float energyUsage = entity.GetPower();
             float energyPerUnitOfFuel = 0f;
 
             // Special case for fuel
@@ -107,10 +107,10 @@ internal class RecipeParameters(float recipeTime, float fuelUsagePerSecondPerBui
             }
 
             // Special case for generators
-            if (recipe.flags.HasFlags(RecipeFlags.ScaleProductionWithPower) && energyPerUnitOfFuel > 0 && entity.energy.type != EntityEnergyType.Void) {
+            if (recipe.flags.HasFlags(RecipeFlags.ScaleProductionWithPower) && energyPerUnitOfFuel > 0 && entity.target.energy.type != EntityEnergyType.Void) {
                 if (energyUsage == 0) {
-                    fuelUsagePerSecondPerBuilding = energy.fuelConsumptionLimit;
-                    recipeTime = 1f / (energy.fuelConsumptionLimit * energyPerUnitOfFuel * energy.effectivity);
+                    fuelUsagePerSecondPerBuilding = energy.FuelConsumptionLimit(entity.quality);
+                    recipeTime = 1f / (energy.FuelConsumptionLimit(entity.quality) * energyPerUnitOfFuel * energy.effectivity);
                 }
                 else {
                     recipeTime = 1f / energyUsage;
@@ -137,19 +137,19 @@ internal class RecipeParameters(float recipeTime, float fuelUsagePerSecondPerBui
                 }
             }
 
-            if (entity is EntityReactor reactor && reactor.reactorNeighborBonus > 0f) {
+            if (entity.target is EntityReactor reactor && reactor.reactorNeighborBonus > 0f) {
                 productivity += reactor.reactorNeighborBonus * Project.current.settings.GetReactorBonusMultiplier();
                 warningFlags |= WarningFlags.ReactorsNeighborsFromPrefs;
             }
 
-            if (entity.factorioType == "solar-panel") {
+            if (entity.target.factorioType == "solar-panel") {
                 warningFlags |= WarningFlags.AssumesNauvisSolarRatio;
             }
 
             modules = default;
 
-            if (entity.allowedEffects != AllowedEffects.None && entity.allowedModuleCategories is not []) {
-                row.GetModulesInfo((recipeTime, fuelUsagePerSecondPerBuilding), entity, ref activeEffects, ref modules);
+            if (entity.target.allowedEffects != AllowedEffects.None && entity.target.allowedModuleCategories is not []) {
+                row.GetModulesInfo((recipeTime, fuelUsagePerSecondPerBuilding), entity.target, ref activeEffects, ref modules);
                 productivity += activeEffects.productivity;
                 recipeTime /= activeEffects.speedMod;
                 fuelUsagePerSecondPerBuilding *= activeEffects.energyUsageMod;
@@ -159,9 +159,9 @@ internal class RecipeParameters(float recipeTime, float fuelUsagePerSecondPerBui
                 fuelUsagePerSecondPerBuilding += energy.drain / energyPerUnitOfFuel;
             }
 
-            if (fuelUsagePerSecondPerBuilding > energy.fuelConsumptionLimit) {
-                recipeTime *= fuelUsagePerSecondPerBuilding / energy.fuelConsumptionLimit;
-                fuelUsagePerSecondPerBuilding = energy.fuelConsumptionLimit;
+            if (fuelUsagePerSecondPerBuilding > energy.FuelConsumptionLimit(entity.quality)) {
+                recipeTime *= fuelUsagePerSecondPerBuilding / energy.FuelConsumptionLimit(entity.quality);
+                fuelUsagePerSecondPerBuilding = energy.FuelConsumptionLimit(entity.quality);
                 warningFlags |= WarningFlags.FuelUsageInputLimited;
             }
         }

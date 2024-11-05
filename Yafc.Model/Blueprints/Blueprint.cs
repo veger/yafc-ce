@@ -98,13 +98,14 @@ public class BlueprintSignal {
 public class BlueprintEntity {
     [JsonPropertyName("entity_number")] public int index { get; set; }
     public string? name { get; set; }
+    public string? quality { get; set; }
     public BlueprintPosition position { get; set; } = new BlueprintPosition();
     public int direction { get; set; }
     public string? recipe { get; set; }
     [JsonPropertyName("control_behavior")] public BlueprintControlBehavior? controlBehavior { get; set; }
     public BlueprintConnection? connections { get; set; }
     [JsonPropertyName("request_filters")] public List<BlueprintRequestFilter> requestFilters { get; } = [];
-    public Dictionary<string, int>? items { get; set; }
+    public List<BlueprintItem> items { get; } = [];
 
     public void Connect(BlueprintEntity other, bool red = true, bool secondPort = false, bool targetSecond = false) {
         ConnectSingle(other, red, secondPort, targetSecond);
@@ -167,4 +168,27 @@ public class BlueprintControlFilter {
     public BlueprintSignal signal { get; set; } = new BlueprintSignal();
     public int index { get; set; }
     public int count { get; set; }
+}
+
+[Serializable]
+public class BlueprintItem {
+    public BlueprintId id { get; } = new();
+    public BlueprintItemInventory items { get; } = new();
+}
+
+[Serializable]
+public class BlueprintId {
+    public string? name { get; set; }
+    public string? quality { get; set; }
+}
+
+[Serializable]
+public class BlueprintItemInventory {
+    [JsonPropertyName("in_inventory")] public List<BlueprintInventoryItem> inInventory { get; } = [];
+}
+
+[Serializable]
+public class BlueprintInventoryItem {
+    public int inventory { get; } = 4; // unknown magic number (probably 'modules', needs more investigating)
+    public int stack { get; set; }
 }

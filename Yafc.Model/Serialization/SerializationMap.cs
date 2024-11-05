@@ -18,6 +18,24 @@ public class NoUndoAttribute : Attribute { }
 [AttributeUsage(AttributeTargets.Class)]
 public sealed class DeserializeWithNonPublicConstructorAttribute : Attribute { }
 
+/// <summary>
+/// Represents a type that can be deserialized from JSON formats that do not match its current serialization format. This typically happens when an object changes
+/// between value (string/float), object, and array representations.
+/// </summary>
+/// <typeparam name="T">The type that is being defined with custom deserialization rules.</typeparam>
+internal interface ICustomJsonDeserializer<T> {
+    /// <summary>
+    /// Attempts to deserialize an object from custom (aka 'old') formats.
+    /// </summary>
+    /// <param name="reader">The <see cref="Utf8JsonReader"/> that points to the first token that might need custom deserialization. If the deserialization is successful,
+    /// this must be advanced to the last token that was consumed to deserialize the object. (e.g. If three tokens were used, advance this by two tokens.)</param>
+    /// <param name="result">If the deserialization was successful (this method returns <see langword="true"/>), this is set to the result of reading the consumed JSON tokens.
+    /// If unsuccessful, the output value of this parameter should not be used.</param>
+    /// <returns><see langword="true"/> when the custom deserialization was successful, and <see langword="false"/> when the default serializer should be used instead.</returns>
+    // This is a static method so it can be declared for types that do no have a default constructor.
+    static abstract bool Deserialize(ref Utf8JsonReader reader, DeserializationContext context, out T? result);
+}
+
 internal abstract class SerializationMap {
     private static readonly ILogger logger = Logging.GetLogger<SerializationMap>();
     public UndoSnapshot MakeUndoSnapshot(ModelObject target) {
@@ -30,8 +48,8 @@ internal abstract class SerializationMap {
         UndoSnapshotReader snapshotReader = new(snapshot);
         ReadUndo(target, snapshotReader);
     }
-    public abstract void BuildUndo(object target, UndoSnapshotBuilder builder);
-    public abstract void ReadUndo(object target, UndoSnapshotReader reader);
+    public abstract void BuildUndo(object? target, UndoSnapshotBuilder builder);
+    public abstract void ReadUndo(object? target, UndoSnapshotReader reader);
 
     private static readonly Dictionary<Type, SerializationMap> undoBuilders = [];
     protected static int deserializingCount;
@@ -59,24 +77,28 @@ internal static class SerializationMap<T> where T : class {
     private static readonly ulong requiredConstructorFieldMask;
 
     public class SpecificSerializationMap : SerializationMap {
-        public override void BuildUndo(object target, UndoSnapshotBuilder builder) {
-            T t = (T)target;
+        public override void BuildUndo(object? target, UndoSnapshotBuilder builder) {
+            T? t = (T?)target;
 
-            foreach (var property in properties) {
-                if (property.type == PropertyType.Normal) {
-                    property.SerializeToUndoBuilder(t, builder);
+            if (t != null) {
+                foreach (var property in properties) {
+                    if (property.type == PropertyType.Normal) {
+                        property.SerializeToUndoBuilder(t, builder);
+                    }
                 }
             }
         }
 
-        public override void ReadUndo(object target, UndoSnapshotReader reader) {
+        public override void ReadUndo(object? target, UndoSnapshotReader reader) {
             try {
                 deserializingCount++;
-                T t = (T)target;
+                T? t = (T?)target;
 
-                foreach (var property in properties) {
-                    if (property.type == PropertyType.Normal) {
-                        property.DeserializeFromUndoBuilder(t, reader);
+                if (t != null) {
+                    foreach (var property in properties) {
+                        if (property.type == PropertyType.Normal) {
+                            property.DeserializeFromUndoBuilder(t, reader);
+                        }
                     }
                 }
             }
@@ -270,9 +292,34 @@ internal static class SerializationMap<T> where T : class {
         return null;
     }
 
+    private interface ICustomDeserializerHelper {
+        bool Deserialize(ref Utf8JsonReader reader, DeserializationContext context, out T? deserializedObject);
+    }
+
+    private class CustomDeserializerHelper<U> : ICustomDeserializerHelper where U : ICustomJsonDeserializer<U> {
+        public bool Deserialize(ref Utf8JsonReader reader, DeserializationContext context, out T? deserializedObject) {
+            bool result = U.Deserialize(ref reader, context, out U? intermediate);
+            deserializedObject = (T?)(object?)intermediate;
+            return result;
+        }
+    }
+
     public static T? DeserializeFromJson(ModelObject? owner, ref Utf8JsonReader reader, DeserializationContext context) {
         if (reader.TokenType == JsonTokenType.Null) {
             return null;
+        }
+
+        if (typeof(ICustomJsonDeserializer<T>).IsAssignableFrom(typeof(T))) {
+            // I want to do `((ICustomJsonDeserializer<T>)T).Deserialize(...)`, but that isn't supported.
+            // This and its helper types call ICustomJsonDeserializer<T>.Deserialize by the least obscure method I could come up with.
+            var helper = (ICustomDeserializerHelper)Activator.CreateInstance(typeof(CustomDeserializerHelper<>).MakeGenericType(typeof(T), typeof(T)))!;
+            Utf8JsonReader savedState = reader;
+            if (helper.Deserialize(ref reader, context, out T? result)) {
+                // The custom deserializer was successful; return its result.
+                return result;
+            }
+            // The custom deserializer didn't want to deal with the input; return to the previous state and use the normal deserializer.
+            reader = savedState;
         }
 
         if (reader.TokenType != JsonTokenType.StartObject) {

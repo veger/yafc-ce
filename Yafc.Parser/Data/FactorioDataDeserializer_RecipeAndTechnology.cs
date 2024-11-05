@@ -44,6 +44,16 @@ internal partial class FactorioDataDeserializer {
         technology.products = [new(researchUnit, 1)];
     }
 
+    private void DeserializeQuality(LuaTable table, ErrorCollector errorCollector) {
+        Quality quality = DeserializeCommon<Quality>(table, "quality");
+        if (table.Get("next", out string? nextQuality)) {
+            quality.nextQuality = GetObject<Quality>(nextQuality);
+            quality.nextQuality.previousQuality = quality;
+        }
+        quality.BeaconConsumptionFactor = table.Get("beacon_power_usage_multiplier", 1f);
+        quality.level = table.Get("level", 0);
+    }
+
     private void UpdateRecipeCatalysts() {
         foreach (var recipe in allObjects.OfType<Recipe>()) {
             foreach (var product in recipe.products) {
@@ -140,6 +150,13 @@ internal partial class FactorioDataDeserializer {
                             technology.changeRecipeProductivity.Add(recipe, change);
                             recipe.technologyProductivity.Add(technology, change);
 
+                            break;
+                        }
+
+                    case "unlock-quality": {
+                            if (GetRef(modifier, "quality", out Quality? quality)) {
+                                quality.technologyUnlock.Add(technology);
+                            }
                             break;
                         }
                 }

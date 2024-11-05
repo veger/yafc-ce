@@ -1,4 +1,6 @@
-﻿namespace Yafc.UI;
+﻿using Yafc.Model;
+
+namespace Yafc.UI;
 
 /// <summary>
 /// Contains the display parameters for FactorioObjectIcons.

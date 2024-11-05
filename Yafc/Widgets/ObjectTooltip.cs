@@ -125,6 +125,8 @@ public class ObjectTooltip : Tooltip {
     }
 
     protected override void BuildContents(ImGui gui) {
+        BuildCommon(target.target, gui);
+        Quality? targetQuality = (target as IObjectWithQuality<FactorioObject>)?.quality ?? Quality.Normal;
         switch (target.target) {
             case Technology technology:
                 BuildTechnology(technology, gui);
@@ -133,13 +135,13 @@ public class ObjectTooltip : Tooltip {
                 BuildRecipe(recipe, gui);
                 break;
             case Goods goods:
-                BuildGoods(goods, gui);
+                BuildGoods(goods, targetQuality, gui);
                 break;
             case Entity entity:
-                BuildEntity(entity, gui);
+                BuildEntity(entity, targetQuality, gui);
                 break;
-            default:
-                BuildCommon(target.target, gui);
+            case Quality quality:
+                BuildQuality(quality, gui);
                 break;
         }
     }
@@ -190,9 +192,7 @@ public class ObjectTooltip : Tooltip {
         {EntityEnergyType.SolidFuel, "Solid fuel energy usage: "},
     };
 
-    private void BuildEntity(Entity entity, ImGui gui) {
-        BuildCommon(entity, gui);
-
+    private static void BuildEntity(Entity entity, Quality quality, ImGui gui) {
         if (entity.loot.Length > 0) {
             BuildSubHeader(gui, "Loot");
             using (gui.EnterGroup(contentPadding)) {
@@ -214,8 +214,8 @@ public class ObjectTooltip : Tooltip {
                 BuildSubHeader(gui, "Crafts");
                 using (gui.EnterGroup(contentPadding)) {
                     BuildIconRow(gui, crafter.recipes, 2);
-                    if (crafter.craftingSpeed != 1f) {
-                        gui.BuildText(DataUtils.FormatAmount(crafter.craftingSpeed, UnitOfMeasure.Percent, "Crafting speed: "));
+                    if (crafter.CraftingSpeed(quality) != 1f) {
+                        gui.BuildText(DataUtils.FormatAmount(crafter.CraftingSpeed(quality), UnitOfMeasure.Percent, "Crafting speed: "));
                     }
 
                     var productivity = crafter.effectReceiver?.baseEffect.productivity ?? 0;
@@ -241,7 +241,7 @@ public class ObjectTooltip : Tooltip {
         }
 
         if (entity.energy != null) {
-            string energyUsage = EnergyDescriptions[entity.energy.type] + DataUtils.FormatAmount(entity.power, UnitOfMeasure.Megawatt);
+            string energyUsage = EnergyDescriptions[entity.energy.type] + DataUtils.FormatAmount(entity.Power(quality), UnitOfMeasure.Megawatt);
             if (entity.energy.drain > 0f) {
                 energyUsage += " + " + DataUtils.FormatAmount(entity.energy.drain, UnitOfMeasure.Megawatt);
             }
@@ -277,14 +277,14 @@ public class ObjectTooltip : Tooltip {
                 miscText = "Swing time: " + DataUtils.FormatAmount(inserter.inserterSwingTime, UnitOfMeasure.Second);
                 break;
             case EntityBeacon beacon:
-                miscText = "Beacon efficiency: " + DataUtils.FormatAmount(beacon.beaconEfficiency, UnitOfMeasure.Percent);
+                miscText = "Beacon efficiency: " + DataUtils.FormatAmount(beacon.BeaconEfficiency(quality), UnitOfMeasure.Percent);
                 break;
             case EntityAccumulator accumulator:
-                miscText = "Accumulator charge: " + DataUtils.FormatAmount(accumulator.accumulatorCapacity, UnitOfMeasure.Megajoule);
+                miscText = "Accumulator charge: " + DataUtils.FormatAmount(accumulator.AccumulatorCapacity(quality), UnitOfMeasure.Megajoule);
                 break;
             case EntityCrafter solarPanel:
-                if (solarPanel.craftingSpeed > 0f && entity.factorioType == "solar-panel") {
-                    miscText = "Power production (average): " + DataUtils.FormatAmount(solarPanel.craftingSpeed, UnitOfMeasure.Megawatt);
+                if (solarPanel.baseCraftingSpeed > 0f && entity.factorioType == "solar-panel") {
+                    miscText = "Power production (average): " + DataUtils.FormatAmount(solarPanel.CraftingSpeed(quality), UnitOfMeasure.Megawatt);
                 }
 
                 break;
@@ -297,8 +297,7 @@ public class ObjectTooltip : Tooltip {
         }
     }
 
-    private void BuildGoods(Goods goods, ImGui gui) {
-        BuildCommon(goods, gui);
+    private void BuildGoods(Goods goods, Quality quality, ImGui gui) {
         if (goods.showInExplorers) {
             using (gui.EnterGroup(contentPadding)) {
                 gui.BuildText("Middle mouse button to open Never Enough Items Explorer for this " + goods.type, TextBlockDisplayStyle.WrappedText);
@@ -364,24 +363,24 @@ public class ObjectTooltip : Tooltip {
             if (item is Module { moduleSpecification: ModuleSpecification moduleSpecification }) {
                 BuildSubHeader(gui, "Module parameters");
                 using (gui.EnterGroup(contentPadding)) {
-                    if (moduleSpecification.productivity != 0f) {
-                        gui.BuildText(DataUtils.FormatAmount(moduleSpecification.productivity, UnitOfMeasure.Percent, "Productivity: "));
+                    if (moduleSpecification.baseProductivity != 0f) {
+                        gui.BuildText(DataUtils.FormatAmount(moduleSpecification.Productivity(quality), UnitOfMeasure.Percent, "Productivity: "));
                     }
 
-                    if (moduleSpecification.speed != 0f) {
-                        gui.BuildText(DataUtils.FormatAmount(moduleSpecification.speed, UnitOfMeasure.Percent, "Speed: "));
+                    if (moduleSpecification.baseSpeed != 0f) {
+                        gui.BuildText(DataUtils.FormatAmount(moduleSpecification.Speed(quality), UnitOfMeasure.Percent, "Speed: "));
                     }
 
-                    if (moduleSpecification.consumption != 0f) {
-                        gui.BuildText(DataUtils.FormatAmount(moduleSpecification.consumption, UnitOfMeasure.Percent, "Consumption: "));
+                    if (moduleSpecification.baseConsumption != 0f) {
+                        gui.BuildText(DataUtils.FormatAmount(moduleSpecification.Consumption(quality), UnitOfMeasure.Percent, "Consumption: "));
                     }
 
-                    if (moduleSpecification.pollution != 0f) {
-                        gui.BuildText(DataUtils.FormatAmount(moduleSpecification.pollution, UnitOfMeasure.Percent, "Pollution: "));
+                    if (moduleSpecification.basePollution != 0f) {
+                        gui.BuildText(DataUtils.FormatAmount(moduleSpecification.Pollution(quality), UnitOfMeasure.Percent, "Pollution: "));
                     }
 
-                    if (moduleSpecification.quality != 0f) {
-                        gui.BuildText(DataUtils.FormatAmount(moduleSpecification.quality, UnitOfMeasure.Percent, "Quality: "));
+                    if (moduleSpecification.baseQuality != 0f) {
+                        gui.BuildText(DataUtils.FormatAmount(moduleSpecification.Quality(quality), UnitOfMeasure.Percent, "Quality: "));
                     }
                 }
             }
@@ -393,7 +392,6 @@ public class ObjectTooltip : Tooltip {
     }
 
     private void BuildRecipe(RecipeOrTechnology recipe, ImGui gui) {
-        BuildCommon(recipe, gui);
         using (gui.EnterGroup(contentPadding, RectAllocator.LeftRow)) {
             gui.BuildIcon(Icon.Time, 2f, SchemeColor.BackgroundText);
             gui.BuildText(DataUtils.FormatAmount(recipe.time, UnitOfMeasure.Second));
@@ -501,11 +499,7 @@ public class ObjectTooltip : Tooltip {
 
     private void BuildTechnology(Technology technology, ImGui gui) {
         bool isResearchTriggerCraft = (technology.flags & RecipeFlags.HasResearchTriggerCraft) == RecipeFlags.HasResearchTriggerCraft;
-        if (isResearchTriggerCraft) {
-            BuildCommon(technology, gui);
-
-        }
-        else {
+        if (!isResearchTriggerCraft) {
             BuildRecipe(technology, gui);
         }
 
@@ -548,6 +542,35 @@ public class ObjectTooltip : Tooltip {
                     _ = gui.BuildFactorioObjectWithAmount(pack.goods, pack.amount, ButtonDisplayStyle.ProductionTableUnscaled);
                 }
             }
+        }
+    }
+
+    private static void BuildQuality(Quality quality, ImGui gui) {
+        BuildSubHeader(gui, "Quality bonuses");
+        if (quality == Quality.Normal) {
+            using (gui.EnterGroup(contentPadding)) {
+                gui.BuildText("Normal quality provides no bonuses.", TextBlockDisplayStyle.WrappedText);
+            }
+            return;
+        }
+        gui.allocator = RectAllocator.LeftAlign;
+        (string left, string right)[] text = [
+            ("Crafting speed:", '+' + DataUtils.FormatAmount(quality.StandardBonus, UnitOfMeasure.Percent)),
+            ("Accumulator capacity:", '+' + DataUtils.FormatAmount(quality.AccumulatorCapacityBonus, UnitOfMeasure.Percent)),
+            ("Module effects:", '+' + DataUtils.FormatAmount(quality.StandardBonus, UnitOfMeasure.Percent) + '*'),
+            ("Beacon transmission efficiency:", '+' + DataUtils.FormatAmount(quality.BeaconTransmissionBonus, UnitOfMeasure.None))
+        ];
+
+        float rightWidth = text.Max(t => gui.GetTextDimensions(out _, t.right).X);
+
+        using (gui.EnterGroup(contentPadding)) {
+            gui.allocator = RectAllocator.LeftAlign;
+            foreach (var (left, right) in text) {
+                gui.BuildText(left);
+                Rect rect = new(gui.statePosition.Width - rightWidth, gui.lastRect.Y, rightWidth, gui.lastRect.Height);
+                gui.DrawText(rect, right);
+            }
+            gui.BuildText("* Only applied to beneficial module effects.", TextBlockDisplayStyle.WrappedText);
         }
     }
 

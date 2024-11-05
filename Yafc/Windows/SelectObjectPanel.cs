@@ -16,6 +16,7 @@ public abstract class SelectObjectPanel<T> : PseudoScreenWithResult<T> {
     private string header = null!; // null-forgiving: set by Select
     private Rect searchBox;
     private string? noneTooltip;
+    private Quality? currentQuality;
     /// <summary>
     /// If <see langword="true"/> and the object being hovered is not a <see cref="Goods"/>, the <see cref="ObjectTooltip"/> should specify the type of object.
     /// See also <see cref="ObjectTooltipOptions.ShowTypeInHeader"/>.
@@ -23,6 +24,10 @@ public abstract class SelectObjectPanel<T> : PseudoScreenWithResult<T> {
     protected bool showTypeInHeader { get; private set; }
 
     protected SelectObjectPanel() : base(40f) => list = new SearchableList<FactorioObject?>(30, new Vector2(2.5f, 2.5f), ElementDrawer, ElementFilter);
+
+    protected void SelectQuality<U>(IEnumerable<U> list, string header, Action<ObjectWithQuality<U>?> selectItem, IComparer<U>? ordering, Action<T?, Action<FactorioObject?>> mapResult,
+        bool allowNone, string? noneTooltip, Quality? currentQuality) where U : FactorioObject
+        => Select(list, header, u => selectItem((u, this.currentQuality!)), ordering, mapResult, allowNone, noneTooltip, currentQuality ?? Quality.Normal);
 
     /// <summary>
     /// Opens a <see cref="SelectObjectPanel{T}"/> to allow the user to select zero or more <see cref="FactorioObject"/>s.
@@ -39,8 +44,11 @@ public abstract class SelectObjectPanel<T> : PseudoScreenWithResult<T> {
     /// <param name="allowNone">If <see langword="true"/>, a "none" option will be displayed. Selection of this item will be conveyed by calling <paramref name="mapResult"/>
     /// and <paramref name="selectItem"/> with <see langword="default"/> values for <typeparamref name="T"/> and <typeparamref name="U"/>.</param>
     /// <param name="noneTooltip">If not <see langword="null"/>, this tooltip will be displayed when hovering over the "none" item.</param>
-    protected void Select<U>(IEnumerable<U> list, string header, Action<U?> selectItem, IComparer<U>? ordering, Action<T?, Action<FactorioObject?>> mapResult, bool allowNone, string? noneTooltip = null) where U : FactorioObject {
+    protected void Select<U>(IEnumerable<U> list, string header, Action<U?> selectItem, IComparer<U>? ordering, Action<T?, Action<FactorioObject?>> mapResult, bool allowNone,
+        string? noneTooltip = null, Quality? currentQuality = null) where U : FactorioObject {
+
         _ = MainScreen.Instance.ShowPseudoScreen(this);
+        this.currentQuality = currentQuality;
         this.noneTooltip = noneTooltip;
         showTypeInHeader = typeof(U) == typeof(FactorioObject);
         List<U?> data = new List<U?>(list);
@@ -97,6 +105,12 @@ public abstract class SelectObjectPanel<T> : PseudoScreenWithResult<T> {
 
     public override void Build(ImGui gui) {
         BuildHeader(gui, header);
+
+        if (currentQuality != null) {
+            _ = gui.BuildQualityList(currentQuality, out currentQuality, drawCentered: true);
+            gui.AllocateSpacing();
+        }
+
         if (gui.BuildSearchBox(list.filter, out var newFilter, "Start typing for search", setKeyboardFocus: SetKeyboardFocus.OnFirstPanelDraw)) {
             list.filter = newFilter;
         }

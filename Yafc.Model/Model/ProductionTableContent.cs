@@ -13,41 +13,44 @@ public struct ModuleEffects {
     public float consumption;
     public readonly float speedMod => MathF.Max(1f + speed, 0.2f);
     public readonly float energyUsageMod => MathF.Max(1f + consumption, 0.2f);
-    public void AddModules(ModuleSpecification module, float count, AllowedEffects allowedEffects) {
+    public void AddModules(ObjectWithQuality<Module> module, float count, AllowedEffects allowedEffects) {
+        ModuleSpecification spec = module.target.moduleSpecification;
+        Quality quality = module.quality;
         if (allowedEffects.HasFlags(AllowedEffects.Speed)) {
-            speed += module.speed * count;
+            speed += spec.Speed(quality) * count;
         }
 
-        if (allowedEffects.HasFlags(AllowedEffects.Productivity) && module.productivity > 0f) {
-            productivity += module.productivity * count;
+        if (allowedEffects.HasFlags(AllowedEffects.Productivity) && spec.baseProductivity > 0f) {
+            productivity += spec.Productivity(quality) * count;
         }
 
         if (allowedEffects.HasFlags(AllowedEffects.Consumption)) {
-            consumption += module.consumption * count;
+            consumption += spec.Consumption(quality) * count;
         }
     }
 
-    public void AddModules(ModuleSpecification module, float count) {
-        speed += module.speed * count;
+    public void AddModules(ObjectWithQuality<Module> module, float count) {
+        ModuleSpecification spec = module.target.moduleSpecification;
+        Quality quality = module.quality;
+        speed += spec.Speed(quality) * count;
 
-        if (module.productivity > 0f) {
-            productivity += module.productivity * count;
+        if (spec.baseProductivity > 0f) {
+            productivity += spec.Productivity(quality) * count;
         }
 
-        consumption += module.consumption * count;
+        consumption += spec.Consumption(quality) * count;
     }
 
-    public readonly int GetModuleSoftLimit(ModuleSpecification module, int hardLimit) {
-        if (module == null) {
-            return 0;
-        }
+    public readonly int GetModuleSoftLimit(ObjectWithQuality<Module> module, int hardLimit) {
+        ModuleSpecification spec = module.target.moduleSpecification;
+        Quality quality = module.quality;
 
-        if (module.productivity > 0f || module.speed > 0f || module.pollution < 0f) {
+        if (spec.baseProductivity > 0f || spec.baseSpeed > 0f || spec.basePollution < 0f) {
             return hardLimit;
         }
 
-        if (module.consumption < 0f) {
-            return MathUtils.Clamp(MathUtils.Ceil(-(consumption + 0.8f) / module.consumption), 0, hardLimit);
+        if (spec.baseConsumption < 0f) {
+            return MathUtils.Clamp(MathUtils.Ceil(-(consumption + 0.8f) / spec.Consumption(quality)), 0, hardLimit);
         }
 
         return 0;
@@ -58,9 +61,8 @@ public struct ModuleEffects {
 /// One module that is (or will be) applied to a <see cref="RecipeRow"/>, and the number of times it should appear.
 /// </summary>
 /// <remarks>Immutable. To modify, modify the owning <see cref="ModuleTemplate"/>.</remarks>
-[Serializable]
-public class RecipeRowCustomModule(ModuleTemplate owner, Module module, int fixedCount = 0) : ModelObject<ModuleTemplate>(owner) {
-    public Module module { get; } = module ?? throw new ArgumentNullException(nameof(module));
+public class RecipeRowCustomModule(ModuleTemplate owner, ObjectWithQuality<Module> module, int fixedCount = 0) : ModelObject<ModuleTemplate>(owner) {
+    public ObjectWithQuality<Module> module { get; } = module ?? throw new ArgumentNullException(nameof(module));
     public int fixedCount { get; } = fixedCount;
 }
 
@@ -73,17 +75,17 @@ public class ModuleTemplate : ModelObject<ModelObject> {
     /// <summary>
     /// The beacon to use, if any, for the associated <see cref="RecipeRow"/>.
     /// </summary>
-    public EntityBeacon? beacon { get; }
+    public ObjectWithQuality<EntityBeacon>? beacon { get; }
     /// <summary>
     /// The modules, if any, to directly insert into the crafting entity.
     /// </summary>
-    public ReadOnlyCollection<RecipeRowCustomModule> list { get; private set; } = new([]); // Must be a distinct collection object to accomodate the deserializer.
+    public ReadOnlyCollection<RecipeRowCustomModule> list { get; private set; } = new([]); // Must be a distinct collection object to accommodate the deserializer.
     /// <summary>
     /// The modules, if any, to insert into beacons that affect the crafting entity.
     /// </summary>
-    public ReadOnlyCollection<RecipeRowCustomModule> beaconList { get; private set; } = new([]); // Must be a distinct collection object to accomodate the deserializer.
+    public ReadOnlyCollection<RecipeRowCustomModule> beaconList { get; private set; } = new([]); // Must be a distinct collection object to accommodate the deserializer.
 
-    private ModuleTemplate(ModelObject owner, EntityBeacon? beacon) : base(owner) => this.beacon = beacon;
+    private ModuleTemplate(ModelObject owner, ObjectWithQuality<EntityBeacon>? beacon) : base(owner) => this.beacon = beacon;
 
     public bool IsCompatibleWith([NotNullWhen(true)] RecipeRow? row) {
         if (row?.entity == null) {
@@ -95,7 +97,7 @@ public class ModuleTemplate : ModelObject<ModelObject> {
         int totalModules = 0;
 
         foreach (var module in list) {
-            bool isCompatibleWithModule = row.recipe.CanAcceptModule(module.module) && row.entity.CanAcceptModule(module.module.moduleSpecification);
+            bool isCompatibleWithModule = row.recipe.CanAcceptModule(module.module) && row.entity.target.CanAcceptModule(module.module);
 
             if (module.fixedCount == 0) {
                 hasFloodfillModules = true;
@@ -110,18 +112,18 @@ public class ModuleTemplate : ModelObject<ModelObject> {
             }
         }
 
-        return (!hasFloodfillModules || hasCompatibleFloodfill) && row.entity.moduleSlots >= totalModules;
+        return (!hasFloodfillModules || hasCompatibleFloodfill) && row.entity.target.moduleSlots >= totalModules;
     }
 
     internal void GetModulesInfo(RecipeRow row, EntityCrafter entity, ref ModuleEffects effects, ref UsedModule used, ModuleFillerParameters? filler) {
-        List<(Module module, int count, bool beacon)> buffer = [];
+        List<(ObjectWithQuality<Module> module, int count, bool beacon)> buffer = [];
         int beaconedModules = 0;
-        Item? nonBeacon = null;
+        ObjectWithQuality<Module>? nonBeacon = null;
         used.modules = null;
         int remaining = entity.moduleSlots;
 
         foreach (var module in list) {
-            if (!entity.CanAcceptModule(module.module.moduleSpecification) || !row.recipe.CanAcceptModule(module.module)) {
+            if (!entity.CanAcceptModule(module.module) || !row.recipe.CanAcceptModule(module.module)) {
                 continue;
             }
 
@@ -133,17 +135,17 @@ public class ModuleTemplate : ModelObject<ModelObject> {
             remaining -= count;
             nonBeacon ??= module.module;
             buffer.Add((module.module, count, false));
-            effects.AddModules(module.module.moduleSpecification, count);
+            effects.AddModules(module.module, count);
         }
 
         if (beacon != null) {
             int beaconCount = CalcBeaconCount();
             if (beaconCount > 0) {
-                float beaconEfficiency = beacon.beaconEfficiency * beacon.GetProfile(beaconCount);
+                float beaconEfficiency = beacon.GetBeaconEfficiency() * beacon.target.GetProfile(beaconCount);
                 foreach (var module in beaconList) {
                     beaconedModules += module.fixedCount;
                     buffer.Add((module.module, module.fixedCount, true));
-                    effects.AddModules(module.module.moduleSpecification, beaconEfficiency * module.fixedCount);
+                    effects.AddModules(module.module, beaconEfficiency * module.fixedCount);
                 }
 
                 used.beacon = beacon;
@@ -168,7 +170,7 @@ public class ModuleTemplate : ModelObject<ModelObject> {
             moduleCount += element.fixedCount;
         }
 
-        return ((moduleCount - 1) / beacon.moduleSlots) + 1;
+        return ((moduleCount - 1) / beacon.target.moduleSlots) + 1;
     }
 
     /// <summary>
@@ -189,7 +191,7 @@ public class ModuleTemplate : ModelObject<ModelObject> {
 
         return modules;
 
-        ReadOnlyCollection<RecipeRowCustomModule> convertList(List<(Module module, int fixedCount)> list)
+        ReadOnlyCollection<RecipeRowCustomModule> convertList(List<(ObjectWithQuality<Module> module, int fixedCount)> list)
             => list.Select(m => new RecipeRowCustomModule(modules, m.module, m.fixedCount)).ToList().AsReadOnly();
     }
 }
@@ -201,15 +203,15 @@ public class ModuleTemplateBuilder {
     /// <summary>
     /// The beacon to be stored in <see cref="ModuleTemplate.beacon"/> after building.
     /// </summary>
-    public EntityBeacon? beacon { get; set; }
+    public ObjectWithQuality<EntityBeacon>? beacon { get; set; }
     /// <summary>
     /// The list of <see cref="Module"/>s and counts to be stored in <see cref="ModuleTemplate.list"/> after building.
     /// </summary>
-    public List<(Module module, int fixedCount)> list { get; set; } = [];
+    public List<(ObjectWithQuality<Module> module, int fixedCount)> list { get; set; } = [];
     /// <summary>
     /// The list of <see cref="Module"/>s and counts to be stored in <see cref="ModuleTemplate.beaconList"/> after building.
     /// </summary>
-    public List<(Module module, int fixedCount)> beaconList { get; set; } = [];
+    public List<(ObjectWithQuality<Module> module, int fixedCount)> beaconList { get; set; } = [];
 
     /// <summary>
     /// Builds a <see cref="ModuleTemplate"/> from this <see cref="ModuleTemplateBuilder"/>.
@@ -239,7 +241,7 @@ public interface IGroupedElement<TGroup> {
 }
 
 public class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<ProductionTable> {
-    private EntityCrafter? _entity;
+    private ObjectWithQuality<EntityCrafter>? _entity;
     private Goods? _fuel;
     private float _fixedBuildings;
     private Goods? _fixedProduct;
@@ -247,7 +249,7 @@ public class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Productio
 
     public RecipeOrTechnology recipe { get; }
     // Variable parameters
-    public EntityCrafter? entity {
+    public ObjectWithQuality<EntityCrafter>? entity {
         get => _entity;
         set {
             if (_entity == value) {
@@ -261,7 +263,11 @@ public class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Productio
                 return;
             }
 
-            if (fixedBuildings == 0 || (fixedFuel && !(value?.energy.fuels ?? []).Contains(_fuel))) {
+            // By default show the total item consumption and production signals for unloading crafters (miners, recyclers, etc) when they output multiple products.
+            // Don't turn the setting on when just changing the quality, though.
+            showTotalIO |= (value?.target != _entity?.target) && value?.target.hasVectorToPlaceResult == true && recipe.products.Length > 1;
+
+            if (fixedBuildings == 0 || (fixedFuel && !(value?.target.energy.fuels ?? []).Contains(_fuel))) {
                 // We're either changing both the entity and the fuel (changing between electric, fluid-burning, item-burning, heat-powered, and steam-powered crafter categories),
                 // or fixedBuilding is zero.
                 // Don't try to preserve fuel consumption in these cases.
@@ -273,9 +279,6 @@ public class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Productio
                     _entity = value;
                 }
             }
-
-            // By default show the total item consumption and production signals for unloading crafters (miners, recyclers, etc) when they output multiple products.
-            showTotalIO |= value?.hasVectorToPlaceResult == true && recipe.products.Length > 1;
         }
     }
     public Goods? fuel {
@@ -395,7 +398,7 @@ public class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Productio
     public Module module {
         set {
             if (value != null) {
-                modules = new ModuleTemplateBuilder { list = { (value, 0) } }.Build(this);
+                modules = new ModuleTemplateBuilder { list = { (new(value, Quality.Normal), 0) } }.Build(this);
             }
         }
     }
@@ -538,12 +541,7 @@ public class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Productio
         CreateUndoSnapshot();
         modules = null;
     }
-    public void SetFixedModule(Module? module) {
-        if (module == null) {
-            RemoveFixedModules();
-            return;
-        }
-
+    public void SetFixedModule(ObjectWithQuality<Module> module) {
         ModuleTemplateBuilder builder = modules?.GetBuilder() ?? new();
         builder.list = [(module, 0)];
         this.RecordUndo().modules = builder.Build(this);
@@ -643,7 +641,7 @@ public class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Productio
                 }
             }
 
-            if (oldFuel != null && (row._entity?.energy.fuels ?? []).Contains(oldFuel)) {
+            if (oldFuel != null && (row._entity?.target.energy.fuels ?? []).Contains(oldFuel)) {
                 row.fuel = oldFuel; // step 4
             }
         }

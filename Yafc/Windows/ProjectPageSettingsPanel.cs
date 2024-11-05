@@ -153,39 +153,39 @@ public class ProjectPageSettingsPanel : PseudoScreen {
 
     private class ExportRecipe {
         public string Recipe { get; }
-        public string Building { get; }
+        public ObjectWithQuality? Building { get; }
         public float BuildingCount { get; }
-        public IEnumerable<string> Modules { get; }
-        public string? Beacon { get; }
+        public IEnumerable<ObjectWithQuality> Modules { get; }
+        public ObjectWithQuality? Beacon { get; }
         public int BeaconCount { get; }
-        public IEnumerable<string> BeaconModules { get; }
+        public IEnumerable<ObjectWithQuality> BeaconModules { get; }
         public ExportMaterial Fuel { get; }
         public IEnumerable<ExportMaterial> Inputs { get; }
         public IEnumerable<ExportMaterial> Outputs { get; }
 
         public ExportRecipe(RecipeRow row) {
             Recipe = row.recipe.name;
-            Building = row.entity?.name ?? "<No building selected>";
+            Building = row.entity;
             BuildingCount = row.buildingCount;
             Fuel = new ExportMaterial(row.fuel?.name ?? "<No fuel selected>", row.FuelInformation.Amount);
             Inputs = row.Ingredients.Select(i => new ExportMaterial(i.Goods?.name ?? "Recipe disabled", i.Amount));
             Outputs = row.Products.Select(p => new ExportMaterial(p.Goods?.name ?? "Recipe disabled", p.Amount));
-            Beacon = row.usedModules.beacon?.name;
+            Beacon = row.usedModules.beacon;
             BeaconCount = row.usedModules.beaconCount;
 
             if (row.usedModules.modules is null) {
                 Modules = BeaconModules = [];
             }
             else {
-                List<string> modules = [];
-                List<string> beaconModules = [];
+                List<ObjectWithQuality> modules = [];
+                List<ObjectWithQuality> beaconModules = [];
 
                 foreach (var (module, count, isBeacon) in row.usedModules.modules) {
                     if (isBeacon) {
-                        beaconModules.AddRange(Enumerable.Repeat(module.name, count));
+                        beaconModules.AddRange(Enumerable.Repeat<ObjectWithQuality>(module, count));
                     }
                     else {
-                        modules.AddRange(Enumerable.Repeat(module.name, count));
+                        modules.AddRange(Enumerable.Repeat<ObjectWithQuality>(module, count));
                     }
                 }
 
@@ -274,5 +274,11 @@ public class ProjectPageSettingsPanel : PseudoScreen {
         if (collector.severity > ErrorSeverity.None) {
             ErrorListPanel.Show(collector);
         }
+    }
+
+    private record struct ObjectWithQuality(string Name, string Quality) {
+        public static implicit operator ObjectWithQuality?(ObjectWithQuality<EntityCrafter>? value) => value == null ? default(ObjectWithQuality?) : new ObjectWithQuality(value.target.name, value.quality.name);
+        public static implicit operator ObjectWithQuality(ObjectWithQuality<Module> value) => new ObjectWithQuality(value.target.name, value.quality.name);
+        public static implicit operator ObjectWithQuality?(ObjectWithQuality<EntityBeacon>? value) => value == null ? default(ObjectWithQuality?) : new ObjectWithQuality(value.target.name, value.quality.name);
     }
 }

@@ -17,8 +17,8 @@ public class ProductionTableContentTests {
         table.AddRecipe(Database.recipes.all.Single(r => r.name == "recipe"), DataUtils.DeterministicComparer);
         RecipeRow row = table.GetAllRecipes().Single();
 
-        table.modules.beacon = Database.allBeacons.Single();
-        table.modules.beaconModule = Database.allModules.Single(m => m.name == "speed-module");
+        table.modules.beacon = new(Database.allBeacons.Single(), Quality.Normal);
+        table.modules.beaconModule = new(Database.allModules.Single(m => m.name == "speed-module"), Quality.Normal);
         table.modules.beaconsPerBuilding = 2;
         table.modules.autoFillPayback = MathF.Sqrt(float.MaxValue);
 
@@ -28,7 +28,7 @@ public class ProductionTableContentTests {
         // assert will ensure the currently fixed value has not changed by more than 0.01%.
         static void testCombinations(RecipeRow row, ProductionTable table, Action assert) {
             foreach (EntityCrafter crafter in Database.allCrafters) {
-                row.entity = crafter;
+                row.entity = new(crafter, Quality.Normal);
 
                 foreach (Goods fuel in crafter.energy.fuels) {
                     row.fuel = fuel;
@@ -37,7 +37,7 @@ public class ProductionTableContentTests {
                         ModuleTemplateBuilder builder = new();
 
                         if (module != null) {
-                            builder.list.Add((module, 0));
+                            builder.list.Add((new(module, Quality.Normal), 0));
                         }
 
                         row.modules = builder.Build(row);
@@ -70,7 +70,7 @@ public class ProductionTableContentTests {
         // Call assert for each combination. assert will ensure the currently fixed value has not changed by more than 0.01%.
         void testCombinations(RecipeRow row, ProductionTable table, Action assert) {
             foreach (EntityCrafter crafter in Database.allCrafters) {
-                row.entity = crafter;
+                row.entity = new(crafter, Quality.Normal);
 
                 foreach (Goods fuel in crafter.energy.fuels) {
                     row.fuel = fuel;
@@ -82,14 +82,14 @@ public class ProductionTableContentTests {
                                     // Pre-emptive code for if ProductionTable.modules is made writable.
                                     // The ProductionTable.modules setter must notify all relevant recipes if it is added.
                                     _ = method.Invoke(table, [new ModuleFillerParameters(table) {
-                                        beacon = beacon,
-                                        beaconModule = module,
+                                        beacon = new(beacon, Quality.Normal),
+                                        beaconModule = new(module, Quality.Normal),
                                         beaconsPerBuilding = beaconCount,
                                     }]);
                                 }
                                 else {
-                                    table.modules.beacon = beacon;
-                                    table.modules.beaconModule = module;
+                                    table.modules.beacon = new(beacon, Quality.Normal);
+                                    table.modules.beaconModule = new(module, Quality.Normal);
                                     table.modules.beaconsPerBuilding = beaconCount;
                                 }
                                 table.Solve((ProjectPage)table.owner).Wait();
@@ -140,7 +140,7 @@ public class ProductionTableContentTests {
 
         // The complicated tests for when the fixed value is expected to reset when fixed fuels are involved.
         Action testFuel(RecipeRow row, ProductionTable table) => () => {
-            if (row.entity.energy.fuels.Contains(oldFuel)) {
+            if (row.entity.target.energy.fuels.Contains(oldFuel)) {
                 Assert.Equal(fuelAmount, row.FuelInformation.Amount, fuelAmount * .0001);
                 assertCalls++;
             }

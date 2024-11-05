@@ -175,7 +175,7 @@ public class PreferencesScreen : PseudoScreen {
         using (gui.EnterRow()) {
             gui.BuildText(text, topOffset: 0.5f);
             if (gui.BuildFactorioObjectButtonWithText(current) == Click.Left) {
-                gui.BuildObjectSelectDropDown(list, DataUtils.DefaultOrdering, selectItem, text, width: width);
+                gui.BuildObjectSelectDropDown(list, selectItem, new(text), width);
             }
         }
     }
@@ -188,7 +188,7 @@ public class PreferencesScreen : PseudoScreen {
         using (gui.EnterRow()) {
             gui.BuildText(text, topOffset: 0.5f);
             if (gui.BuildFactorioObjectButtonWithText(current) == Click.Left) {
-                gui.BuildObjectSelectDropDownWithNone(list, DataUtils.DefaultOrdering, selectItem, text, width: width);
+                gui.BuildObjectSelectDropDownWithNone(list, selectItem, new(text), width);
             }
         }
     }
@@ -208,10 +208,10 @@ public class PreferencesScreen : PseudoScreen {
             gui.allocator = RectAllocator.RightRow;
             if (!fluid) {
                 if (gui.BuildButton("Set from belt")) {
-                    gui.BuildObjectSelectDropDown<EntityBelt>(Database.allBelts, DataUtils.DefaultOrdering, setBelt => {
+                    gui.BuildObjectSelectDropDown(Database.allBelts, setBelt => {
                         _ = preferences.RecordUndo(true);
                         preferences.itemUnit = setBelt.beltItemsPerSecond;
-                    }, "Select belt", extra: b => DataUtils.FormatAmount(b.beltItemsPerSecond, UnitOfMeasure.PerSecond));
+                    }, new("Select belt", DataUtils.DefaultOrdering, ExtraText: b => DataUtils.FormatAmount(b.beltItemsPerSecond, UnitOfMeasure.PerSecond)));
                 }
             }
             gui.BuildText("per second");

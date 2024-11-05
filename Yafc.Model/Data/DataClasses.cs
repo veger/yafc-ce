@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Text.Json;
 using Yafc.UI;
 [assembly: InternalsVisibleTo("Yafc.Parser")]
 
@@ -22,7 +23,8 @@ internal enum FactorioObjectSortOrder {
     Mechanics,
     Technologies,
     Entities,
-    Tiles
+    Tiles,
+    Qualities,
 }
 
 public enum FactorioId { }
@@ -139,7 +141,8 @@ public abstract class RecipeOrTechnology : FactorioObject {
         return true;
     }
 
-    public virtual bool CanAcceptModule(Item _) => true;
+    public bool CanAcceptModule(ObjectWithQuality<Module> module) => CanAcceptModule(module.target);
+    public virtual bool CanAcceptModule(Module _) => true;
 }
 
 public enum FactorioObjectSpecialType {
@@ -174,7 +177,7 @@ public class Recipe : RecipeOrTechnology {
         }
     }
 
-    public override bool CanAcceptModule(Item module) => EntityWithModules.CanAcceptModule(((Module)module).moduleSpecification, allowedEffects, allowedModuleCategories);
+    public override bool CanAcceptModule(Module module) => EntityWithModules.CanAcceptModule(module.moduleSpecification, allowedEffects, allowedModuleCategories);
 }
 
 public class Mechanics : Recipe {
@@ -408,7 +411,11 @@ public class Entity : FactorioObject {
     public Product[] loot { get; internal set; } = [];
     public bool mapGenerated { get; internal set; }
     public float mapGenDensity { get; internal set; }
-    public float power { get; internal set; }
+    public float basePower { get; internal set; }
+    public float Power(Quality quality)
+        => factorioType is "boiler" or "reactor" or "generator" or "burner-generator" ? quality.ApplyStandardBonus(basePower)
+        : factorioType is "beacon" ? basePower * quality.BeaconConsumptionFactor
+        : basePower;
     public EntityEnergy energy { get; internal set; } = null!; // TODO: Prove that this is always properly initialized. (Do we need an EntityWithEnergy type?)
     public Item[] itemsToPlace { get; internal set; } = null!; // null-forgiving: This is initialized in CalculateMaps.
     public int size { get; internal set; }
@@ -434,23 +441,23 @@ public abstract class EntityWithModules : Entity {
     public int moduleSlots { get; internal set; }
 
     public static bool CanAcceptModule(ModuleSpecification module, AllowedEffects effects, string[]? allowedModuleCategories) {
-        if (module.productivity > 0f && (effects & AllowedEffects.Productivity) == 0) {
+        if (module.baseProductivity > 0f && (effects & AllowedEffects.Productivity) == 0) {
             return false;
         }
 
-        if (module.consumption < 0f && (effects & AllowedEffects.Consumption) == 0) {
+        if (module.baseConsumption < 0f && (effects & AllowedEffects.Consumption) == 0) {
             return false;
         }
 
-        if (module.pollution < 0f && (effects & AllowedEffects.Pollution) == 0) {
+        if (module.basePollution < 0f && (effects & AllowedEffects.Pollution) == 0) {
             return false;
         }
 
-        if (module.speed > 0f && (effects & AllowedEffects.Speed) == 0) {
+        if (module.baseSpeed > 0f && (effects & AllowedEffects.Speed) == 0) {
             return false;
         }
 
-        if (module.quality > 0f && (effects & AllowedEffects.Quality) == 0) {
+        if (module.baseQuality > 0f && (effects & AllowedEffects.Quality) == 0) {
             return false;
         }
 
@@ -461,6 +468,7 @@ public abstract class EntityWithModules : Entity {
         return true;
     }
 
+    public bool CanAcceptModule<T>(ObjectWithQuality<T> module) where T : Module => CanAcceptModule(module.target.moduleSpecification);
     public bool CanAcceptModule(ModuleSpecification module) => CanAcceptModule(module, allowedEffects, allowedModuleCategories);
 }
 
@@ -471,12 +479,141 @@ public class EntityCrafter : EntityWithModules {
     public Goods[]? inputs { get; internal set; }
     public RecipeOrTechnology[] recipes { get; internal set; } = null!; // null-forgiving: Set in the first step of CalculateMaps
     private float _craftingSpeed = 1;
-    public float craftingSpeed {
+    public float baseCraftingSpeed {
         // The speed of a lab is baseSpeed * (1 + researchSpeedBonus) * Math.Min(0.2, 1 + moduleAndBeaconSpeedBonus)
         get => _craftingSpeed * (1 + (factorioType == "lab" ? Project.current.settings.researchSpeedBonus : 0));
         internal set => _craftingSpeed = value;
     }
-    public EffectReceiver? effectReceiver { get; internal set; } = null!;
+    public float CraftingSpeed(Quality quality) => factorioType is "agricultural-tower" or "electric-energy-interface" ? baseCraftingSpeed : quality.ApplyStandardBonus(baseCraftingSpeed);
+    public EffectReceiver effectReceiver { get; internal set; } = null!;
+}
+
+public sealed class Quality : FactorioObject {
+    public static Quality Normal { get; internal set; } = null!;
+    /// <summary>
+    /// Gets the highest quality that is accessible at the current milestones.
+    /// </summary>
+    public static Quality MaxAccessible {
+        get {
+            Quality quality = Normal;
+            while (quality.nextQuality?.IsAccessibleWithCurrentMilestones() ?? false) {
+                quality = quality.nextQuality;
+            }
+            return quality;
+        }
+    }
+
+    public Quality? nextQuality { get; internal set; }
+    public int level { get; internal set; }
+
+    public override string type => "Quality";
+    internal override FactorioObjectSortOrder sortingOrder => FactorioObjectSortOrder.Qualities;
+
+    internal List<Technology> technologyUnlock { get; } = [];
+    internal Quality? previousQuality { get; set; }
+
+    public override void GetDependencies(IDependencyCollector collector, List<FactorioObject> temp) {
+        collector.Add(technologyUnlock.ToArray(), DependencyList.Flags.TechnologyUnlock);
+        if (previousQuality != null) {
+            collector.Add([previousQuality], DependencyList.Flags.Source);
+        }
+        if (level != 0) {
+            collector.Add(Database.allModules.Where(m => m.moduleSpecification.baseQuality > 0).ToArray(), DependencyList.Flags.Source);
+        }
+    }
+
+    // applies the "standard" +30% per level bonus
+    internal float ApplyStandardBonus(float baseValue) => baseValue * (1 + .3f * level);
+    // applies the +100% per level accumulator capacity bonus
+    internal float ApplyAccumulatorCapacityBonus(float baseValue) => baseValue * (1 + level);
+    // applies the standard +30% per level bonus, but with the exception that the result is floored to the nearest hundredth
+    // Modules use this: a 25% normal bonus is a 32% uncommon bonus, not 32.5%.
+    internal float ApplyModuleBonus(float baseValue) => MathF.Floor(ApplyStandardBonus(baseValue) * 100) / 100;
+    // applies the .2 per level beacon transmission bonus
+    internal float ApplyBeaconBonus(float baseValue) => baseValue + level * .2f;
+
+    public float StandardBonus => .3f * level;
+    public float AccumulatorCapacityBonus => level;
+    public float BeaconTransmissionBonus => .2f * level;
+    public float BeaconConsumptionFactor { get; internal set; }
+}
+
+/// <summary>
+/// Represents a <see cref="FactorioObject"/> with an attached <see cref="Quality"/> modifier.
+/// </summary>
+/// <typeparam name="T">The concrete type of the quality-modified object.</typeparam>
+public interface IObjectWithQuality<out T> : IFactorioObjectWrapper where T : FactorioObject {
+    /// <summary>
+    /// Gets the <typeparamref name="T"/> object managed by this instance.
+    /// </summary>
+    new T target { get; }
+    /// <summary>
+    /// Gets the <see cref="Quality"/> of the object managed by this instance.
+    /// </summary>
+    Quality quality { get; }
+}
+
+public static class ObjectWithQualityExtensions {
+    // This method cannot be declared on the interface.
+    public static void Deconstruct<T>(this IObjectWithQuality<T> value, out T obj, out Quality quality) where T : FactorioObject {
+        obj = value.target;
+        quality = value.quality;
+    }
+}
+
+/// <summary>
+/// Represents a <see cref="FactorioObject"/> with an attached <see cref="Quality"/> modifier.
+/// </summary>
+/// <typeparam name="T">The concrete type of the quality-modified object.</typeparam>
+/// <param name="target">The object to be associated with a quality modifier. If this parameter might be <see langword="null"/>,
+/// use the implicit conversion from <see cref="ValueTuple{T1, T2}"/> instead.</param>
+/// <param name="quality">The quality for this object.</param>
+[Serializable]
+public sealed class ObjectWithQuality<T>(T target, Quality quality) : IObjectWithQuality<T>, ICustomJsonDeserializer<ObjectWithQuality<T>> where T : FactorioObject {
+    /// <inheritdoc/>
+    public T target { get; } = target ?? throw new ArgumentNullException(nameof(target));
+    /// <inheritdoc/>
+    public Quality quality { get; } = quality ?? throw new ArgumentNullException(nameof(quality));
+
+    /// <summary>
+    /// Creates a new <see cref="ObjectWithQuality{T}"/> with the current <see cref="target"/> and the specified <see cref="Quality"/>.
+    /// </summary>
+    public ObjectWithQuality<T> With(Quality quality) => new(target, quality);
+
+    string IFactorioObjectWrapper.text => ((IFactorioObjectWrapper)target).text;
+    FactorioObject IFactorioObjectWrapper.target => target;
+    float IFactorioObjectWrapper.amount => ((IFactorioObjectWrapper)target).amount;
+
+    public static implicit operator ObjectWithQuality<T>?((T? entity, Quality quality) value) => value.entity == null ? null : new(value.entity, value.quality);
+
+    /// <inheritdoc/>
+    public static bool Deserialize(ref Utf8JsonReader reader, DeserializationContext context, out ObjectWithQuality<T>? result) {
+        if (reader.TokenType == JsonTokenType.String) {
+            // Read the old `"entity": "Entity.solar-panel"` format.
+            if (Database.objectsByTypeName[reader.GetString()!] is not T obj) {
+                context.Error($"Could not convert '{reader.GetString()}' to a {typeof(T).Name}.", ErrorSeverity.MinorDataLoss);
+                result = null;
+                return true;
+            }
+            result = new(obj, Quality.Normal);
+            return true;
+        }
+        // This is probably the current `"entity": { "target": "Entity.solar-panel", "quality": "Quality.rare" }` format.
+        result = default;
+        return false;
+    }
+
+    // Ensure ObjectWithQuality<X> equals ObjectWithQuality<Y> as long as the properties are equal, regardless of X and Y.
+    public override bool Equals(object? obj) => Equals(obj as IObjectWithQuality<FactorioObject>);
+    public bool Equals(IObjectWithQuality<FactorioObject>? other) => other is not null && target == other.target && quality == other.quality;
+    public override int GetHashCode() => HashCode.Combine(target, quality);
+
+    public static bool operator ==(ObjectWithQuality<T>? left, ObjectWithQuality<T>? right) => left == (IObjectWithQuality<T>?)right;
+    public static bool operator ==(ObjectWithQuality<T>? left, IObjectWithQuality<T>? right) => (left is null && right is null) || (left is not null && left.Equals(right));
+    public static bool operator ==(IObjectWithQuality<T>? left, ObjectWithQuality<T>? right) => right == left;
+    public static bool operator !=(ObjectWithQuality<T>? left, ObjectWithQuality<T>? right) => !(left == right);
+    public static bool operator !=(ObjectWithQuality<T>? left, IObjectWithQuality<T>? right) => !(left == right);
+    public static bool operator !=(IObjectWithQuality<T>? left, ObjectWithQuality<T>? right) => !(left == right);
 }
 
 public class Effect {
@@ -500,7 +637,8 @@ public class EntityInserter : Entity {
 }
 
 public class EntityAccumulator : Entity {
-    public float accumulatorCapacity { get; internal set; }
+    public float baseAccumulatorCapacity { get; internal set; }
+    public float AccumulatorCapacity(Quality quality) => quality.ApplyAccumulatorCapacityBonus(baseAccumulatorCapacity);
 }
 
 public class EntityBelt : Entity {
@@ -512,7 +650,8 @@ public class EntityReactor : EntityCrafter {
 }
 
 public class EntityBeacon : EntityWithModules {
-    public float beaconEfficiency { get; internal set; }
+    public float baseBeaconEfficiency { get; internal set; }
+    public float BeaconEfficiency(Quality quality) => quality.ApplyBeaconBonus(baseBeaconEfficiency);
     public float[] profile { get; internal set; } = null!;
 
     public float GetProfile(int numberOfBeacons) {
@@ -566,18 +705,24 @@ public class EntityEnergy {
     public TemperatureRange acceptedTemperature { get; internal set; } = TemperatureRange.Any;
     public float emissions { get; internal set; }
     public float drain { get; internal set; }
-    public float fuelConsumptionLimit { get; internal set; } = float.PositiveInfinity;
+    public float baseFuelConsumptionLimit { get; internal set; } = float.PositiveInfinity;
+    public float FuelConsumptionLimit(Quality quality) => quality.ApplyStandardBonus(baseFuelConsumptionLimit);
     public Goods[] fuels { get; internal set; } = [];
     public float effectivity { get; internal set; } = 1f;
 }
 
 public class ModuleSpecification {
     public string category { get; internal set; } = null!;
-    public float consumption { get; internal set; }
-    public float speed { get; internal set; }
-    public float productivity { get; internal set; }
-    public float pollution { get; internal set; }
-    public float quality { get; internal set; }
+    public float baseConsumption { get; internal set; }
+    public float baseSpeed { get; internal set; }
+    public float baseProductivity { get; internal set; }
+    public float basePollution { get; internal set; }
+    public float baseQuality { get; internal set; }
+    public float Consumption(Quality quality) => baseConsumption >= 0 ? baseConsumption : quality.ApplyModuleBonus(baseConsumption);
+    public float Speed(Quality quality) => baseSpeed <= 0 ? baseSpeed : quality.ApplyModuleBonus(baseSpeed);
+    public float Productivity(Quality quality) => baseProductivity <= 0 ? baseProductivity : quality.ApplyModuleBonus(baseProductivity);
+    public float Pollution(Quality quality) => basePollution >= 0 ? basePollution : quality.ApplyModuleBonus(basePollution);
+    public float Quality(Quality quality) => baseQuality <= 0 ? baseQuality : quality.ApplyModuleBonus(baseQuality);
 }
 
 public struct TemperatureRange(int min, int max) {

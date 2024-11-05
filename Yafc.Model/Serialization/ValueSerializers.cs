@@ -69,7 +69,8 @@ internal abstract class ValueSerializer<T> {
             return new PageReferenceSerializer();
         }
 
-        // null-forgiving: Activator.CreateInstance does not return null.
+        // null-forgiving: Activator.CreateInstance only returns null for Nullable<T>.
+        // See System.Private.CoreLib\src\System\Activator.cs:20, e.g. https://github.com/dotnet/runtime/blob/main/src/libraries/System.Private.CoreLib/src/System/Activator.cs#L20
         if (typeof(FactorioObject).IsAssignableFrom(typeof(T))) {
             return Activator.CreateInstance(typeof(FactorioObjectSerializer<>).MakeGenericType(typeof(T)))!;
         }
@@ -355,19 +356,24 @@ internal class EnumSerializer<T> : ValueSerializer<T> where T : struct, Enum {
     public override void WriteToUndoSnapshot(UndoSnapshotBuilder writer, T value) => writer.writer.Write(Unsafe.As<T, int>(ref value));
 }
 
+/// <summary>
+/// Serializes classes marked with <c>[Serializable]</c>, except blueprint classes, <see cref="FactorioObject"/>s, and <see cref="ModelObject"/>s.
+/// </summary>
 internal class PlainClassesSerializer<T> : ValueSerializer<T> where T : class {
     private static readonly SerializationMap builder = SerializationMap.GetSerializationMap(typeof(T));
     public override T? ReadFromJson(ref Utf8JsonReader reader, DeserializationContext context, object? owner) => SerializationMap<T>.DeserializeFromJson(null, ref reader, context);
 
     public override void WriteToJson(Utf8JsonWriter writer, T? value) => SerializationMap<T>.SerializeToJson(value, writer);
 
-    public override T ReadFromUndoSnapshot(UndoSnapshotReader reader, object owner) {
-        T obj = (T?)reader.ReadManagedReference() ?? throw new InvalidOperationException("Read an unexpected null value from the undo snapshot; cannot undo.");
+    public override T? ReadFromUndoSnapshot(UndoSnapshotReader reader, object owner) {
+        T? obj = (T?)reader.ReadManagedReference();
         builder.ReadUndo(obj, reader);
         return obj;
     }
     public override void WriteToUndoSnapshot(UndoSnapshotBuilder writer, T? value) {
-        writer.WriteManagedReference(value ?? throw new InvalidOperationException("Unexpected request to write a null value to the undo snapshot; cannot save undo state."));
+        writer.WriteManagedReference(value);
         builder.BuildUndo(value, writer);
     }
+
+    public override bool CanBeNull => true;
 }
