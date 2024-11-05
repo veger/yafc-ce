@@ -391,7 +391,7 @@ public class ObjectTooltip : Tooltip {
         }
     }
 
-    private void BuildRecipe(RecipeOrTechnology recipe, ImGui gui) {
+    private static void BuildRecipe(RecipeOrTechnology recipe, ImGui gui) {
         using (gui.EnterGroup(contentPadding, RectAllocator.LeftRow)) {
             gui.BuildIcon(Icon.Time, 2f, SchemeColor.BackgroundText);
             gui.BuildText(DataUtils.FormatAmount(recipe.time, UnitOfMeasure.Second));
@@ -497,7 +497,7 @@ public class ObjectTooltip : Tooltip {
         }
     }
 
-    private void BuildTechnology(Technology technology, ImGui gui) {
+    private static void BuildTechnology(Technology technology, ImGui gui) {
         bool isResearchTriggerCraft = (technology.flags & RecipeFlags.HasResearchTriggerCraft) == RecipeFlags.HasResearchTriggerCraft;
         if (!isResearchTriggerCraft) {
             BuildRecipe(technology, gui);
