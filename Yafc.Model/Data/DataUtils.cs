@@ -592,7 +592,7 @@ public static partial class DataUtils {
     /// <returns>True if the string could be parsed as the specified unit, false otherwise.</returns>
     /// <exception cref="ArgumentException">Thrown when <paramref name="unit"/> is <see cref="UnitOfMeasure.Celsius"/>.</exception>
     public static bool TryParseAmount(string str, out float amount, UnitOfMeasure unit) {
-        if (unit is UnitOfMeasure.Celsius) { throw new ArgumentException("Parsing to UnitOfMeasure.Celcius is not supported.", nameof(unit)); }
+        if (unit is UnitOfMeasure.Celsius) { throw new ArgumentException("Parsing to UnitOfMeasure.Celsius is not supported.", nameof(unit)); }
 
         var (mul, _) = Project.current.ResolveUnitOfMeasure(unit);
         float multiplier = unit is UnitOfMeasure.Megawatt or UnitOfMeasure.Megajoule ? 1e6f : 1f;

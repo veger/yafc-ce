@@ -79,19 +79,14 @@ public abstract class TextDataColumn<TData>(string header, float initialWidth, f
     public virtual void BuildMenu(ImGui gui) { }
 }
 
-public class DataGrid<TData> where TData : class {
-    public readonly List<DataColumn<TData>> columns;
+public class DataGrid<TData>(params DataColumn<TData>[] columns) where TData : class {
+    public readonly List<DataColumn<TData>> columns = new(columns);
     public static readonly Padding innerPadding = new Padding(0.2f);
     public float width { get; private set; }
-    private readonly float spacing;
+    private readonly float spacing = innerPadding.left + innerPadding.right;
     private Vector2 buildingStart;
     private ImGui? contentGui;
     public float headerHeight = 1.3f;
-
-    public DataGrid(params DataColumn<TData>[] columns) {
-        this.columns = new List<DataColumn<TData>>(columns);
-        spacing = innerPadding.left + innerPadding.right;
-    }
 
     private void BuildHeaderResizer(ImGui gui, DataColumn<TData> column, Rect rect) {
         switch (gui.action) {

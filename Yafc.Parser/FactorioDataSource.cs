@@ -89,17 +89,17 @@ public static partial class FactorioDataSource {
                 return [];
             }
 
-            byte[] bytearr = new byte[entry.Length];
+            byte[] bytes = new byte[entry.Length];
 
             using (var stream = entry.Open()) {
                 int read = 0;
 
-                while (read < bytearr.Length) {
-                    read += stream.Read(bytearr, read, bytearr.Length - read);
+                while (read < bytes.Length) {
+                    read += stream.Read(bytes, read, bytes.Length - read);
                 }
             }
 
-            return bytearr;
+            return bytes;
         }
 
         string fileName = Path.Combine(info.folder, path);

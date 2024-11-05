@@ -75,11 +75,12 @@ public abstract class Scrollable(bool vertical, bool horizontal, bool collapsibl
         }
 
         if (gui.action == ImGuiAction.MouseScroll) {
-            if (vertical && !InputSystem.Instance.control && gui.ConsumeEvent(rect))
+            if (vertical && !InputSystem.Instance.control && gui.ConsumeEvent(rect)) {
                 scrollY += gui.actionParameter * 3f;
-
-            else if (horizontal && InputSystem.Instance.control && gui.ConsumeEvent(rect))
+            }
+            else if (horizontal && InputSystem.Instance.control && gui.ConsumeEvent(rect)) {
                 scrollX += gui.actionParameter * 3f;
+            }
         }
         else {
             if (horizontal && maxScroll.X > 0f) {
@@ -308,13 +309,13 @@ public class VirtualScrollList<TData> : ScrollAreaBase {
         this.reorder = reorder;
     }
 
-    private int CalcFirstBlock() => Math.Max(0, MathUtils.Floor((scrollY - contents.initialPadding.top) / (elementSize.Y * bufferRows)));
+    private int CalculateFirstBlock() => Math.Max(0, MathUtils.Floor((scrollY - contents.initialPadding.top) / (elementSize.Y * bufferRows)));
 
     public override Vector2 scroll {
         get => base.scroll;
         set {
             base.scroll = value;
-            int row = CalcFirstBlock();
+            int row = CalculateFirstBlock();
 
             if (row != firstVisibleBlock) {
                 RebuildContents();
@@ -330,7 +331,7 @@ public class VirtualScrollList<TData> : ScrollAreaBase {
         }
 
         int rowCount = ((_data.Count - 1) / elementsPerRow) + 1;
-        firstVisibleBlock = CalcFirstBlock();
+        firstVisibleBlock = CalculateFirstBlock();
         // Scroll up until there are maxRowsVisible, or to the top.
         int firstRow = Math.Max(0, Math.Min(firstVisibleBlock * bufferRows, rowCount - maxRowsVisible));
         int index = firstRow * elementsPerRow;

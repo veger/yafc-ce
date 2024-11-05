@@ -366,7 +366,7 @@ public partial class ImGui {
         return false;
     }
 
-    public bool ConsumeMouseUp(Rect rect, bool inside = true, uint button = SDL.SDL_BUTTON_LEFT) {
+    public bool ConsumeMouseUp(Rect rect, bool inside = true) {
         if (action == ImGuiAction.MouseUp && rect == mouseDownRect && (!inside || rect.Contains(mousePosition))) {
             action = ImGuiAction.Consumed;
             Rebuild();

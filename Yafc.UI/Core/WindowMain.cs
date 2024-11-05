@@ -84,7 +84,7 @@ internal class MainWindowDrawingSurface : DrawingSurface {
     ///
     /// This seems like something that SDL2 should do on its own, since the point of SDL2 is to abstract across platform render
     /// APIs, and it sort of does - but SDL2 has been around for a really long time and its defaults reflect that. On Windows,
-    /// it will autoselect DirectX/Direct3D 9 if given half a chance; DX9 was of course the version that shipped in 2002 and
+    /// it will auto-select DirectX/Direct3D 9 if given half a chance; DX9 was of course the version that shipped in 2002 and
     /// supported Windows 98. This is despite the fact that SDL2 supports DX12 and DX11 where possible, and in 2024 "where possible"
     /// is really going to be "everywhere" - it just doesn't seem to default select them.
     ///
@@ -99,7 +99,7 @@ internal class MainWindowDrawingSurface : DrawingSurface {
     /// If set, always return the appropriate index for the software renderer. This can be useful if your graphics hardware doesn't support
     /// the rendering API that would otherwise be returned.
     /// </param>
-    /// <returns>The index of the selected render driver, including 0 (SDL autoselect) if no known-best driver exists on this machine.
+    /// <returns>The index of the selected render driver, including 0 (SDL auto-select) if no known-best driver exists on this machine.
     /// This value should be fed to the second argument of SDL_CreateRenderer()</returns>
     private static int PickRenderDriver(SDL.SDL_RendererFlags flags, bool forceSoftwareRenderer) {
         nint numRenderDrivers = SDL.SDL_GetNumRenderDrivers();

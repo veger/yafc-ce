@@ -316,7 +316,7 @@ match:
     /// Add/update the variable value for the constraint with the given amount, and store the recipe to the production link.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static void AddLinkCoef(Constraint cst, Variable var, ProductionLink link, RecipeRow recipe, float amount) {
+    private static void AddLinkCoefficient(Constraint cst, Variable var, ProductionLink link, RecipeRow recipe, float amount) {
         // GetCoefficient will return 0 when the variable is not available in the constraint
         amount += (float)cst.GetCoefficient(var);
         _ = link.capturedRecipes.Add(recipe);
@@ -331,7 +331,7 @@ match:
         List<ProductionLink> allLinks = [];
         Setup(allRecipes, allLinks);
         Variable[] vars = new Variable[allRecipes.Count];
-        float[] objCoefs = new float[allRecipes.Count];
+        float[] objCoefficients = new float[allRecipes.Count];
 
         for (int i = 0; i < allRecipes.Count; i++) {
             var recipe = allRecipes[i];
@@ -372,11 +372,11 @@ match:
                 if (recipe.FindLink(product.goods, out var link)) {
                     link.flags |= ProductionLink.Flags.HasProduction;
                     float added = product.GetAmountPerRecipe(recipe.parameters.productivity);
-                    AddLinkCoef(constraints[link.solverIndex], recipeVar, link, recipe, added);
+                    AddLinkCoefficient(constraints[link.solverIndex], recipeVar, link, recipe, added);
                     float cost = product.goods.Cost();
 
                     if (cost > 0f) {
-                        objCoefs[i] += added * cost;
+                        objCoefficients[i] += added * cost;
                     }
                 }
 
@@ -389,7 +389,7 @@ match:
 
                 if (recipe.FindLink(option, out var link)) {
                     link.flags |= ProductionLink.Flags.HasConsumption;
-                    AddLinkCoef(constraints[link.solverIndex], recipeVar, link, recipe, -ingredient.amount);
+                    AddLinkCoefficient(constraints[link.solverIndex], recipeVar, link, recipe, -ingredient.amount);
                 }
 
                 links.ingredients[j] = link;
@@ -404,16 +404,16 @@ match:
                 if (recipe.FindLink(recipe.fuel, out var link)) {
                     links.fuel = link;
                     link.flags |= ProductionLink.Flags.HasConsumption;
-                    AddLinkCoef(constraints[link.solverIndex], recipeVar, link, recipe, -fuelAmount);
+                    AddLinkCoefficient(constraints[link.solverIndex], recipeVar, link, recipe, -fuelAmount);
                 }
 
                 if (recipe.fuel.HasSpentFuel(out var spentFuel) && recipe.FindLink(spentFuel, out link)) {
                     links.spentFuel = link;
                     link.flags |= ProductionLink.Flags.HasProduction;
-                    AddLinkCoef(constraints[link.solverIndex], recipeVar, link, recipe, fuelAmount);
+                    AddLinkCoefficient(constraints[link.solverIndex], recipeVar, link, recipe, fuelAmount);
 
                     if (spentFuel.Cost() > 0f) {
-                        objCoefs[i] += fuelAmount * spentFuel.Cost();
+                        objCoefficients[i] += fuelAmount * spentFuel.Cost();
                     }
                 }
             }

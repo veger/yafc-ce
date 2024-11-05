@@ -31,8 +31,8 @@ public struct DependencyList {
 }
 
 public static class Dependencies {
-    public static Mapping<FactorioObject, DependencyList[]> dependencyList;
-    public static Mapping<FactorioObject, List<FactorioId>> reverseDependencies;
+    public static Mapping<FactorioObject, DependencyList[]> dependencyList { get; private set; }
+    public static Mapping<FactorioObject, List<FactorioId>> reverseDependencies { get; private set; }
 
     public static void Calculate() {
         dependencyList = Database.objects.CreateMapping<DependencyList[]>();

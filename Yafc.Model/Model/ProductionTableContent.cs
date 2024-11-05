@@ -612,7 +612,7 @@ public class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Productio
                 oldFuel = row.fuel;
                 row.fuel = Database.voidEnergy; // step 1
             }
-            // Store the current state of the target RecipeRow for the calcualations in Dispose
+            // Store the current state of the target RecipeRow for the calculations in Dispose
             oldParameters = RecipeParameters.CalculateParameters(row);
         }
 

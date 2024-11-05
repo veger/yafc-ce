@@ -26,6 +26,8 @@ public abstract class Window : IDisposable {
     protected DropDownPanel? dropDown;
     private SimpleDropDown? simpleDropDown;
     private ImGui.DragOverlay? draggingOverlay;
+    private bool disposedValue;
+
     public DrawingSurface? surface { get; protected set; }
 
     public int displayIndex => SDL.SDL_GetWindowDisplayIndex(window);
@@ -45,7 +47,7 @@ public abstract class Window : IDisposable {
 
         _ = SDL.SDL_SetRenderDrawBlendMode(surface.renderer, SDL.SDL_BlendMode.SDL_BLENDMODE_BLEND);
         id = SDL.SDL_GetWindowID(window);
-        Ui.CloseWidowOfType(GetType());
+        Ui.CloseWindowOfType(GetType());
         Ui.RegisterWindow(id, this);
         visible = true;
     }
@@ -237,9 +239,24 @@ public abstract class Window : IDisposable {
     }
 
     protected abstract void BuildContents(ImGui gui);
-    public virtual void Dispose() => rootGui.Dispose();
 
     internal ImGui.DragOverlay GetDragOverlay() => draggingOverlay ??= new ImGui.DragOverlay();
     protected internal virtual void WindowMaximized() { }
     protected internal virtual void WindowRestored() { }
+
+    protected virtual void Dispose(bool disposing) {
+        if (!disposedValue) {
+            if (disposing) {
+                rootGui.Dispose();
+            }
+
+            disposedValue = true;
+        }
+    }
+
+    public void Dispose() {
+        // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+        Dispose(disposing: true);
+        GC.SuppressFinalize(this);
+    }
 }

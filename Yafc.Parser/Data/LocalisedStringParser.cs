@@ -37,9 +37,9 @@ internal static class LocalisedStringParser {
 
     private static string? ParseKey(string key, object[] parameters) {
         if (key == "") {
-            var builder = new StringBuilder();
-            foreach (var subString in parameters) {
-                var localisedSubString = ParseStringOrArray(subString!);
+            StringBuilder builder = new StringBuilder();
+            foreach (object subString in parameters) {
+                string? localisedSubString = ParseStringOrArray(subString);
                 if (localisedSubString == null) {
                     return null;
                 }
@@ -50,8 +50,8 @@ internal static class LocalisedStringParser {
             return builder.ToString();
         }
         else if (key == "?") {
-            foreach (var alternative in parameters) {
-                var localisedAlternative = ParseStringOrArray(alternative!);
+            foreach (object alternative in parameters) {
+                string? localisedAlternative = ParseStringOrArray(alternative);
                 if (localisedAlternative != null) {
                     return localisedAlternative;
                 }
@@ -60,7 +60,7 @@ internal static class LocalisedStringParser {
             return null;
         }
         else if (FactorioLocalization.Localize(key) is { } localisedString) {
-            var localisedParameters = parameters.Select(ParseStringOrArray!).ToArray();
+            string?[] localisedParameters = parameters.Select(ParseStringOrArray).ToArray();
             return ReplaceBuiltInParameters(localisedString, localisedParameters);
         }
 
@@ -72,10 +72,10 @@ internal static class LocalisedStringParser {
             return format;
         }
 
-        var result = new StringBuilder();
-        var cursor = 0;
+        StringBuilder result = new StringBuilder();
+        int cursor = 0;
         while (true) {
-            var start = format.IndexOf("__", cursor);
+            int start = format.IndexOf("__", cursor);
             if (start == -1) {
                 result.Append(format[cursor..]);
                 return result.ToString();
@@ -84,8 +84,8 @@ internal static class LocalisedStringParser {
                 result.Append(format[cursor..start]);
             }
 
-            var end = format.IndexOf("__", start + 2);
-            var type = format[(start + 2)..end];
+            int end = format.IndexOf("__", start + 2);
+            string type = format[(start + 2)..end];
             switch (type) {
                 case "CONTROL_STYLE_BEGIN":
                 case "CONTROL_STYLE_END":
@@ -103,35 +103,35 @@ internal static class LocalisedStringParser {
                 case "CONTROL_MODIFIER":
                 case "ALT_CONTROL_LEFT_CLICK":
                 case "ALT_CONTROL_RIGHT_CLICK":
-                    ReadExtraParameter();
+                    readExtraParameter();
                     result.Append(format[start..(end + 2)]);
                     break;
                 case "ALT_CONTROL":
-                    ReadExtraParameter();
-                    ReadExtraParameter();
+                    readExtraParameter();
+                    readExtraParameter();
                     result.Append(format[start..(end + 2)]);
                     break;
                 case "ENTITY":
                 case "ITEM":
                 case "TILE":
                 case "FLUID":
-                    var name = ReadExtraParameter();
+                    string name = readExtraParameter();
                     result.Append(ParseKey($"{type.ToLower()}-name.{name}", []));
                     break;
                 case "plural_for_parameter":
-                    var deciderIdx = ReadExtraParameter();
-                    var decider = parameters[int.Parse(deciderIdx) - 1];
+                    string deciderIdx = readExtraParameter();
+                    string? decider = parameters[int.Parse(deciderIdx) - 1];
                     if (decider == null) {
                         return null;
                     }
 
-                    var plurals = ReadPluralOptions();
-                    var selected = SelectPluralOption(decider, plurals);
+                    var plurals = readPluralOptions();
+                    string? selected = selectPluralOption(decider, plurals);
                     if (selected == null) {
                         return null;
                     }
 
-                    var innerReplaced = ReplaceBuiltInParameters(selected, parameters);
+                    string? innerReplaced = ReplaceBuiltInParameters(selected, parameters);
                     if (innerReplaced == null) {
                         return null;
                     }
@@ -139,7 +139,7 @@ internal static class LocalisedStringParser {
                     result.Append(innerReplaced);
                     break;
                 default:
-                    if (int.TryParse(type, out var idx) && idx >= 1 && idx <= parameters.Length) {
+                    if (int.TryParse(type, out int idx) && idx >= 1 && idx <= parameters.Length) {
                         result.Append(parameters[idx - 1]);
                     }
                     else {
@@ -150,33 +150,33 @@ internal static class LocalisedStringParser {
             }
             cursor = end + 2;
 
-            string ReadExtraParameter() {
-                var end2 = format.IndexOf("__", end + 2);
-                var result = format[(end + 2)..end2];
+            string readExtraParameter() {
+                int end2 = format.IndexOf("__", end + 2);
+                string result = format[(end + 2)..end2];
                 end = end2;
                 return result;
             }
 
-            (Func<string, bool> Pattern, string Result)[] ReadPluralOptions() {
-                var end2 = format.IndexOf("}__", end + 3);
-                var options = format[(end + 3)..end2].Split('|');
+            (Func<string, bool> Pattern, string Result)[] readPluralOptions() {
+                int end2 = format.IndexOf("}__", end + 3);
+                string[] options = format[(end + 3)..end2].Split('|');
                 end = end2 + 1;
-                return options.Select(ReadPluralOption).ToArray();
+                return options.Select(readPluralOption).ToArray();
             }
 
-            (Func<string, bool> Pattern, string Result) ReadPluralOption(string option) {
-                var sides = option.Split('=');
+            (Func<string, bool> Pattern, string Result) readPluralOption(string option) {
+                string[] sides = option.Split('=');
                 if (sides.Length != 2) {
                     throw new FormatException($"Invalid plural format: {option}");
                 }
 
-                var pattern = sides[0];
-                var result = sides[1];
-                var alternatives = pattern.Split(',');
-                return (x => alternatives.Any(a => Match(a, x)), result);
+                string pattern = sides[0];
+                string result = sides[1];
+                string[] alternatives = pattern.Split(',');
+                return (x => alternatives.Any(a => match(a, x)), result);
             }
 
-            string? SelectPluralOption(string decider, (Func<string, bool> Pattern, string Result)[] options) {
+            string? selectPluralOption(string decider, (Func<string, bool> Pattern, string Result)[] options) {
                 foreach (var option in options) {
                     if (option.Pattern(decider)) {
                         return option.Result;
@@ -186,7 +186,7 @@ internal static class LocalisedStringParser {
                 return null;
             }
 
-            static bool Match(string pattern, string text) {
+            static bool match(string pattern, string text) {
                 const string ends_in_prefix = "ends in ";
                 if (pattern == "rest") {
                     return true;
@@ -206,7 +206,7 @@ internal static class LocalisedStringParser {
             return null;
         }
 
-        var localeBuilder = new StringBuilder(text);
+        StringBuilder localeBuilder = new StringBuilder(text);
         _ = localeBuilder.Replace("\\n", "\n");
 
         // Cleaning up tags using simple state machine

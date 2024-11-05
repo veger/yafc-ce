@@ -8,7 +8,7 @@ namespace Yafc.UI;
 public abstract class ImGuiCache<T, TKey> : IDisposable where T : ImGuiCache<T, TKey> where TKey : IEquatable<TKey> {
     private static readonly T Constructor = (T)RuntimeHelpers.GetUninitializedObject(typeof(T));
 
-    public class Cache : IDisposable {
+    public sealed class Cache : IDisposable {
         private readonly Dictionary<TKey, T> activeCached = [];
         private readonly HashSet<TKey> unused = [];
 
@@ -45,7 +45,7 @@ public abstract class ImGuiCache<T, TKey> : IDisposable where T : ImGuiCache<T, 
     public abstract void Dispose();
 }
 
-public class TextCache : ImGuiCache<TextCache, (FontFile.FontSize size, string text, uint wrapWidth)>, IRenderable {
+public sealed class TextCache : ImGuiCache<TextCache, (FontFile.FontSize size, string text, uint wrapWidth)>, IRenderable {
     public TextureHandle texture;
     private IntPtr surface;
     internal SDL.SDL_Rect texRect;

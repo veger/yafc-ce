@@ -118,7 +118,7 @@ public abstract class SoftwareDrawingSurface(IntPtr surface, float pixelsPerUnit
         nint iconSurface = IconCollection.GetIconSurface(icon);
         _ = SDL.SDL_SetSurfaceColorMod(iconSurface, sdlColor.r, sdlColor.g, sdlColor.b);
         _ = SDL.SDL_SetSurfaceAlphaMod(iconSurface, sdlColor.a);
-        _ = SDL.SDL_BlitScaled(iconSurface, ref IconCollection.IconRect, surface, ref position);
+        _ = SDL.SDL_BlitScaled(iconSurface, ref IconCollection.iconRect, surface, ref position);
     }
 
     internal override void DrawBorder(SDL.SDL_Rect position, RectangleBorder border) {

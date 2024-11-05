@@ -266,9 +266,9 @@ internal partial class FactorioDataDeserializer {
                 recipeCrafters.Add(boiler, category);
                 recipe.flags |= RecipeFlags.UsesFluidTemperature;
                 // TODO: input fluid amount now depends on its temperature, using min temperature should be OK for non-modded
-                var inputEnergyPerOneFluid = (targetTemp - acceptTemperature.min) * input.heatCapacity;
+                float inputEnergyPerOneFluid = (targetTemp - acceptTemperature.min) * input.heatCapacity;
                 recipe.ingredients = [new Ingredient(input, boiler.basePower / inputEnergyPerOneFluid) { temperature = acceptTemperature }];
-                var outputEnergyPerOneFluid = (targetTemp - output.temperatureRange.min) * output.heatCapacity;
+                float outputEnergyPerOneFluid = (targetTemp - output.temperatureRange.min) * output.heatCapacity;
                 recipe.products = [new Product(output, boiler.basePower / outputEnergyPerOneFluid)];
                 recipe.time = 1f;
                 boiler.baseCraftingSpeed = 1f;
@@ -547,13 +547,13 @@ internal partial class FactorioDataDeserializer {
 
         switch (type) {
             case "variable":
-                string varname = expression.Get("variable_name", "");
+                string varName = expression.Get("variable_name", "");
 
-                if (varname is "x" or "y" or "distance") {
+                if (varName is "x" or "y" or "distance") {
                     return EstimationDistanceFromCenter;
                 }
 
-                if (((LuaTable?)raw["noise-expression"]).Get(varname, out LuaTable? noiseExpr)) {
+                if (((LuaTable?)raw["noise-expression"]).Get(varName, out LuaTable? noiseExpr)) {
                     return EstimateArgument(noiseExpr, "expression");
                 }
 

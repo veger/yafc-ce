@@ -30,7 +30,7 @@ public class ProductionSummaryView : ProjectPageView<ProductionSummary> {
             gui.allocator = RectAllocator.Center;
             gui.spacing = 0f;
             if (row.subgroup != null) {
-                if (gui.BuildButton(row.subgroup.expanded ? Icon.ShevronDown : Icon.ShevronRight)) {
+                if (gui.BuildButton(row.subgroup.expanded ? Icon.ChevronDown : Icon.ChevronRight)) {
                     row.subgroup.RecordChange().expanded = !row.subgroup.expanded;
                     view.flatHierarchy.SetData(view.model.group);
                 }

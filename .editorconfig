@@ -164,3 +164,5 @@ dotnet_diagnostic.IDE0052.severity = none
 
 # Disable "IDE0130: Namespace does not match folder structure" because VS Code Cleanup applies it automatically and breaks things.
 dotnet_style_namespace_match_folder = false
+
+spelling_exclusion_path = exclusion.dic

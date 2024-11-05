@@ -10,7 +10,5 @@ using Yafc.Model.Tests;
 namespace Yafc.Model.Tests;
 public class PrepareForTests : XunitTestFramework {
     public PrepareForTests(IMessageSink messageSink)
-        : base(messageSink) {
-        Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
-    }
+        : base(messageSink) => Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
 }

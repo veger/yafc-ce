@@ -6,7 +6,7 @@ namespace Yafc.UI;
 
 public static class IconCollection {
     public const int IconSize = 32;
-    public static SDL.SDL_Rect IconRect = new SDL.SDL_Rect { w = IconSize, h = IconSize };
+    internal static SDL.SDL_Rect iconRect = new SDL.SDL_Rect { w = IconSize, h = IconSize };
 
     private static readonly List<IntPtr> icons = [];
 
@@ -37,7 +37,7 @@ public static class IconCollection {
         else {
             nint blit = SDL.SDL_CreateRGBSurfaceWithFormat(0, IconSize, IconSize, 0, SDL.SDL_PIXELFORMAT_RGBA8888);
             SDL.SDL_Rect srcRect = new SDL.SDL_Rect { w = surfaceData.w, h = surfaceData.h };
-            _ = SDL.SDL_LowerBlitScaled(surface, ref srcRect, blit, ref IconRect);
+            _ = SDL.SDL_LowerBlitScaled(surface, ref srcRect, blit, ref iconRect);
             icons.Add(blit);
             SDL.SDL_FreeSurface(surface);
         }

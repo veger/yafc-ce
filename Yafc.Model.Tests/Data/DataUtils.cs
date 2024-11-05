@@ -4,9 +4,7 @@ using Xunit;
 namespace Yafc.Model.Data.Tests;
 
 public class DataUtilsTests {
-    public DataUtilsTests() {
-        Project.current = new();
-    }
+    public DataUtilsTests() => Project.current = new();
 
     [Fact]
     public void TryParseAmount_IsInverseOfFormatValue() {
@@ -49,7 +47,7 @@ public class DataUtilsTests {
     [Fact]
     public void TryParseAmount_IsInverseOfFormatValue_WithBeltsAndPipes() {
         // Hammer the formatter and parser with lots of random but repeatable values, making sure TryParseAmount can correctly read anything FormatAmount generates.
-        // This time, include b and p suffixes. These suffixes noticably reduce precision, so do them separately.
+        // This time, include b and p suffixes. These suffixes noticeably reduce precision, so do them separately.
         Random r = new Random(0);
         byte[] bytes = new byte[4];
         for (int i = 0; i < 1000; i++) {

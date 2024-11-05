@@ -217,8 +217,8 @@ public sealed partial class ImGui : IDisposable, IPanel {
             renderable.Render(surface, ToSdlRect(pos, screenOffset), color.ToSdlColor());
         }
 
-        foreach (var (srect, type) in borders) {
-            surface.DrawBorder(srect, type);
+        foreach (var (rect, type) in borders) {
+            surface.DrawBorder(rect, type);
         }
 
         foreach (var (rect, batch, _) in panels) {

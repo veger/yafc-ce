@@ -30,7 +30,7 @@ public class Font(FontFile file, float size) {
     public void Dispose() => file.Dispose();
 }
 
-public class FontFile(string fileName) : IDisposable {
+public sealed class FontFile(string fileName) : IDisposable {
     public readonly string fileName = fileName;
     private readonly Dictionary<int, FontSize> sizes = [];
 

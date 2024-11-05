@@ -33,7 +33,7 @@ internal static class LuaDependentTestHelper {
     /// Do not use <c>require</c> in the embedded files.</remarks>
     /// <param name="targetStreamName">The name of the embedded resource to load, if the default name selection does not work for you.</param>
     internal static Project GetProjectForLua(string targetStreamName = null) {
-        // Verify correct non-parallel declaration for tests, to accomodate the singleton analyses.
+        // Verify correct non-parallel declaration for tests, to accommodate the singleton analyses.
         StackTrace stack = new();
 
         for (int i = 1; i < stack.FrameCount; i++) {

@@ -312,7 +312,7 @@ internal static class SerializationMap<T> where T : class {
         if (typeof(ICustomJsonDeserializer<T>).IsAssignableFrom(typeof(T))) {
             // I want to do `((ICustomJsonDeserializer<T>)T).Deserialize(...)`, but that isn't supported.
             // This and its helper types call ICustomJsonDeserializer<T>.Deserialize by the least obscure method I could come up with.
-            var helper = (ICustomDeserializerHelper)Activator.CreateInstance(typeof(CustomDeserializerHelper<>).MakeGenericType(typeof(T), typeof(T)))!;
+            ICustomDeserializerHelper helper = (ICustomDeserializerHelper)Activator.CreateInstance(typeof(CustomDeserializerHelper<>).MakeGenericType(typeof(T), typeof(T)))!;
             Utf8JsonReader savedState = reader;
             if (helper.Deserialize(ref reader, context, out T? result)) {
                 // The custom deserializer was successful; return its result.

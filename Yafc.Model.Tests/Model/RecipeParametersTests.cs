@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace Yafc.Model.Tests.Model;
@@ -7,7 +8,7 @@ namespace Yafc.Model.Tests.Model;
 [Collection("LuaDependentTests")]
 public class RecipeParametersTests {
     [Fact]
-    public void FluidBoilingRecipes_HaveCorrectConsumption() {
+    public async Task FluidBoilingRecipes_HaveCorrectConsumption() {
         Project project = LuaDependentTestHelper.GetProjectForLua();
 
         ProjectPage page = new(project, typeof(ProductionTable));
@@ -22,7 +23,7 @@ public class RecipeParametersTests {
         RecipeRow heatExchanger = table.recipes[1];
         boiler.fixedBuildings = 1;
         heatExchanger.fixedBuildings = 1;
-        table.Solve((ProjectPage)table.owner).Wait(); // Initial Solve to set RecipeRow.Ingredients
+        await table.Solve((ProjectPage)table.owner); // Initial Solve to set RecipeRow.Ingredients
 
         for (int i = 0; i < 3; i++) {
             if (i != 0) {
@@ -32,7 +33,7 @@ public class RecipeParametersTests {
             boiler.ChangeVariant(boiler.Ingredients.Single().Goods, water[i]);
             heatExchanger.ChangeVariant(boiler.Ingredients.Single().Goods, water[i]);
 
-            table.Solve((ProjectPage)table.owner).Wait();
+            await table.Solve((ProjectPage)table.owner);
 
             // boil 60, 78.26, 120 water per second from 15, 50, 90° to 165°
             float expectedBoilerAmount = 1800 / .2f / (165 - water[i].temperature);

@@ -80,9 +80,9 @@ public static class ImmediateWidgets {
             bool contain = (displayStyle.MilestoneDisplay & MilestoneDisplay.Contained) != 0;
             FactorioObject? milestone = Milestones.Instance.GetHighest(obj.target, displayStyle.MilestoneDisplay >= MilestoneDisplay.Always);
             if (milestone != null) {
-                Vector2 psize = new Vector2(displayStyle.Size / 2f);
-                var delta = contain ? psize : psize / 2f;
-                Rect milestoneIcon = new Rect(gui.lastRect.BottomRight - delta, psize);
+                Vector2 size = new Vector2(displayStyle.Size / 2f);
+                var delta = contain ? size : size / 2f;
+                Rect milestoneIcon = new Rect(gui.lastRect.BottomRight - delta, size);
                 var icon = milestone == Database.voidEnergy ? DataUtils.HandIcon : milestone.icon;
                 gui.DrawIcon(milestoneIcon, icon, color);
             }
@@ -90,9 +90,9 @@ public static class ImmediateWidgets {
 
         Quality? quality = (obj as IObjectWithQuality<FactorioObject>)?.quality;
         if (gui.isBuilding && quality != null && quality != Quality.Normal) {
-            Vector2 psize = new Vector2(displayStyle.Size / 2.5f);
-            Vector2 delta = new(0, psize.Y);
-            Rect qualityRect = new Rect(gui.lastRect.BottomLeft - delta, psize);
+            Vector2 size = new Vector2(displayStyle.Size / 2.5f);
+            Vector2 delta = new(0, size.Y);
+            Rect qualityRect = new Rect(gui.lastRect.BottomLeft - delta, size);
 
             gui.DrawIcon(qualityRect, quality.icon, SchemeColor.Source);
         }
@@ -367,7 +367,7 @@ public static class ImmediateWidgets {
     /// <param name="quality">The <see cref="Quality"/> to initially display selected, if any.</param>
     /// <param name="newQuality">The <see cref="Quality"/> selected by the user.</param>
     /// <param name="header">The header text to draw, defaults to "Select quality"</param>
-    /// <returns><see langword="true"/> if the user selected a quality. <see langword="false"/> if they did not, or if the loaded mods do not provide multiple qualitites.</returns>
+    /// <returns><see langword="true"/> if the user selected a quality. <see langword="false"/> if they did not, or if the loaded mods do not provide multiple qualities.</returns>
     public static bool BuildQualityList(this ImGui gui, Quality? quality, [NotNullWhen(true), NotNullIfNotNull(nameof(quality))] out Quality? newQuality, string header = "Select quality", bool drawCentered = false) {
         newQuality = quality;
         if (Quality.Normal.nextQuality == null) {

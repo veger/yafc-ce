@@ -72,50 +72,50 @@ public class Project : ModelObject {
     }
 
     public static Project ReadFromFile(string path, ErrorCollector collector) {
-        Project? proj;
+        Project? project;
 
         if (!string.IsNullOrEmpty(path) && File.Exists(path)) {
-            proj = Read(File.ReadAllBytes(path), collector);
+            project = Read(File.ReadAllBytes(path), collector);
         }
         else {
-            proj = new Project();
+            project = new Project();
         }
 
-        proj.attachedFileName = path;
-        proj.lastSavedVersion = proj.projectVersion;
+        project.attachedFileName = path;
+        project.lastSavedVersion = project.projectVersion;
 
-        return proj;
+        return project;
     }
 
     public static Project Read(byte[] bytes, ErrorCollector collector) {
-        Project? proj;
+        Project? project;
         Utf8JsonReader reader = new Utf8JsonReader(bytes);
         _ = reader.Read();
         DeserializationContext context = new DeserializationContext(collector);
-        proj = SerializationMap<Project>.DeserializeFromJson(null, ref reader, context);
+        project = SerializationMap<Project>.DeserializeFromJson(null, ref reader, context);
 
         if (!reader.IsFinalBlock) {
             collector.Error("Json was not consumed to the end!", ErrorSeverity.MajorDataLoss);
         }
 
-        if (proj == null) {
+        if (project == null) {
             throw new SerializationException("Unable to load project file");
         }
 
-        proj.justCreated = false;
-        Version version = new Version(proj.yafcVersion ?? "0.0");
+        project.justCreated = false;
+        Version version = new Version(project.yafcVersion ?? "0.0");
 
         if (version != currentYafcVersion) {
             if (version > currentYafcVersion) {
                 collector.Error("This file was created with future YAFC version. This may lose data.", ErrorSeverity.Important);
             }
 
-            proj.yafcVersion = currentYafcVersion.ToString();
+            project.yafcVersion = currentYafcVersion.ToString();
         }
 
         context.Notify();
 
-        return proj;
+        return project;
     }
 
     public void Save(string fileName) {
