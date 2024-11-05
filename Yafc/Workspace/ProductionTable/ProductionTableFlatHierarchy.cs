@@ -84,14 +84,6 @@ public class FlatHierarchy<TRow, TGroup>(DataGrid<TRow> grid, Action<ImGui, TGro
         flatGroups.MoveListElementIndex(indexFrom, indexTo);
     }
 
-    private void MoveFlatHierarchy(TRow from, TGroup to) {
-        draggingRecipe = from;
-        int indexFrom = flatRecipes.IndexOf(from);
-        int indexTo = flatGroups.IndexOf(to);
-        flatRecipes.MoveListElementIndex(indexFrom, indexTo);
-        flatGroups.MoveListElementIndex(indexFrom, indexTo);
-    }
-
     private readonly Stack<float> depthStart = new Stack<float>();
 
     /// <summary>

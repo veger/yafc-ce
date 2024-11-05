@@ -37,7 +37,6 @@ internal partial class LuaContext : IDisposable {
         LUA_TTHREAD = 8,
     }
 
-    private const int LUA_REFNIL = -1;
     private const int REGISTRY = -1001000;
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate int LuaCFunction(IntPtr lua);
     private const string LUA = "lua52";
