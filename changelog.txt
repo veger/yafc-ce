@@ -22,6 +22,7 @@ Date:
           They can be toggled on/off in the LMB of the recipe.
     Bugfixes:
         - Fixed counts are hidden on disabled recipes, since editing them won't work properly.
+        - Accomodate modules as spoilage results.
 ----------------------------------------------------------------------------------------------------------------------
 Version: 2.1.0
 Date: October 29th 2024
