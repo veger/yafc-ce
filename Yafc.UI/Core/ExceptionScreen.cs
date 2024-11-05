@@ -14,7 +14,7 @@ public class ExceptionScreen : WindowUtility {
 
         if (!exists && !ignoreAll) {
             exists = true;
-            Ui.DispatchInMainThread(state => new ExceptionScreen(ex), null);
+            Ui.DispatchInMainThread(state => _ = new ExceptionScreen(ex), null);
         }
     }
 
