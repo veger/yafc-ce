@@ -97,16 +97,7 @@ public struct Rect(float x, float y, float width, float height) {
 
     public override readonly bool Equals(object? obj) => obj is Rect other && Equals(other);
 
-    public override readonly int GetHashCode() {
-        unchecked {
-            int hashCode = X.GetHashCode();
-            hashCode = (hashCode * 397) ^ Y.GetHashCode();
-            hashCode = (hashCode * 397) ^ Width.GetHashCode();
-            hashCode = (hashCode * 397) ^ Height.GetHashCode();
-
-            return hashCode;
-        }
-    }
+    public override readonly int GetHashCode() => HashCode.Combine(X, Y, Width, Height);
 
     public static Rect operator +(in Rect source, Vector2 offset) => new Rect(source.Position + offset, source.Size);
 
