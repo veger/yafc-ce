@@ -15,8 +15,8 @@
 //     Internal changes:
 //         Changes to the code that do not affect the behavior of the program.
 ----------------------------------------------------------------------------------------------------------------------
-Version:
-Date:
+Version: 2.2.0
+Date: November 6th 2024
     Features:
         - Add pseudo-items representing a recipe's total sushi-inputs and sushi-outputs.
           They can be toggled on/off in the LMB of the recipe.
