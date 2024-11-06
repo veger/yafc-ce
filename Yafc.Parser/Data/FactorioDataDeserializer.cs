@@ -148,7 +148,6 @@ internal partial class FactorioDataDeserializer {
         ParseModYafcHandles(data["script_enabled"] as LuaTable);
         progress.Report(("Post-processing", "Computing maps"));
         // Deterministically sort all objects
-
         allObjects.Sort((a, b) => a.sortingOrder == b.sortingOrder ? string.Compare(a.typeDotName, b.typeDotName, StringComparison.Ordinal) : a.sortingOrder - b.sortingOrder);
 
         for (int i = 0; i < allObjects.Count; i++) {
@@ -374,8 +373,8 @@ internal partial class FactorioDataDeserializer {
     }
 
     private void DeserializeItem(LuaTable table, ErrorCollector _) {
+        string name = table.Get("name", "");
         if (table.Get("type", "") == "module" && table.Get("effect", out LuaTable? moduleEffect)) {
-            string name = table.Get("name", "");
             Module module = GetObject<Item, Module>(name);
             var effect = ParseEffect(moduleEffect);
             module.moduleSpecification = new ModuleSpecification {
@@ -386,6 +385,25 @@ internal partial class FactorioDataDeserializer {
                 basePollution = effect.pollution,
                 baseQuality = effect.quality,
             };
+        }
+        else if (table.Get("type", "") == "ammo" && table["ammo_type"] is LuaTable ammo_type) {
+            Ammo ammo = GetObject<Item, Ammo>(name);
+            ammo_type.ReadObjectOrArray(readAmmoType);
+
+            if (ammo_type["target_filter"] is LuaTable targets) {
+                ammo.targetFilter = new(targets.ArrayElements.OfType<string>());
+            }
+
+            void readAmmoType(LuaTable table) {
+                if (table["action"] is LuaTable action) {
+                    action.ReadObjectOrArray(readTrigger);
+                }
+            }
+            void readTrigger(LuaTable table) {
+                if (table.Get<string>("type") == "direct" && table["action_delivery"] is LuaTable delivery && delivery.Get<string>("type") == "projectile") {
+                    ammo.projectileNames.Add(delivery.Get<string>("projectile")!);
+                }
+            }
         }
 
         Item item = DeserializeCommon<Item>(table, "item");

@@ -86,6 +86,23 @@ internal static class DataParserUtils {
     }
 
     public static IEnumerable<T> ArrayElements<T>(this LuaTable? table) => table?.ArrayElements.OfType<T>() ?? [];
+
+    /// <summary>
+    /// Reads a <see cref="LuaTable"/> that has the format "Thing or array[Thing]", and calls <paramref name="action"/> for each Thing in the array,
+    /// or for the passed Thing, as appropriate.
+    /// </summary>
+    /// <param name="table">A <see cref="LuaTable"/> that might be either an object or an array of objects.</param>
+    /// <param name="action">The action to perform on each object in <paramref name="table"/>.</param>
+    public static void ReadObjectOrArray(this LuaTable table, Action<LuaTable> action) {
+        if (table.ArrayElements.Count > 0) {
+            foreach (LuaTable entry in table.ArrayElements.OfType<LuaTable>()) {
+                action(entry);
+            }
+        }
+        else {
+            action(table);
+        }
+    }
 }
 
 public static class SpecialNames {

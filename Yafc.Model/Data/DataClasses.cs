@@ -326,7 +326,7 @@ public class Item : Goods {
     /// </summary>
     /// <remarks>This forces modules to be loaded before other items, since deserialization otherwise creates Item objects for all spoil results.
     /// It does not protect against modules that spoil into other modules, but one hopes people won't do that.</remarks>
-    internal static string[] ExplicitPrototypeLoadOrder { get; } = ["module"];
+    internal static string[] ExplicitPrototypeLoadOrder { get; } = ["ammo", "module"];
 
     public Item? fuelResult { get; internal set; }
     public int stackSize { get; internal set; }
@@ -345,6 +345,11 @@ public class Item : Goods {
 
 public class Module : Item {
     public ModuleSpecification moduleSpecification { get; internal set; } = null!; // null-forgiving: Initialized by DeserializeItem.
+}
+
+internal class Ammo : Item {
+    internal HashSet<string> projectileNames { get; } = [];
+    internal HashSet<string>? targetFilter { get; set; }
 }
 
 public class Fluid : Goods {
@@ -486,6 +491,10 @@ public class EntityCrafter : EntityWithModules {
     }
     public float CraftingSpeed(Quality quality) => factorioType is "agricultural-tower" or "electric-energy-interface" ? baseCraftingSpeed : quality.ApplyStandardBonus(baseCraftingSpeed);
     public EffectReceiver effectReceiver { get; internal set; } = null!;
+}
+
+internal class EntityProjectile : Entity {
+    internal HashSet<string> placeEntities { get; } = [];
 }
 
 public sealed class Quality : FactorioObject {
