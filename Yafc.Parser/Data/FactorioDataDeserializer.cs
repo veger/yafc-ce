@@ -145,6 +145,8 @@ internal partial class FactorioDataDeserializer {
             DeserializePrototypes(raw, (string)prototypeName, DeserializeEntity, progress, errorCollector);
         }
 
+        ParseCaptureEffects();
+
         ParseModYafcHandles(data["script_enabled"] as LuaTable);
         progress.Report(("Post-processing", "Computing maps"));
         // Deterministically sort all objects

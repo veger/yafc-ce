@@ -423,6 +423,7 @@ public class Entity : FactorioObject {
         : basePower;
     public EntityEnergy energy { get; internal set; } = null!; // TODO: Prove that this is always properly initialized. (Do we need an EntityWithEnergy type?)
     public Item[] itemsToPlace { get; internal set; } = null!; // null-forgiving: This is initialized in CalculateMaps.
+    internal FactorioObject[] miscSources { get; set; } = [];
     public int size { get; internal set; }
     internal override FactorioObjectSortOrder sortingOrder => FactorioObjectSortOrder.Entities;
     public override string type => "Entity";
@@ -436,7 +437,7 @@ public class Entity : FactorioObject {
             return;
         }
 
-        collector.Add(itemsToPlace, DependencyList.Flags.ItemToPlace);
+        collector.Add([.. itemsToPlace, .. miscSources], DependencyList.Flags.ItemToPlace);
     }
 }
 

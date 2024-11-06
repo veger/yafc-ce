@@ -582,6 +582,23 @@ internal partial class FactorioDataDeserializer {
         return recipe;
     }
 
+    private void ParseCaptureEffects() {
+        HashSet<string> captureRobots = new(allObjects.Where(e => e.factorioType == "capture-robot").Select(e => e.name));
+        // Projectiles that create capture robots.
+        HashSet<string> captureProjectiles = new(allObjects.OfType<EntityProjectile>().Where(p => p.placeEntities.Intersect(captureRobots).Any()).Select(p => p.name));
+        // Ammo that creates projectiles that create capture robots.
+        List<Ammo> captureAmmo = [.. allObjects.OfType<Ammo>().Where(a => captureProjectiles.Intersect(a.projectileNames).Any())];
+
+        Dictionary<string, Entity> entities = allObjects.OfType<Entity>().ToDictionary(e => e.name);
+        foreach (Ammo ammo in captureAmmo) {
+            foreach (EntitySpawner spawner in allObjects.OfType<EntitySpawner>()) {
+                if ((ammo.targetFilter == null || ammo.targetFilter.Contains(spawner.name)) && spawner.capturedEntityName != null) {
+                    entities[spawner.capturedEntityName].miscSources = [.. entities[spawner.capturedEntityName].miscSources.Append(ammo).Distinct()];
+                }
+            }
+        }
+    }
+
     private class DataBucket<TKey, TValue> : IEqualityComparer<List<TValue>> where TKey : notnull where TValue : notnull {
         private readonly Dictionary<TKey, IList<TValue>> storage = [];
         /// <summary>This function provides a default list of values for the key for when the key is not present in the storage.</summary>
