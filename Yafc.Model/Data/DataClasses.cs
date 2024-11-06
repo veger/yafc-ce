@@ -497,6 +497,10 @@ internal class EntityProjectile : Entity {
     internal HashSet<string> placeEntities { get; } = [];
 }
 
+internal class EntitySpawner : Entity {
+    internal string? capturedEntityName { get; set; }
+}
+
 public sealed class Quality : FactorioObject {
     public static Quality Normal { get; internal set; } = null!;
     /// <summary>

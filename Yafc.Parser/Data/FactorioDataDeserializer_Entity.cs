@@ -469,6 +469,10 @@ internal partial class FactorioDataDeserializer {
                 }
 
                 break;
+            case "unit-spawner":
+                var spawner = GetObject<Entity, EntitySpawner>(name);
+                spawner.capturedEntityName = table.Get<string>("captured_spawner_entity");
+                break;
         }
 
         var entity = DeserializeCommon<Entity>(table, "entity");
