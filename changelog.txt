@@ -20,6 +20,8 @@ Date:
     Features:
         - (SA) Process accessiblilty of captured spawners, which also fixes biter eggs and subsequent Gleba recipes.
         - (SA) Add support for the capture-spawner technology trigger.
+    Internal changes:
+        - Using the LuaContext after it is freed now produces a better error.
 ----------------------------------------------------------------------------------------------------------------------
 Version: 2.2.0
 Date: November 6th 2024
