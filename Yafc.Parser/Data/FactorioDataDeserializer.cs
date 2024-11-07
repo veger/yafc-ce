@@ -374,7 +374,7 @@ internal partial class FactorioDataDeserializer {
         };
     }
 
-    private void DeserializeItem(LuaTable table, ErrorCollector _) {
+    private void DeserializeItem(LuaTable table, ErrorCollector _1) {
         string name = table.Get("name", "");
         if (table.Get("type", "") == "module" && table.Get("effect", out LuaTable? moduleEffect)) {
             Module module = GetObject<Item, Module>(name);
@@ -447,11 +447,37 @@ internal partial class FactorioDataDeserializer {
             recipe.time = 0f; // TODO what to put here?
         }
 
-        if (GetRef<Item>(table, "spoil_result", out Item? spoiled)) {
+        if (GetRef(table, "spoil_result", out Item? spoiled)) {
             var recipe = CreateSpecialRecipe(item, SpecialNames.SpoilRecipe, "spoiling");
             recipe.ingredients = [new Ingredient(item, 1)];
             recipe.products = [new Product(spoiled, 1)];
             recipe.time = table.Get("spoil_ticks", 0) / 60f;
+        }
+        // Read spoil-into-entity triggers
+        else if (table["spoil_to_trigger_result"] is LuaTable spoil && spoil["trigger"] is LuaTable triggers) {
+            triggers.ReadObjectOrArray(readTrigger);
+
+            void readTrigger(LuaTable trigger) {
+                if (trigger.Get<string>("type") == "direct" && trigger["action_delivery"] is LuaTable delivery) {
+                    delivery.ReadObjectOrArray(readDelivery);
+                }
+            }
+            void readDelivery(LuaTable delivery) {
+                if (delivery.Get<string>("type") == "instant" && delivery["source_effects"] is LuaTable effects) {
+                    effects.ReadObjectOrArray(readEffect);
+                }
+            }
+            void readEffect(LuaTable effect) {
+                if (effect.Get<string>("type") == "create-entity") {
+                    float spoilTime = table.Get("spoil_ticks", 0) / 60f;
+                    string entityName = "Entity." + effect.Get<string>("entity_name");
+                    item.getBaseSpoilTime = new(() => spoilTime);
+                    item.getSpoilResult = new(() => {
+                        _ = Database.objectsByTypeName.TryGetValue(entityName, out FactorioObject? result);
+                        return result;
+                    });
+                }
+            }
         }
 
         if (table.Get("plant_result", out string? plantResult) && !string.IsNullOrEmpty(plantResult)) {

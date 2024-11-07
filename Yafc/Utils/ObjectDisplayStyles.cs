@@ -8,7 +8,8 @@ namespace Yafc.UI;
 /// <param name="Size">The icon size. The production tables use size 3.</param>
 /// <param name="MilestoneDisplay">The <see cref="Yafc.MilestoneDisplay"/> option to use when drawing the icon.</param>
 /// <param name="UseScaleSetting">Whether or not to obey the <see cref="Model.ProjectPreferences.iconScale"/> setting.</param>
-public record IconDisplayStyle(float Size, MilestoneDisplay MilestoneDisplay, bool UseScaleSetting) {
+/// <param name="AlwaysAccessible">If <see langword="true"/>, this icon will always be drawn as if the <see cref="FactorioObject"/> is accessible.</param>
+public record IconDisplayStyle(float Size, MilestoneDisplay MilestoneDisplay, bool UseScaleSetting, bool AlwaysAccessible = false) {
     /// <summary>
     /// Gets the default icon style: Size 2, <see cref="MilestoneDisplay.Normal"/>, and not scaled.
     /// </summary>

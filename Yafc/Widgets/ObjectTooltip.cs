@@ -333,6 +333,15 @@ public class ObjectTooltip : Tooltip {
             }
         }
 
+        if (goods is Item { spoilResult: FactorioObject spoiled } perishable) {
+            BuildSubHeader(gui, "Perishable");
+            using (gui.EnterGroup(contentPadding)) {
+                float spoilTime = perishable.GetSpoilTime(quality);
+                gui.BuildText($"After {DataUtils.FormatTime(spoilTime)}, spoils into");
+                gui.BuildFactorioObjectButtonWithText(spoiled, iconDisplayStyle: IconDisplayStyle.Default with { AlwaysAccessible = true });
+            }
+        }
+
         if (goods.fuelFor.Length > 0) {
             if (goods.fuelValue > 0f) {
                 BuildSubHeader(gui, "Fuel value " + DataUtils.FormatAmount(goods.fuelValue, UnitOfMeasure.Megajoule) + " used for:");
@@ -588,7 +597,8 @@ public class ObjectTooltip : Tooltip {
             ("Crafting speed:", '+' + DataUtils.FormatAmount(quality.StandardBonus, UnitOfMeasure.Percent)),
             ("Accumulator capacity:", '+' + DataUtils.FormatAmount(quality.AccumulatorCapacityBonus, UnitOfMeasure.Percent)),
             ("Module effects:", '+' + DataUtils.FormatAmount(quality.StandardBonus, UnitOfMeasure.Percent) + '*'),
-            ("Beacon transmission efficiency:", '+' + DataUtils.FormatAmount(quality.BeaconTransmissionBonus, UnitOfMeasure.None))
+            ("Beacon transmission efficiency:", '+' + DataUtils.FormatAmount(quality.BeaconTransmissionBonus, UnitOfMeasure.None)),
+            ("Time before spoiling:", '+' + DataUtils.FormatAmount(quality.StandardBonus, UnitOfMeasure.Percent)),
         ];
 
         float rightWidth = text.Max(t => gui.GetTextDimensions(out _, t.right).X);
