@@ -446,6 +446,33 @@ internal partial class FactorioDataDeserializer {
                 }
 
                 break;
+            case "projectile":
+                var projectile = GetObject<Entity, EntityProjectile>(name);
+                if (table["action"] is LuaTable actions) {
+                    actions.ReadObjectOrArray(parseAction);
+                }
+
+                void parseAction(LuaTable action) {
+                    if (action.Get<string>("type") == "direct" && action["action_delivery"] is LuaTable delivery) {
+                        delivery.ReadObjectOrArray(parseDelivery);
+                    }
+                }
+                void parseDelivery(LuaTable delivery) {
+                    if (delivery.Get<string>("type") == "instant" && delivery["target_effects"] is LuaTable effects) {
+                        effects.ReadObjectOrArray(parseEffect);
+                    }
+                }
+                void parseEffect(LuaTable effect) {
+                    if (effect.Get<string>("type") == "create-entity" && effect.Get("entity_name", out string? createdEntity)) {
+                        projectile.placeEntities.Add(createdEntity);
+                    }
+                }
+
+                break;
+            case "unit-spawner":
+                var spawner = GetObject<Entity, EntitySpawner>(name);
+                spawner.capturedEntityName = table.Get<string>("captured_spawner_entity");
+                break;
         }
 
         var entity = DeserializeCommon<Entity>(table, "entity");

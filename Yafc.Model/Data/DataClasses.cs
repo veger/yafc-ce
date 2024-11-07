@@ -87,6 +87,8 @@ public enum RecipeFlags {
     ScaleProductionWithPower = 1 << 3,
     /// <summary>Set when the technology has a research trigger to craft an item</summary>
     HasResearchTriggerCraft = 1 << 4,
+    /// <summary>Set when the technology has a research trigger to capture a spawner</summary>
+    HasResearchTriggerCaptureEntity = 1 << 8,
 }
 
 public abstract class RecipeOrTechnology : FactorioObject {
@@ -326,7 +328,7 @@ public class Item : Goods {
     /// </summary>
     /// <remarks>This forces modules to be loaded before other items, since deserialization otherwise creates Item objects for all spoil results.
     /// It does not protect against modules that spoil into other modules, but one hopes people won't do that.</remarks>
-    internal static string[] ExplicitPrototypeLoadOrder { get; } = ["module"];
+    internal static string[] ExplicitPrototypeLoadOrder { get; } = ["ammo", "module"];
 
     public Item? fuelResult { get; internal set; }
     public int stackSize { get; internal set; }
@@ -345,6 +347,11 @@ public class Item : Goods {
 
 public class Module : Item {
     public ModuleSpecification moduleSpecification { get; internal set; } = null!; // null-forgiving: Initialized by DeserializeItem.
+}
+
+internal class Ammo : Item {
+    internal HashSet<string> projectileNames { get; } = [];
+    internal HashSet<string>? targetFilter { get; set; }
 }
 
 public class Fluid : Goods {
@@ -418,6 +425,7 @@ public class Entity : FactorioObject {
         : basePower;
     public EntityEnergy energy { get; internal set; } = null!; // TODO: Prove that this is always properly initialized. (Do we need an EntityWithEnergy type?)
     public Item[] itemsToPlace { get; internal set; } = null!; // null-forgiving: This is initialized in CalculateMaps.
+    internal FactorioObject[] miscSources { get; set; } = [];
     public int size { get; internal set; }
     internal override FactorioObjectSortOrder sortingOrder => FactorioObjectSortOrder.Entities;
     public override string type => "Entity";
@@ -431,7 +439,7 @@ public class Entity : FactorioObject {
             return;
         }
 
-        collector.Add(itemsToPlace, DependencyList.Flags.ItemToPlace);
+        collector.Add([.. itemsToPlace, .. miscSources], DependencyList.Flags.ItemToPlace);
     }
 }
 
@@ -486,6 +494,14 @@ public class EntityCrafter : EntityWithModules {
     }
     public float CraftingSpeed(Quality quality) => factorioType is "agricultural-tower" or "electric-energy-interface" ? baseCraftingSpeed : quality.ApplyStandardBonus(baseCraftingSpeed);
     public EffectReceiver effectReceiver { get; internal set; } = null!;
+}
+
+internal class EntityProjectile : Entity {
+    internal HashSet<string> placeEntities { get; } = [];
+}
+
+internal class EntitySpawner : Entity {
+    internal string? capturedEntityName { get; set; }
 }
 
 public sealed class Quality : FactorioObject {
@@ -676,6 +692,16 @@ public class Technology : RecipeOrTechnology { // Technology is very similar to 
     public Dictionary<Recipe, float> changeRecipeProductivity { get; internal set; } = [];
     internal override FactorioObjectSortOrder sortingOrder => FactorioObjectSortOrder.Technologies;
     public override string type => "Technology";
+    /// <summary>
+    /// If the technology has a trigger that requires entities, they are stored here.
+    /// </summary>
+    /// <remarks>Lazy-loaded so the database can load and correctly type (eg EntityCrafter, EntitySpawner, etc.) the entities without having to do another pass.</remarks>
+    public IReadOnlyList<Entity> triggerEntities => getTriggerEntities.Value;
+
+    /// <summary>
+    /// Sets the value used to construct <see cref="triggerEntities"/>.
+    /// </summary>
+    internal Lazy<IReadOnlyList<Entity>> getTriggerEntities { get; set; } = new Lazy<IReadOnlyList<Entity>>(() => []);
 
     public override void GetDependencies(IDependencyCollector collector, List<FactorioObject> temp) {
         base.GetDependencies(collector, temp);

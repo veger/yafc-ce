@@ -286,6 +286,18 @@ internal partial class FactorioDataDeserializer {
                 technology.flags = RecipeFlags.HasResearchTriggerCraft;
 
                 break;
+            case "capture-spawner":
+                technology.flags = RecipeFlags.HasResearchTriggerCaptureEntity;
+                if (researchTriggerTable.Get<string>("entity") is string entity) {
+                    technology.getTriggerEntities = new(() => [((Entity)Database.objectsByTypeName["Entity." + entity])]);
+                }
+                else {
+                    technology.getTriggerEntities = new(static () =>
+                        Database.entities.all.OfType<EntitySpawner>()
+                        .Where(e => e.capturedEntityName != null)
+                        .ToList());
+                }
+                break;
             default:
                 errorCollector.Error($"Research trigger of {technology.typeDotName} has an unsupported type {type}", ErrorSeverity.MinorDataLoss);
                 break;

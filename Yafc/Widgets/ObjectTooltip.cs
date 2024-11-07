@@ -498,8 +498,10 @@ public class ObjectTooltip : Tooltip {
     }
 
     private static void BuildTechnology(Technology technology, ImGui gui) {
-        bool isResearchTriggerCraft = (technology.flags & RecipeFlags.HasResearchTriggerCraft) == RecipeFlags.HasResearchTriggerCraft;
-        if (!isResearchTriggerCraft) {
+        bool isResearchTriggerCraft = technology.flags.HasFlag(RecipeFlags.HasResearchTriggerCraft);
+        bool isResearchTriggerCapture = technology.flags.HasFlag(RecipeFlags.HasResearchTriggerCaptureEntity);
+
+        if (!isResearchTriggerCraft && !isResearchTriggerCapture) {
             BuildRecipe(technology, gui);
         }
 
@@ -522,6 +524,22 @@ public class ObjectTooltip : Tooltip {
                 using var grid = gui.EnterInlineGrid(3f);
                 grid.Next();
                 _ = gui.BuildFactorioObjectWithAmount(technology.ingredients[0].goods, technology.ingredients[0].amount, ButtonDisplayStyle.ProductionTableUnscaled);
+            }
+        }
+        else if (isResearchTriggerCapture) {
+            BuildSubHeader(gui, "Entity capture required");
+            using (gui.EnterGroup(contentPadding)) {
+                if (technology.triggerEntities.Count == 1) {
+                    gui.BuildText("Capture:");
+                    gui.BuildFactorioObjectButtonWithText(technology.triggerEntities[0]);
+
+                }
+                else {
+                    gui.BuildText("Capture one of:");
+                    foreach (var entity in technology.triggerEntities) {
+                        gui.BuildFactorioObjectButtonWithText(entity);
+                    }
+                }
             }
         }
 
