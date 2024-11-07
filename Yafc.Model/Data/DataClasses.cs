@@ -87,6 +87,8 @@ public enum RecipeFlags {
     ScaleProductionWithPower = 1 << 3,
     /// <summary>Set when the technology has a research trigger to craft an item</summary>
     HasResearchTriggerCraft = 1 << 4,
+    /// <summary>Set when the technology has a research trigger to capture a spawner</summary>
+    HasResearchTriggerCaptureEntity = 1 << 8,
 }
 
 public abstract class RecipeOrTechnology : FactorioObject {
@@ -690,6 +692,16 @@ public class Technology : RecipeOrTechnology { // Technology is very similar to 
     public Dictionary<Recipe, float> changeRecipeProductivity { get; internal set; } = [];
     internal override FactorioObjectSortOrder sortingOrder => FactorioObjectSortOrder.Technologies;
     public override string type => "Technology";
+    /// <summary>
+    /// If the technology has a trigger that requires entities, they are stored here.
+    /// </summary>
+    /// <remarks>Lazy-loaded so the database can load and correctly type (eg EntityCrafter, EntitySpawner, etc.) the entities without having to do another pass.</remarks>
+    public IReadOnlyList<Entity> triggerEntities => getTriggerEntities.Value;
+
+    /// <summary>
+    /// Sets the value used to construct <see cref="triggerEntities"/>.
+    /// </summary>
+    internal Lazy<IReadOnlyList<Entity>> getTriggerEntities { get; set; } = new Lazy<IReadOnlyList<Entity>>(() => []);
 
     public override void GetDependencies(IDependencyCollector collector, List<FactorioObject> temp) {
         base.GetDependencies(collector, temp);
