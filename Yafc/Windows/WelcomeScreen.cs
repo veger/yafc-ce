@@ -116,10 +116,16 @@ public class WelcomeScreen : WindowUtility, IProgress<(string, string)>, IKeyboa
         }
         else if (errorMessage != null) {
             errorScroll.Build(gui);
+            bool thereIsAModToDisable = (errorMod != null);
+
             using (gui.EnterRow()) {
-                string explanation = "YAFC was unable to load the project. You can disable the problematic mod once by clicking on 'Disable & reload' button, or you can disable it " +
-                                     "permanently for YAFC by copying the mod-folder, disabling the mod in the copy by editing mod-list.json, and pointing YAFC to the copy.";
-                gui.BuildText(explanation, TextBlockDisplayStyle.WrappedText);
+                if (thereIsAModToDisable) {
+                    gui.BuildWrappedText("YAFC was unable to load the project. You can disable the problematic mod once by clicking on 'Disable & reload' button, or you can disable it " +
+                                         "permanently for YAFC by copying the mod-folder, disabling the mod in the copy by editing mod-list.json, and pointing YAFC to the copy.");
+                }
+                else {
+                    gui.BuildWrappedText("YAFC cannot proceed because it was unable to load the project.");
+                }
             }
 
             using (gui.EnterRow()) {
@@ -132,8 +138,8 @@ public class WelcomeScreen : WindowUtility, IProgress<(string, string)>, IKeyboa
                 if (gui.BuildButton("Copy to clipboard", SchemeColor.Grey)) {
                     _ = SDL.SDL_SetClipboardText(errorMessage);
                 }
-                if (errorMod != null && gui.BuildButton("Disable & reload").WithTooltip(gui, "Disable this mod until you close YAFC or change the mod folder.")) {
-                    FactorioDataSource.DisableMod(errorMod);
+                if (thereIsAModToDisable && gui.BuildButton("Disable & reload").WithTooltip(gui, "Disable this mod until you close YAFC or change the mod folder.")) {
+                    FactorioDataSource.DisableMod(errorMod!);
                     errorMessage = null;
                     LoadProject();
                 }
