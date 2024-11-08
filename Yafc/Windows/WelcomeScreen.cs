@@ -218,7 +218,7 @@ public class WelcomeScreen : WindowUtility, IProgress<(string, string)>, IKeyboa
 
         buildWrappedText("Check that these mods load in Factorio.");
         buildWrappedText("YAFC only supports loading mods that were loaded in Factorio before. If you add or remove mods or change startup settings, " +
-            "you need to load those in Factorio and then close the game because Factorio writes some files only when exiting.");
+            "you need to load those in Factorio and then close the game because Factorio saves mod-list.json only when exiting.");
         buildWrappedText("Check that Factorio loads mods from the same folder as YAFC.");
         buildWrappedText("If that doesn't help, try removing the mods that have several versions, or are disabled, or don't have the required dependencies.");
 
