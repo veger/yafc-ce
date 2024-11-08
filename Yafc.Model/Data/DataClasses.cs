@@ -694,6 +694,7 @@ public class Technology : RecipeOrTechnology { // Technology is very similar to 
     public Technology[] prerequisites { get; internal set; } = [];
     public List<Recipe> unlockRecipes { get; internal set; } = [];
     public Dictionary<Recipe, float> changeRecipeProductivity { get; internal set; } = [];
+    internal bool unlocksFluidMining { get; set; }
     internal override FactorioObjectSortOrder sortingOrder => FactorioObjectSortOrder.Technologies;
     public override string type => "Technology";
     /// <summary>

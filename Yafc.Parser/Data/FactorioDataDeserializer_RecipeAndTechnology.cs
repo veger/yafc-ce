@@ -159,6 +159,10 @@ internal partial class FactorioDataDeserializer {
                             }
                             break;
                         }
+                    case "mining-with-fluid": {
+                            technology.unlocksFluidMining = true;
+                            break;
+                        }
                 }
             }
         }
