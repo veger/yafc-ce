@@ -225,6 +225,7 @@ internal partial class LuaContext : IDisposable {
     private void Pop(int popc) => lua_settop(L, lua_gettop(L) - popc);
 
     public List<object?> ArrayElements(int refId) {
+        ObjectDisposedException.ThrowIf(L == IntPtr.Zero, this);
         GetReg(refId); // 1
         lua_pushnil(L);
         List<object?> list = [];
@@ -247,6 +248,7 @@ internal partial class LuaContext : IDisposable {
     }
 
     public Dictionary<object, object?> ObjectElements(int refId) {
+        ObjectDisposedException.ThrowIf(L == IntPtr.Zero, this);
         GetReg(refId); // 1
         lua_pushnil(L);
         Dictionary<object, object?> dict = [];
@@ -265,26 +267,31 @@ internal partial class LuaContext : IDisposable {
     }
 
     public LuaTable NewTable() {
+        ObjectDisposedException.ThrowIf(L == IntPtr.Zero, this);
         lua_createtable(L, 0, 0);
         return new LuaTable(this, luaL_ref(L, REGISTRY));
     }
 
     public object? GetGlobal(string name) {
+        ObjectDisposedException.ThrowIf(L == IntPtr.Zero, this);
         _ = lua_getglobal(L, name); // 1
         return PopManagedValue(1);
     }
 
     public void SetGlobal(string name, object value) {
+        ObjectDisposedException.ThrowIf(L == IntPtr.Zero, this);
         PushManagedObject(value);
         lua_setglobal(L, name);
     }
     public object? GetValue(int refId, int idx) {
+        ObjectDisposedException.ThrowIf(L == IntPtr.Zero, this);
         GetReg(refId); // 1
         lua_rawgeti(L, -1, idx); // 2
         return PopManagedValue(2);
     }
 
     public object? GetValue(int refId, string idx) {
+        ObjectDisposedException.ThrowIf(L == IntPtr.Zero, this);
         GetReg(refId); // 1
         _ = lua_pushstring(L, idx); // 2
         lua_rawget(L, -2); // 3
@@ -347,6 +354,7 @@ internal partial class LuaContext : IDisposable {
     }
 
     public void SetValue(int refId, string idx, object? value) {
+        ObjectDisposedException.ThrowIf(L == IntPtr.Zero, this);
         GetReg(refId); // 1;
         _ = lua_pushstring(L, idx); // 2
         PushManagedObject(value); // 3;
@@ -355,6 +363,7 @@ internal partial class LuaContext : IDisposable {
     }
 
     public void SetValue(int refId, int idx, object? value) {
+        ObjectDisposedException.ThrowIf(L == IntPtr.Zero, this);
         GetReg(refId); // 1;
         PushManagedObject(value); // 2;
         lua_rawseti(L, -2, idx);
@@ -472,6 +481,7 @@ internal partial class LuaContext : IDisposable {
     private string GetString(int index) => Encoding.UTF8.GetString(GetData(index));
 
     public int Exec(ReadOnlySpan<byte> chunk, string mod, string name, int argument = 0) {
+        ObjectDisposedException.ThrowIf(L == IntPtr.Zero, this);
         // since lua cuts file name to a few dozen symbols, add index to start of every name
         fullChunkNames.Add((mod, name));
         name = fullChunkNames.Count - 1 + " " + name;

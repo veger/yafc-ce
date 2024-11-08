@@ -428,7 +428,7 @@ internal partial class FactorioDataDeserializer {
             }
         }
 
-        if (table.Get("send_to_orbit_mode", "not-sendable") != "not-sendable") {
+        if (table.Get("send_to_orbit_mode", "not-sendable") != "not-sendable" || item.factorioType == "space-platform-starter-pack") {
             Product[] launchProducts;
             if (table.Get("rocket_launch_products", out LuaTable? products)) {
                 launchProducts = products.ArrayElements<LuaTable>().Select(LoadProduct(item.typeDotName, item.stackSize)).ToArray();

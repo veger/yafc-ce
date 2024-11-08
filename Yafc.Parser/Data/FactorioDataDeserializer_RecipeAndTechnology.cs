@@ -159,6 +159,10 @@ internal partial class FactorioDataDeserializer {
                             }
                             break;
                         }
+                    case "mining-with-fluid": {
+                            technology.unlocksFluidMining = true;
+                            break;
+                        }
                 }
             }
         }
@@ -278,7 +282,7 @@ internal partial class FactorioDataDeserializer {
         switch (type) {
             case "craft-item":
                 if (!researchTriggerTable.Get("item", out string? craftItemName)) {
-                    errorCollector.Error($"Research trigger craft-item of {technology.typeDotName} does not have a item field", ErrorSeverity.MinorDataLoss);
+                    errorCollector.Error($"Research trigger {type} of {technology.typeDotName} does not have an item field", ErrorSeverity.MinorDataLoss);
                     break;
                 }
                 float craftCount = researchTriggerTable.Get("count", 1);
@@ -288,7 +292,7 @@ internal partial class FactorioDataDeserializer {
                 break;
             case "capture-spawner":
                 technology.flags = RecipeFlags.HasResearchTriggerCaptureEntity;
-                if (researchTriggerTable.Get<string>("entity") is string entity) {
+                if (researchTriggerTable.Get("entity", out string? entity)) {
                     technology.getTriggerEntities = new(() => [((Entity)Database.objectsByTypeName["Entity." + entity])]);
                 }
                 else {
@@ -297,6 +301,25 @@ internal partial class FactorioDataDeserializer {
                         .Where(e => e.capturedEntityName != null)
                         .ToList());
                 }
+                break;
+            case "mine-entity":
+                technology.flags = RecipeFlags.HasResearchTriggerMineEntity;
+                if (!researchTriggerTable.Get("entity", out entity)) {
+                    errorCollector.Error($"Research trigger {type} of {technology.typeDotName} does not have an entity field", ErrorSeverity.MinorDataLoss);
+                    break;
+                }
+                technology.getTriggerEntities = new(() => [((Entity)Database.objectsByTypeName["Entity." + entity])]);
+                break;
+            case "build-entity":
+                technology.flags = RecipeFlags.HasResearchTriggerBuildEntity;
+                if (!researchTriggerTable.Get("entity", out entity)) {
+                    errorCollector.Error($"Research trigger {type} of {technology.typeDotName} does not have an entity field", ErrorSeverity.MinorDataLoss);
+                    break;
+                }
+                technology.getTriggerEntities = new(() => [((Entity)Database.objectsByTypeName["Entity." + entity])]);
+                break;
+            case "create-space-platform":
+                technology.flags = RecipeFlags.HasResearchTriggerCreateSpacePlatform;
                 break;
             default:
                 errorCollector.Error($"Research trigger of {technology.typeDotName} has an unsupported type {type}", ErrorSeverity.MinorDataLoss);

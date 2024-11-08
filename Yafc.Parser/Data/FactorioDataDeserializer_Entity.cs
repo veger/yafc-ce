@@ -500,6 +500,11 @@ internal partial class FactorioDataDeserializer {
                 if (minable.Get("required_fluid", out string? requiredFluid)) {
                     _ = minable.Get("fluid_amount", out float amount);
                     recipe.ingredients = [new Ingredient(GetObject<Fluid>(requiredFluid), amount / 10f)]; // 10x difference is correct but why?
+                    foreach (var tech in allObjects.OfType<Technology>().Where(t => t.unlocksFluidMining)) {
+                        // Maybe incorrect: Leave the mining recipe enabled if no technologies unlock fluid mining
+                        recipe.enabled = false;
+                        tech.unlockRecipes.Add(recipe);
+                    }
                 }
                 else {
                     recipe.ingredients = [];
