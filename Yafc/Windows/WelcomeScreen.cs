@@ -210,16 +210,15 @@ public class WelcomeScreen : WindowUtility, IProgress<(string, string)>, IKeyboa
     private void ProjectErrorMoreInfo(ImGui gui) {
         void buildWrappedText(string message) => gui.BuildText(message, TextBlockDisplayStyle.WrappedText);
 
-        buildWrappedText("Check that these mods load in Factorio");
+        buildWrappedText("Check that these mods load in Factorio.");
         buildWrappedText("YAFC only supports loading mods that were loaded in Factorio before. If you add or remove mods or change startup settings, " +
-            "you need to load those in Factorio and then close the game because Factorio writes some files only when exiting");
-        buildWrappedText("Check that Factorio loads mods from the same folder as YAFC");
-        buildWrappedText("If that doesn't help, try removing all the mods that are present but aren't loaded because they are disabled, " +
-            "don't have required dependencies, or (especially) have several versions");
-        if (gui.BuildLink("If that doesn't help either, create a github issue")) {
+            "you need to load those in Factorio and then close the game because Factorio writes some files only when exiting.");
+        buildWrappedText("Check that Factorio loads mods from the same folder as YAFC.");
+        buildWrappedText("If that doesn't help, try removing the mods that have several versions, or are disabled, or don't have the required dependencies.");
+        if (gui.BuildLink("If all else fails, then create an issue on GitHub")) {
             Ui.VisitLink(AboutScreen.Github);
         }
-        buildWrappedText("For these types of errors simple mod list will not be enough. You need to attach a 'New game' save game for syncing mods, mod versions and mod settings.");
+        buildWrappedText("Please attach a new-game save file to sync mods, versions, and settings.");
     }
 
     private static void DoLanguageList(ImGui gui, Dictionary<string, string> list, bool enabled) {
