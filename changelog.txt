@@ -22,6 +22,7 @@ Date:
         - (SA) Add support for the capture-spawner technology trigger.
         - Add the remaining research triggers and the mining-with-fluid research effect to the dependency/milestone
           analysis.
+        - Explain what to do if Yafc fails to load a mod.
     Internal changes:
         - Using the LuaContext after it is freed now produces a better error.
 ----------------------------------------------------------------------------------------------------------------------
