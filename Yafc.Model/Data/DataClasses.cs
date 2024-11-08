@@ -91,8 +91,13 @@ public enum RecipeFlags {
     HasResearchTriggerCaptureEntity = 1 << 5,
     /// <summary>Set when the technology has a research trigger to mine an entity (including a resource)</summary>
     HasResearchTriggerMineEntity = 1 << 6,
+    /// <summary>Set when the technology has a research trigger to build an entity</summary>
+    HasResearchTriggerBuildEntity = 1 << 7,
+    /// <summary>Set when the technology has a research trigger to launch a space platform starter pack</summary>
+    HasResearchTriggerCreateSpacePlatform = 1 << 8,
 
-    HasResearchTriggerMask = HasResearchTriggerCraft | HasResearchTriggerCaptureEntity | HasResearchTriggerMineEntity,
+    HasResearchTriggerMask = HasResearchTriggerCraft | HasResearchTriggerCaptureEntity | HasResearchTriggerMineEntity | HasResearchTriggerBuildEntity
+        | HasResearchTriggerCreateSpacePlatform,
 }
 
 public abstract class RecipeOrTechnology : FactorioObject {
@@ -716,6 +721,13 @@ public class Technology : RecipeOrTechnology { // Technology is very similar to 
         if (flags.HasFlag(RecipeFlags.HasResearchTriggerMineEntity)) {
             // If we have a mining mechanic, use that as the source; otherwise just use the entity.
             collector.Add([.. triggerEntities.Select(e => Database.mechanics.all.SingleOrDefault(m => m.source == e) ?? (FactorioObject)e)], DependencyList.Flags.Source);
+        }
+        if (flags.HasFlag(RecipeFlags.HasResearchTriggerBuildEntity)) {
+            collector.Add(triggerEntities, DependencyList.Flags.Source);
+        }
+        if (flags.HasFlag(RecipeFlags.HasResearchTriggerCreateSpacePlatform)) {
+            var items = Database.items.all.Where(i => i.factorioType == "space-platform-starter-pack");
+            collector.Add([.. items.Select(i => Database.objectsByTypeName["Mechanics.launch." + i.name])], DependencyList.Flags.Source);
         }
 
         if (hidden && !enabled) {

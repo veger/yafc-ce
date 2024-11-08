@@ -501,6 +501,8 @@ public class ObjectTooltip : Tooltip {
         bool isResearchTriggerCraft = technology.flags.HasFlag(RecipeFlags.HasResearchTriggerCraft);
         bool isResearchTriggerCapture = technology.flags.HasFlag(RecipeFlags.HasResearchTriggerCaptureEntity);
         bool isResearchTriggerMine = technology.flags.HasFlag(RecipeFlags.HasResearchTriggerMineEntity);
+        bool isResearchTriggerBuild = technology.flags.HasFlag(RecipeFlags.HasResearchTriggerBuildEntity);
+        bool isResearchTriggerPlatform = technology.flags.HasFlag(RecipeFlags.HasResearchTriggerCreateSpacePlatform);
 
         if (!technology.flags.HasFlagAny(RecipeFlags.HasResearchTriggerMask)) {
             BuildRecipe(technology, gui);
@@ -537,6 +539,19 @@ public class ObjectTooltip : Tooltip {
             BuildSubHeader(gui, technology.triggerEntities.Count == 1 ? "Mine this entity" : "Mine any entity");
             using (gui.EnterGroup(contentPadding)) {
                 BuildIconRow(gui, technology.triggerEntities, 2);
+            }
+        }
+        else if (isResearchTriggerBuild) {
+            BuildSubHeader(gui, technology.triggerEntities.Count == 1 ? "Build this entity" : "Build any entity");
+            using (gui.EnterGroup(contentPadding)) {
+                BuildIconRow(gui, technology.triggerEntities, 2);
+            }
+        }
+        else if (isResearchTriggerPlatform) {
+            List<Item> items = Database.items.all.Where(i => i.factorioType == "space-platform-starter-pack").ToList();
+            BuildSubHeader(gui, items.Count == 1 ? "Launch this item" : "Launch any item");
+            using (gui.EnterGroup(contentPadding)) {
+                BuildIconRow(gui, items, 2);
             }
         }
 

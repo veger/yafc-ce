@@ -310,6 +310,17 @@ internal partial class FactorioDataDeserializer {
                 }
                 technology.getTriggerEntities = new(() => [((Entity)Database.objectsByTypeName["Entity." + entity])]);
                 break;
+            case "build-entity":
+                technology.flags = RecipeFlags.HasResearchTriggerBuildEntity;
+                if (!researchTriggerTable.Get("entity", out entity)) {
+                    errorCollector.Error($"Research trigger {type} of {technology.typeDotName} does not have an entity field", ErrorSeverity.MinorDataLoss);
+                    break;
+                }
+                technology.getTriggerEntities = new(() => [((Entity)Database.objectsByTypeName["Entity." + entity])]);
+                break;
+            case "create-space-platform":
+                technology.flags = RecipeFlags.HasResearchTriggerCreateSpacePlatform;
+                break;
             default:
                 errorCollector.Error($"Research trigger of {technology.typeDotName} has an unsupported type {type}", ErrorSeverity.MinorDataLoss);
                 break;
