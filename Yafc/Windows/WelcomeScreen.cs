@@ -208,24 +208,18 @@ public class WelcomeScreen : WindowUtility, IProgress<(string, string)>, IKeyboa
     }
 
     private void ProjectErrorMoreInfo(ImGui gui) {
-        gui.allocator = RectAllocator.LeftAlign;
-        gui.BuildText("Check that these mods load in Factorio", TextBlockDisplayStyle.WrappedText);
+        void buildWrappedText(string message) => gui.BuildText(message, TextBlockDisplayStyle.WrappedText);
 
-        string factorioLoadedPassage = "YAFC only supports loading mods that were loaded in Factorio before. If you add or remove mods or change startup settings, " +
-            "you need to load those in Factorio and then close the game because Factorio writes some files only when exiting";
-        gui.BuildText(factorioLoadedPassage, TextBlockDisplayStyle.WrappedText);
-        gui.BuildText("Check that Factorio loads mods from the same folder as YAFC", TextBlockDisplayStyle.WrappedText);
-
-        string modRemovalPassage = "If that doesn't help, try removing all the mods that are present but aren't loaded because they are disabled, " +
-            "don't have required dependencies, or (especially) have several versions";
-        gui.BuildText(modRemovalPassage, TextBlockDisplayStyle.WrappedText);
-
+        buildWrappedText("Check that these mods load in Factorio");
+        buildWrappedText("YAFC only supports loading mods that were loaded in Factorio before. If you add or remove mods or change startup settings, " +
+            "you need to load those in Factorio and then close the game because Factorio writes some files only when exiting");
+        buildWrappedText("Check that Factorio loads mods from the same folder as YAFC");
+        buildWrappedText("If that doesn't help, try removing all the mods that are present but aren't loaded because they are disabled, " +
+            "don't have required dependencies, or (especially) have several versions");
         if (gui.BuildLink("If that doesn't help either, create a github issue")) {
             Ui.VisitLink(AboutScreen.Github);
         }
-
-        string gameSavePassage = "For these types of errors simple mod list will not be enough. You need to attach a 'New game' save game for syncing mods, mod versions and mod settings.";
-        gui.BuildText(gameSavePassage, TextBlockDisplayStyle.WrappedText);
+        buildWrappedText("For these types of errors simple mod list will not be enough. You need to attach a 'New game' save game for syncing mods, mod versions and mod settings.");
     }
 
     private static void DoLanguageList(ImGui gui, Dictionary<string, string> list, bool enabled) {
