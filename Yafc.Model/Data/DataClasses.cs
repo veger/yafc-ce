@@ -88,7 +88,11 @@ public enum RecipeFlags {
     /// <summary>Set when the technology has a research trigger to craft an item</summary>
     HasResearchTriggerCraft = 1 << 4,
     /// <summary>Set when the technology has a research trigger to capture a spawner</summary>
-    HasResearchTriggerCaptureEntity = 1 << 8,
+    HasResearchTriggerCaptureEntity = 1 << 5,
+    /// <summary>Set when the technology has a research trigger to mine an entity (including a resource)</summary>
+    HasResearchTriggerMineEntity = 1 << 6,
+
+    HasResearchTriggerMask = HasResearchTriggerCraft | HasResearchTriggerCaptureEntity | HasResearchTriggerMineEntity,
 }
 
 public abstract class RecipeOrTechnology : FactorioObject {
@@ -707,6 +711,10 @@ public class Technology : RecipeOrTechnology { // Technology is very similar to 
         base.GetDependencies(collector, temp);
         if (prerequisites.Length > 0) {
             collector.Add(prerequisites, DependencyList.Flags.TechnologyPrerequisites);
+        }
+        if (flags.HasFlag(RecipeFlags.HasResearchTriggerMineEntity)) {
+            // If we have a mining mechanic, use that as the source; otherwise just use the entity.
+            collector.Add([.. triggerEntities.Select(e => Database.mechanics.all.SingleOrDefault(m => m.source == e) ?? (FactorioObject)e)], DependencyList.Flags.Source);
         }
 
         if (hidden && !enabled) {

@@ -500,8 +500,9 @@ public class ObjectTooltip : Tooltip {
     private static void BuildTechnology(Technology technology, ImGui gui) {
         bool isResearchTriggerCraft = technology.flags.HasFlag(RecipeFlags.HasResearchTriggerCraft);
         bool isResearchTriggerCapture = technology.flags.HasFlag(RecipeFlags.HasResearchTriggerCaptureEntity);
+        bool isResearchTriggerMine = technology.flags.HasFlag(RecipeFlags.HasResearchTriggerMineEntity);
 
-        if (!isResearchTriggerCraft && !isResearchTriggerCapture) {
+        if (!technology.flags.HasFlagAny(RecipeFlags.HasResearchTriggerMask)) {
             BuildRecipe(technology, gui);
         }
 
@@ -527,19 +528,15 @@ public class ObjectTooltip : Tooltip {
             }
         }
         else if (isResearchTriggerCapture) {
-            BuildSubHeader(gui, "Entity capture required");
+            BuildSubHeader(gui, technology.triggerEntities.Count == 1 ? "Capture this entity" : "Capture any entity");
             using (gui.EnterGroup(contentPadding)) {
-                if (technology.triggerEntities.Count == 1) {
-                    gui.BuildText("Capture:");
-                    gui.BuildFactorioObjectButtonWithText(technology.triggerEntities[0]);
-
-                }
-                else {
-                    gui.BuildText("Capture one of:");
-                    foreach (var entity in technology.triggerEntities) {
-                        gui.BuildFactorioObjectButtonWithText(entity);
-                    }
-                }
+                BuildIconRow(gui, technology.triggerEntities, 2);
+            }
+        }
+        else if (isResearchTriggerMine) {
+            BuildSubHeader(gui, technology.triggerEntities.Count == 1 ? "Mine this entity" : "Mine any entity");
+            using (gui.EnterGroup(contentPadding)) {
+                BuildIconRow(gui, technology.triggerEntities, 2);
             }
         }
 
