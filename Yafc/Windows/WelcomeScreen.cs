@@ -117,11 +117,17 @@ public class WelcomeScreen : WindowUtility, IProgress<(string, string)>, IKeyboa
         else if (errorMessage != null) {
             errorScroll.Build(gui);
             using (gui.EnterRow()) {
-                gui.BuildText("This error is critical. Unable to load project.");
+                string explanation = "YAFC was unable to load the project. You can disable the problematic mod once by clicking on 'Disable & reload' button, or you can disable it " +
+                                     "permanently for YAFC by copying the mod-folder, disabling the mod in the copy by editing mod-list.json, and pointing YAFC to the copy.";
+                gui.BuildText(explanation, TextBlockDisplayStyle.WrappedText);
+            }
+
+            using (gui.EnterRow()) {
                 if (gui.BuildLink("More info")) {
                     ShowDropDown(gui, gui.lastRect, ProjectErrorMoreInfo, new Padding(0.5f), 30f);
                 }
             }
+
             using (gui.EnterRow()) {
                 if (gui.BuildButton("Copy to clipboard", SchemeColor.Grey)) {
                     _ = SDL.SDL_SetClipboardText(errorMessage);
