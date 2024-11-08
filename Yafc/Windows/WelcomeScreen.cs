@@ -215,9 +215,13 @@ public class WelcomeScreen : WindowUtility, IProgress<(string, string)>, IKeyboa
             "you need to load those in Factorio and then close the game because Factorio writes some files only when exiting.");
         buildWrappedText("Check that Factorio loads mods from the same folder as YAFC.");
         buildWrappedText("If that doesn't help, try removing the mods that have several versions, or are disabled, or don't have the required dependencies.");
+
+        // The whole line is underlined if the allocator is not set to LeftAlign
+        gui.allocator = RectAllocator.LeftAlign;
         if (gui.BuildLink("If all else fails, then create an issue on GitHub")) {
             Ui.VisitLink(AboutScreen.Github);
         }
+
         buildWrappedText("Please attach a new-game save file to sync mods, versions, and settings.");
     }
 
