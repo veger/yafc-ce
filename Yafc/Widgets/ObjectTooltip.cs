@@ -336,7 +336,7 @@ public class ObjectTooltip : Tooltip {
         if (goods is Item { spoilResult: FactorioObject spoiled } perishable) {
             BuildSubHeader(gui, "Perishable");
             using (gui.EnterGroup(contentPadding)) {
-                float spoilTime = perishable.GetSpoilTime(quality);
+                float spoilTime = perishable.GetSpoilTime(quality) / Project.current.settings.spoilingRate;
                 gui.BuildText($"After {DataUtils.FormatTime(spoilTime)}, spoils into");
                 gui.BuildFactorioObjectButtonWithText(spoiled, iconDisplayStyle: IconDisplayStyle.Default with { AlwaysAccessible = true });
             }

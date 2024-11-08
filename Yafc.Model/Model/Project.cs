@@ -225,6 +225,8 @@ public class ProjectSettings(Project project) : ModelObject<Project>(project) {
     public int reactorSizeX { get; set; } = 2;
     public int reactorSizeY { get; set; } = 2;
     public float PollutionCostModifier { get; set; } = 0;
+    public float spoilingRate { get; set; } = 1;
+
     public event Action<bool>? changed;
     protected internal override void ThisChanged(bool visualOnly) => changed?.Invoke(visualOnly);
 
