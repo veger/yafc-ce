@@ -15,8 +15,8 @@
 //     Internal changes:
 //         Changes to the code that do not affect the behavior of the program.
 ----------------------------------------------------------------------------------------------------------------------
-Version:
-Date:
+Version: 2.3.0
+Date: November 10th 2024
     Features:
         - (SA) Process accessibilty of captured spawners, which also fixes biter eggs and subsequent Gleba recipes.
         - (SA) Add support for the capture-spawner technology trigger.
