@@ -339,6 +339,7 @@ public class ObjectTooltip : Tooltip {
                 float spoilTime = perishable.GetSpoilTime(quality) / Project.current.settings.spoilingRate;
                 gui.BuildText($"After {DataUtils.FormatTime(spoilTime)}, spoils into");
                 gui.BuildFactorioObjectButtonWithText(spoiled, iconDisplayStyle: IconDisplayStyle.Default with { AlwaysAccessible = true });
+                tooltipOptions.ExtraSpoilInformation?.Invoke(gui);
             }
         }
 
@@ -441,7 +442,7 @@ public class ObjectTooltip : Tooltip {
             }
         }
 
-        if (recipe.products.Length > 0 && !(recipe.products.Length == 1 && recipe.products[0].IsSimple && recipe.products[0].goods is Item && recipe.products[0].amount == 1f)) {
+        if (recipe.products.Length > 0 && !(recipe.products.Length == 1 && recipe.products[0].IsSimple && recipe.products[0].goods is Item)) {
             BuildSubHeader(gui, "Products");
             using (gui.EnterGroup(contentPadding)) {
                 foreach (var product in recipe.products) {
@@ -634,9 +635,13 @@ public struct ObjectTooltipOptions {
     /// </summary>
     public HintLocations HintLocations { get; set; }
     /// <summary>
-    /// Gets or sets a value that, if not null, will be called after drawing the tooltip header.
+    /// Gets or sets a value that, if not <see langword="null"/>, will be called after drawing the tooltip header.
     /// </summary>
     public DrawBelowHeader? DrawBelowHeader { get; set; }
+    /// <summary>
+    /// Gets or sets a value that, if not <see langword="null"/>, will be called after drawing the spoilage information.
+    /// </summary>
+    public GuiBuilder ExtraSpoilInformation { get; set; }
 
     // Reduce boilerplate by permitting unambiguous and relatively obvious implicit conversions.
     public static implicit operator ObjectTooltipOptions(HintLocations hintLocations) => new() { HintLocations = hintLocations };

@@ -248,6 +248,11 @@ public class Product : IFactorioObjectWrapper {
     internal readonly float amountMax;
     internal readonly float probability;
     public readonly float amount; // This is average amount including probability and range
+    /// <summary>
+    /// Gets or sets the fixed freshness of this product: 0 if the recipe has result_is_always_fresh, or percent_spoiled from the
+    /// ItemProductPrototype, or <see langword="null"/> if neither of those values are set.
+    /// </summary>
+    public float? percentSpoiled { get; internal set; }
     internal float productivityAmount { get; private set; }
 
     public void SetCatalyst(float catalyst) {
@@ -283,7 +288,10 @@ public class Product : IFactorioObjectWrapper {
         amount = productivityAmount = probability * (min + max) / 2;
     }
 
-    public bool IsSimple => amountMin == amountMax && probability == 1f;
+    /// <summary>
+    /// Gets <see langword="true"/> if this product is one item with 100% probability and default spoilage behavior.
+    /// </summary>
+    public bool IsSimple => amountMin == amountMax && amount == 1 && probability == 1 && percentSpoiled == null;
 
     FactorioObject IFactorioObjectWrapper.target => goods;
 
@@ -300,6 +308,16 @@ public class Product : IFactorioObjectWrapper {
             }
             if (probability != 1f) {
                 text = DataUtils.FormatAmount(probability, UnitOfMeasure.Percent) + " " + text;
+            }
+            else if (amountMin == 1 && amountMax == 1) {
+                text = "1x " + text;
+            }
+
+            if (percentSpoiled == 0) {
+                text += ", always fresh";
+            }
+            else if (percentSpoiled != null) {
+                text += ", " + DataUtils.FormatAmount(percentSpoiled.Value, UnitOfMeasure.Percent) + " spoiled";
             }
 
             return text;
