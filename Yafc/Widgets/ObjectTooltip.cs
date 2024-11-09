@@ -192,7 +192,7 @@ public class ObjectTooltip : Tooltip {
         {EntityEnergyType.SolidFuel, "Solid fuel energy usage: "},
     };
 
-    private static void BuildEntity(Entity entity, Quality quality, ImGui gui) {
+    private void BuildEntity(Entity entity, Quality quality, ImGui gui) {
         if (entity.loot.Length > 0) {
             BuildSubHeader(gui, "Loot");
             using (gui.EnterGroup(contentPadding)) {
@@ -237,6 +237,21 @@ public class ObjectTooltip : Tooltip {
                 using (gui.EnterGroup(contentPadding)) {
                     BuildIconRow(gui, crafter.inputs, 2);
                 }
+            }
+        }
+
+        float spoilTime = entity.GetSpoilTime(quality); // The spoiling rate setting does not apply to entities.
+        if (spoilTime != 0f) {
+            BuildSubHeader(gui, "Perishable");
+            using (gui.EnterGroup(contentPadding)) {
+                if (entity.spoilResult != null) {
+                    gui.BuildText($"After {DataUtils.FormatTime(spoilTime)} of no production, spoils into");
+                    gui.BuildFactorioObjectButtonWithText(new ObjectWithQuality<Entity>(entity.spoilResult, quality), iconDisplayStyle: IconDisplayStyle.Default with { AlwaysAccessible = true });
+                }
+                else {
+                    gui.BuildText($"Expires after {DataUtils.FormatTime(spoilTime)} of no production");
+                }
+                tooltipOptions.ExtraSpoilInformation?.Invoke(gui);
             }
         }
 

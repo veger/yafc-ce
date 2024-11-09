@@ -96,7 +96,7 @@ public static class ImmediateWidgets {
 
             gui.DrawIcon(qualityRect, quality.icon, SchemeColor.Source);
         }
-        if (gui.isBuilding && obj.target is Item { baseSpoilTime: > 0 }) {
+        if (gui.isBuilding && obj.target is Item { baseSpoilTime: > 0 } or Entity { baseSpoilTime: > 0 }) {
             Vector2 size = new Vector2(displayStyle.Size / 2.5f);
             Rect spoilableRect = new Rect(gui.lastRect.TopLeft, size);
 

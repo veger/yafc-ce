@@ -487,6 +487,23 @@ public class Entity : FactorioObject {
     public int size { get; internal set; }
     internal override FactorioObjectSortOrder sortingOrder => FactorioObjectSortOrder.Entities;
     public override string type => "Entity";
+    /// <summary>
+    /// Gets the result when this entity spoils (possibly <see langword="null"/>, if the entity burns out with no replacement),
+    /// or <see langword="null"/> if this entity doesn't spoil.
+    /// </summary>
+    public Entity? spoilResult => getSpoilResult?.Value;
+    /// <summary>
+    /// Gets the time it takes for a base-quality entity to spoil, in seconds, or 0 if this entity doesn't spoil.
+    /// </summary>
+    public float baseSpoilTime { get; internal set; }
+    /// <summary>
+    /// Gets the <see cref="Quality"/>-adjusted spoilage time for this entity, in seconds, or 0 if this entity doesn't spoil.
+    /// </summary>
+    public float GetSpoilTime(Quality quality) => quality.ApplyStandardBonus(baseSpoilTime);
+    /// <summary>
+    /// The lazy store for getting the spoilage result, if this entity spoils.
+    /// </summary>
+    internal Lazy<Entity?>? getSpoilResult;
 
     public override void GetDependencies(IDependencyCollector collector, List<FactorioObject> temp) {
         if (energy != null) {

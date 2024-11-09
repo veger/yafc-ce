@@ -561,6 +561,20 @@ internal partial class FactorioDataDeserializer {
         if (entity.energy == voidEntityEnergy || entity.energy == laborEntityEnergy) {
             fuelUsers.Add(entity, SpecialNames.Void);
         }
+
+        if (table.Get("production_health_effect", out LuaTable? healthEffect) && healthEffect.Get("not_producing", out float? lossPerTick)) {
+            entity.baseSpoilTime = (float)(table.Get<float>("max_health") * -60 * lossPerTick.Value);
+            table.Get<LuaTable>("dying_trigger_effect")?.ReadObjectOrArray(readDeathEffect);
+
+            void readDeathEffect(LuaTable effect) {
+                if (effect.Get("type", "") == "create-entity" && effect.Get("entity_name", out string? spoilEntity)) {
+                    entity.getSpoilResult = new(() => {
+                        Database.objectsByTypeName.TryGetValue("Entity." + spoilEntity, out FactorioObject? spoil);
+                        return spoil as Entity;
+                    });
+                }
+            }
+        }
     }
 
     private float EstimateArgument(LuaTable args, string name, float def = 0) => args.Get(name, out LuaTable? res) ? EstimateNoiseExpression(res) : def;
