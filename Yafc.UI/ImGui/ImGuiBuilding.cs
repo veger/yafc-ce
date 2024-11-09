@@ -115,6 +115,8 @@ public partial class ImGui {
         }
     }
 
+    public void BuildWrappedText(string text) => BuildText(text, TextBlockDisplayStyle.WrappedText);
+
     public Vector2 GetTextDimensions(out TextCache? cache, string? text, Font? font = null, bool wrap = false, float maxWidth = float.MaxValue) {
         if (string.IsNullOrEmpty(text)) {
             cache = null;

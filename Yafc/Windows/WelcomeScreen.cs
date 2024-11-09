@@ -116,18 +116,30 @@ public class WelcomeScreen : WindowUtility, IProgress<(string, string)>, IKeyboa
         }
         else if (errorMessage != null) {
             errorScroll.Build(gui);
+            bool thereIsAModToDisable = (errorMod != null);
+
             using (gui.EnterRow()) {
-                gui.BuildText("This error is critical. Unable to load project.");
+                if (thereIsAModToDisable) {
+                    gui.BuildWrappedText("YAFC was unable to load the project. You can disable the problematic mod once by clicking on 'Disable & reload' button, or you can disable it " +
+                                         "permanently for YAFC by copying the mod-folder, disabling the mod in the copy by editing mod-list.json, and pointing YAFC to the copy.");
+                }
+                else {
+                    gui.BuildWrappedText("YAFC cannot proceed because it was unable to load the project.");
+                }
+            }
+
+            using (gui.EnterRow()) {
                 if (gui.BuildLink("More info")) {
                     ShowDropDown(gui, gui.lastRect, ProjectErrorMoreInfo, new Padding(0.5f), 30f);
                 }
             }
+
             using (gui.EnterRow()) {
                 if (gui.BuildButton("Copy to clipboard", SchemeColor.Grey)) {
                     _ = SDL.SDL_SetClipboardText(errorMessage);
                 }
-                if (errorMod != null && gui.BuildButton("Disable & reload").WithTooltip(gui, "Disable this mod until you close YAFC or change the mod folder.")) {
-                    FactorioDataSource.DisableMod(errorMod);
+                if (thereIsAModToDisable && gui.BuildButton("Disable & reload").WithTooltip(gui, "Disable this mod until you close YAFC or change the mod folder.")) {
+                    FactorioDataSource.DisableMod(errorMod!);
                     errorMessage = null;
                     LoadProject();
                 }
@@ -202,24 +214,20 @@ public class WelcomeScreen : WindowUtility, IProgress<(string, string)>, IKeyboa
     }
 
     private void ProjectErrorMoreInfo(ImGui gui) {
+
+        gui.BuildWrappedText("Check that these mods load in Factorio.");
+        gui.BuildWrappedText("YAFC only supports loading mods that were loaded in Factorio before. If you add or remove mods or change startup settings, " +
+            "you need to load those in Factorio and then close the game because Factorio saves mod-list.json only when exiting.");
+        gui.BuildWrappedText("Check that Factorio loads mods from the same folder as YAFC.");
+        gui.BuildWrappedText("If that doesn't help, try removing the mods that have several versions, or are disabled, or don't have the required dependencies.");
+
+        // The whole line is underlined if the allocator is not set to LeftAlign
         gui.allocator = RectAllocator.LeftAlign;
-        gui.BuildText("Check that these mods load in Factorio", TextBlockDisplayStyle.WrappedText);
-
-        string factorioLoadedPassage = "YAFC only supports loading mods that were loaded in Factorio before. If you add or remove mods or change startup settings, " +
-            "you need to load those in Factorio and then close the game because Factorio writes some files only when exiting";
-        gui.BuildText(factorioLoadedPassage, TextBlockDisplayStyle.WrappedText);
-        gui.BuildText("Check that Factorio loads mods from the same folder as YAFC", TextBlockDisplayStyle.WrappedText);
-
-        string modRemovalPassage = "If that doesn't help, try removing all the mods that are present but aren't loaded because they are disabled, " +
-            "don't have required dependencies, or (especially) have several versions";
-        gui.BuildText(modRemovalPassage, TextBlockDisplayStyle.WrappedText);
-
-        if (gui.BuildLink("If that doesn't help either, create a github issue")) {
+        if (gui.BuildLink("If all else fails, then create an issue on GitHub")) {
             Ui.VisitLink(AboutScreen.Github);
         }
 
-        string gameSavePassage = "For these types of errors simple mod list will not be enough. You need to attach a 'New game' save game for syncing mods, mod versions and mod settings.";
-        gui.BuildText(gameSavePassage, TextBlockDisplayStyle.WrappedText);
+        gui.BuildWrappedText("Please attach a new-game save file to sync mods, versions, and settings.");
     }
 
     private static void DoLanguageList(ImGui gui, Dictionary<string, string> list, bool enabled) {
