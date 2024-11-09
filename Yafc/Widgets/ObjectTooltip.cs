@@ -117,10 +117,10 @@ public class ObjectTooltip : Tooltip {
         }
     }
 
-    private static void BuildItem(ImGui gui, IFactorioObjectWrapper item) {
+    private static void BuildItem(ImGui gui, IFactorioObjectWrapper item, string? extraText = null) {
         using (gui.EnterRow()) {
             gui.BuildFactorioObjectIcon(item.target);
-            gui.BuildText(item.text, TextBlockDisplayStyle.WrappedText);
+            gui.BuildText(item.text + extraText, TextBlockDisplayStyle.WrappedText);
         }
     }
 
@@ -192,7 +192,7 @@ public class ObjectTooltip : Tooltip {
         {EntityEnergyType.SolidFuel, "Solid fuel energy usage: "},
     };
 
-    private static void BuildEntity(Entity entity, Quality quality, ImGui gui) {
+    private void BuildEntity(Entity entity, Quality quality, ImGui gui) {
         if (entity.loot.Length > 0) {
             BuildSubHeader(gui, "Loot");
             using (gui.EnterGroup(contentPadding)) {
@@ -237,6 +237,21 @@ public class ObjectTooltip : Tooltip {
                 using (gui.EnterGroup(contentPadding)) {
                     BuildIconRow(gui, crafter.inputs, 2);
                 }
+            }
+        }
+
+        float spoilTime = entity.GetSpoilTime(quality); // The spoiling rate setting does not apply to entities.
+        if (spoilTime != 0f) {
+            BuildSubHeader(gui, "Perishable");
+            using (gui.EnterGroup(contentPadding)) {
+                if (entity.spoilResult != null) {
+                    gui.BuildText($"After {DataUtils.FormatTime(spoilTime)} of no production, spoils into");
+                    gui.BuildFactorioObjectButtonWithText(new ObjectWithQuality<Entity>(entity.spoilResult, quality), iconDisplayStyle: IconDisplayStyle.Default with { AlwaysAccessible = true });
+                }
+                else {
+                    gui.BuildText($"Expires after {DataUtils.FormatTime(spoilTime)} of no production");
+                }
+                tooltipOptions.ExtraSpoilInformation?.Invoke(gui);
             }
         }
 
@@ -330,6 +345,16 @@ public class ObjectTooltip : Tooltip {
                     _ = goods.usages.SelectSingle(out string recipeTip);
                     gui.BuildText(recipeTip, TextBlockDisplayStyle.HintText);
                 }
+            }
+        }
+
+        if (goods is Item { spoilResult: FactorioObject spoiled } perishable) {
+            BuildSubHeader(gui, "Perishable");
+            using (gui.EnterGroup(contentPadding)) {
+                float spoilTime = perishable.GetSpoilTime(quality) / Project.current.settings.spoilingRate;
+                gui.BuildText($"After {DataUtils.FormatTime(spoilTime)}, spoils into");
+                gui.BuildFactorioObjectButtonWithText(spoiled, iconDisplayStyle: IconDisplayStyle.Default with { AlwaysAccessible = true });
+                tooltipOptions.ExtraSpoilInformation?.Invoke(gui);
             }
         }
 
@@ -432,11 +457,12 @@ public class ObjectTooltip : Tooltip {
             }
         }
 
-        if (recipe.products.Length > 0 && !(recipe.products.Length == 1 && recipe.products[0].IsSimple && recipe.products[0].goods is Item && recipe.products[0].amount == 1f)) {
+        if (recipe.products.Length > 0 && !(recipe.products.Length == 1 && recipe.products[0].IsSimple && recipe.products[0].goods is Item)) {
             BuildSubHeader(gui, "Products");
             using (gui.EnterGroup(contentPadding)) {
+                string? extraText = recipe is Recipe { preserveProducts: true } ? ", preserved until removed from the machine" : null;
                 foreach (var product in recipe.products) {
-                    BuildItem(gui, product);
+                    BuildItem(gui, product, extraText);
                 }
             }
         }
@@ -588,7 +614,8 @@ public class ObjectTooltip : Tooltip {
             ("Crafting speed:", '+' + DataUtils.FormatAmount(quality.StandardBonus, UnitOfMeasure.Percent)),
             ("Accumulator capacity:", '+' + DataUtils.FormatAmount(quality.AccumulatorCapacityBonus, UnitOfMeasure.Percent)),
             ("Module effects:", '+' + DataUtils.FormatAmount(quality.StandardBonus, UnitOfMeasure.Percent) + '*'),
-            ("Beacon transmission efficiency:", '+' + DataUtils.FormatAmount(quality.BeaconTransmissionBonus, UnitOfMeasure.None))
+            ("Beacon transmission efficiency:", '+' + DataUtils.FormatAmount(quality.BeaconTransmissionBonus, UnitOfMeasure.None)),
+            ("Time before spoiling:", '+' + DataUtils.FormatAmount(quality.StandardBonus, UnitOfMeasure.Percent)),
         ];
 
         float rightWidth = text.Max(t => gui.GetTextDimensions(out _, t.right).X);
@@ -624,9 +651,13 @@ public struct ObjectTooltipOptions {
     /// </summary>
     public HintLocations HintLocations { get; set; }
     /// <summary>
-    /// Gets or sets a value that, if not null, will be called after drawing the tooltip header.
+    /// Gets or sets a value that, if not <see langword="null"/>, will be called after drawing the tooltip header.
     /// </summary>
     public DrawBelowHeader? DrawBelowHeader { get; set; }
+    /// <summary>
+    /// Gets or sets a value that, if not <see langword="null"/>, will be called after drawing the spoilage information.
+    /// </summary>
+    public GuiBuilder ExtraSpoilInformation { get; set; }
 
     // Reduce boilerplate by permitting unambiguous and relatively obvious implicit conversions.
     public static implicit operator ObjectTooltipOptions(HintLocations hintLocations) => new() { HintLocations = hintLocations };

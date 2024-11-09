@@ -170,6 +170,8 @@ public class Recipe : RecipeOrTechnology {
     public string[]? allowedModuleCategories { get; internal set; }
     public Technology[] technologyUnlock { get; internal set; } = [];
     public Dictionary<Technology, float> technologyProductivity { get; internal set; } = [];
+    public bool preserveProducts { get; internal set; }
+
     public bool HasIngredientVariants() {
         foreach (var ingredient in ingredients) {
             if (ingredient.variants != null) {
@@ -248,6 +250,11 @@ public class Product : IFactorioObjectWrapper {
     internal readonly float amountMax;
     internal readonly float probability;
     public readonly float amount; // This is average amount including probability and range
+    /// <summary>
+    /// Gets or sets the fixed freshness of this product: 0 if the recipe has result_is_always_fresh, or percent_spoiled from the
+    /// ItemProductPrototype, or <see langword="null"/> if neither of those values are set.
+    /// </summary>
+    public float? percentSpoiled { get; internal set; }
     internal float productivityAmount { get; private set; }
 
     public void SetCatalyst(float catalyst) {
@@ -283,7 +290,10 @@ public class Product : IFactorioObjectWrapper {
         amount = productivityAmount = probability * (min + max) / 2;
     }
 
-    public bool IsSimple => amountMin == amountMax && probability == 1f;
+    /// <summary>
+    /// Gets <see langword="true"/> if this product is one item with 100% probability and default spoilage behavior.
+    /// </summary>
+    public bool IsSimple => amountMin == amountMax && amount == 1 && probability == 1 && percentSpoiled == null;
 
     FactorioObject IFactorioObjectWrapper.target => goods;
 
@@ -300,6 +310,16 @@ public class Product : IFactorioObjectWrapper {
             }
             if (probability != 1f) {
                 text = DataUtils.FormatAmount(probability, UnitOfMeasure.Percent) + " " + text;
+            }
+            else if (amountMin == 1 && amountMax == 1) {
+                text = "1x " + text;
+            }
+
+            if (percentSpoiled == 0) {
+                text += ", always fresh";
+            }
+            else if (percentSpoiled != null) {
+                text += ", " + DataUtils.FormatAmount(percentSpoiled.Value, UnitOfMeasure.Percent) + " spoiled";
             }
 
             return text;
@@ -329,6 +349,12 @@ public abstract class Goods : FactorioObject {
 }
 
 public class Item : Goods {
+    public Item() {
+        getSpoilResult = new(() => getSpoilRecipe()?.products[0].goods);
+        getBaseSpoilTime = new(() => getSpoilRecipe()?.time ?? 0);
+        Recipe? getSpoilRecipe() => Database.recipes.all.OfType<Mechanics>().SingleOrDefault(r => r.name == "spoil." + name);
+    }
+
     /// <summary>
     /// The prototypes in this array will be loaded in order, before any other prototypes.
     /// This should correspond to the prototypes for subclasses of item, with more derived classes listed before their base classes.
@@ -347,6 +373,29 @@ public class Item : Goods {
     public override string type => "Item";
     internal override FactorioObjectSortOrder sortingOrder => FactorioObjectSortOrder.Items;
     public override UnitOfMeasure flowUnitOfMeasure => UnitOfMeasure.ItemPerSecond;
+    /// <summary>
+    /// Gets the result when this item spoils, or <see langword="null"/> if this item doesn't spoil.
+    /// </summary>
+    public FactorioObject? spoilResult => getSpoilResult.Value;
+    /// <summary>
+    /// Gets the time it takes for a base-quality item to spoil, in seconds, or 0 if this item doesn't spoil.
+    /// </summary>
+    public float baseSpoilTime => getBaseSpoilTime.Value;
+    /// <summary>
+    /// Gets the <see cref="Quality"/>-adjusted spoilage time for this item, in seconds, or 0 if this item doesn't spoil.
+    /// </summary>
+    public float GetSpoilTime(Quality quality) => quality.ApplyStandardBonus(baseSpoilTime);
+
+    /// <summary>
+    /// The lazy store for getting the spoilage result. By default it searches for and reads a $"Mechanics.spoil.{name}" recipe,
+    /// but it can be overridden for items that spoil into Entities.
+    /// </summary>
+    internal Lazy<FactorioObject?> getSpoilResult;
+    /// <summary>
+    /// The lazy store for getting the normal-quality spoilage time. By default it searches for and reads a $"Mechanics.spoil.{name}" recipe,
+    /// but it can be overridden for items that spoil into Entities.
+    /// </summary>
+    internal Lazy<float> getBaseSpoilTime;
 
     public override bool HasSpentFuel([NotNullWhen(true)] out Item? spent) {
         spent = fuelResult;
@@ -438,6 +487,23 @@ public class Entity : FactorioObject {
     public int size { get; internal set; }
     internal override FactorioObjectSortOrder sortingOrder => FactorioObjectSortOrder.Entities;
     public override string type => "Entity";
+    /// <summary>
+    /// Gets the result when this entity spoils (possibly <see langword="null"/>, if the entity burns out with no replacement),
+    /// or <see langword="null"/> if this entity doesn't spoil.
+    /// </summary>
+    public Entity? spoilResult => getSpoilResult?.Value;
+    /// <summary>
+    /// Gets the time it takes for a base-quality entity to spoil, in seconds, or 0 if this entity doesn't spoil.
+    /// </summary>
+    public float baseSpoilTime { get; internal set; }
+    /// <summary>
+    /// Gets the <see cref="Quality"/>-adjusted spoilage time for this entity, in seconds, or 0 if this entity doesn't spoil.
+    /// </summary>
+    public float GetSpoilTime(Quality quality) => quality.ApplyStandardBonus(baseSpoilTime);
+    /// <summary>
+    /// The lazy store for getting the spoilage result, if this entity spoils.
+    /// </summary>
+    internal Lazy<Entity?>? getSpoilResult;
 
     public override void GetDependencies(IDependencyCollector collector, List<FactorioObject> temp) {
         if (energy != null) {

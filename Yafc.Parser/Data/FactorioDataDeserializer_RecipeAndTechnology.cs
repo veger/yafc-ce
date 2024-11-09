@@ -168,7 +168,7 @@ internal partial class FactorioDataDeserializer {
         }
     }
 
-    private Func<LuaTable, Product> LoadProduct(string typeDotName, int multiplier = 1) => table => {
+    private Func<LuaTable, Product> LoadProduct(string typeDotName, int multiplier = 1, float? percentSpoiled = null) => table => {
         Goods? goods = LoadItemOrFluid(table, true);
 
         float min, max, catalyst;
@@ -183,6 +183,8 @@ internal partial class FactorioDataDeserializer {
             else {
                 throw new NotSupportedException($"Could not load amount for one of the products for {typeDotName}, possibly named '{table.Get("name", "")}'.");
             }
+
+            percentSpoiled ??= table.Get<float?>("percent_spoiled");
 
             float extraCountFraction = table.Get("extra_count_fraction", 0f);
             min += extraCountFraction;
@@ -207,7 +209,7 @@ internal partial class FactorioDataDeserializer {
             throw new NotSupportedException($"Could not load one of the products for {typeDotName}, possibly named '{table.Get("name", "")}'.");
         }
 
-        Product product = new Product(goods, min * multiplier, max * multiplier, table.Get("probability", 1f));
+        Product product = new Product(goods, min * multiplier, max * multiplier, table.Get("probability", 1f)) { percentSpoiled = percentSpoiled };
 
         if (catalyst > 0f) {
             product.SetCatalyst(catalyst);
@@ -217,12 +219,14 @@ internal partial class FactorioDataDeserializer {
     };
 
     private Product[] LoadProductList(LuaTable table, string typeDotName, bool allowSimpleSyntax) {
+        float? percentSpoiled = table.Get("result_is_always_fresh", false) ? 0 : null;
+
         if (table.Get("results", out LuaTable? resultList)) {
-            return resultList.ArrayElements<LuaTable>().Select(LoadProduct(typeDotName)).Where(x => x.amount != 0).ToArray();
+            return resultList.ArrayElements<LuaTable>().Select(LoadProduct(typeDotName, percentSpoiled: percentSpoiled)).Where(x => x.amount != 0).ToArray();
         }
 
         if (allowSimpleSyntax && table.Get("result", out string? name)) {
-            return [(new Product(GetObject<Item>(name), 1))];
+            return [(new Product(GetObject<Item>(name), 1) { percentSpoiled = percentSpoiled })];
         }
 
         return [];
@@ -332,6 +336,7 @@ internal partial class FactorioDataDeserializer {
         recipe.products = LoadProductList(table, recipe.typeDotName, allowSimpleSyntax: false);
 
         recipe.time = table.Get("energy_required", 0.5f);
+        recipe.preserveProducts = table.Get("preserve_products_in_machine_output", false);
 
         if (table.Get("main_product", out string? mainProductName) && mainProductName != "") {
             recipe.mainProduct = recipe.products.FirstOrDefault(x => x.goods.name == mainProductName)?.goods;

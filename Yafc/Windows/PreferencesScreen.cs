@@ -157,6 +157,15 @@ public class PreferencesScreen : PseudoScreen {
             }
         }
 
+        using (gui.EnterRowWithHelpIcon("Set this to match the spoiling rate you selected when starting your game. 10% is slow spoiling, and 1000% (1k%) is fast spoiling.")) {
+            gui.BuildText("Spoiling rate:", topOffset: 0.5f);
+            DisplayAmount amount = new(settings.spoilingRate, UnitOfMeasure.Percent);
+            if (gui.BuildFloatInput(amount, TextBoxDisplayStyle.DefaultTextInput)) {
+                settings.RecordUndo().spoilingRate = Math.Clamp(amount.Value, .1f, 10);
+                gui.Rebuild();
+            }
+        }
+
         gui.AllocateSpacing();
 
         if (gui.BuildCheckBox("Dark mode", Preferences.Instance.darkMode, out bool newValue)) {

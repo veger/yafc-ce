@@ -584,9 +584,27 @@ goodsHaveNoProduction:;
                 view.BuildTableProducts(gui, recipe.subgroup, recipe.owner, ref grid, false);
             }
             else {
-                foreach (var (goods, amount, link) in recipe.Products) {
+                foreach (var (goods, amount, link, percentSpoiled) in recipe.Products) {
                     grid.Next();
-                    view.BuildGoodsIcon(gui, goods, link, amount, ProductDropdownType.Product, recipe, recipe.linkRoot, HintLocations.OnConsumingRecipes);
+                    if (recipe.recipe is Recipe { preserveProducts: true }) {
+                        view.BuildGoodsIcon(gui, goods, link, amount, ProductDropdownType.Product, recipe, recipe.linkRoot, new() {
+                            HintLocations = HintLocations.OnConsumingRecipes,
+                            ExtraSpoilInformation = gui => gui.BuildText("This recipe output does not start spoiling until removed from the machine.", TextBlockDisplayStyle.WrappedText)
+                        });
+                    }
+                    else if (percentSpoiled == null) {
+                        view.BuildGoodsIcon(gui, goods, link, amount, ProductDropdownType.Product, recipe, recipe.linkRoot, HintLocations.OnConsumingRecipes);
+                    }
+                    else if (percentSpoiled == 0) {
+                        view.BuildGoodsIcon(gui, goods, link, amount, ProductDropdownType.Product, recipe, recipe.linkRoot,
+                            new() { HintLocations = HintLocations.OnConsumingRecipes, ExtraSpoilInformation = gui => gui.BuildText("This recipe output is always fresh.") });
+                    }
+                    else {
+                        view.BuildGoodsIcon(gui, goods, link, amount, ProductDropdownType.Product, recipe, recipe.linkRoot, new() {
+                            HintLocations = HintLocations.OnConsumingRecipes,
+                            ExtraSpoilInformation = gui => gui.BuildText($"This recipe output is {DataUtils.FormatAmount(percentSpoiled.Value, UnitOfMeasure.Percent)} spoiled.")
+                        });
+                    }
                 }
                 if (recipe.fixedProduct == Database.itemOutput || recipe.showTotalIO) {
                     grid.Next();

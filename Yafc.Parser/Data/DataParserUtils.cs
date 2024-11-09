@@ -7,27 +7,33 @@ namespace Yafc.Parser;
 
 internal static class DataParserUtils {
     private static class ConvertersFromLua<T> {
-        public static Func<object, T, T>? convert;
+        public static Converter? convert;
+
+        [return: NotNullIfNotNull(nameof(@default))]
+        public delegate T Converter(object value, T @default);
     }
 
     static DataParserUtils() {
         ConvertersFromLua<int>.convert = (o, def) => o is long l ? (int)l : o is double d ? (int)d : o is string s && int.TryParse(s, out int res) ? res : def;
+        ConvertersFromLua<int?>.convert = (o, def) => o is long l ? (int)l : o is double d ? (int)d : o is string s && int.TryParse(s, out int res) ? res : def;
         ConvertersFromLua<float>.convert = (o, def) => o is long l ? l : o is double d ? (float)d : o is string s && float.TryParse(s, out float res) ? res : def;
-        ConvertersFromLua<bool>.convert = delegate (object src, bool def) {
+        ConvertersFromLua<float?>.convert = (o, def) => o is long l ? l : o is double d ? (float)d : o is string s && float.TryParse(s, out float res) ? res : def;
+        ConvertersFromLua<bool>.convert = (o, def) => ConvertersFromLua<bool?>.convert!(o, def).Value;
+        ConvertersFromLua<bool?>.convert = (o, def) => {
 
-            if (src is bool b) {
+            if (o is bool b) {
                 return b;
             }
 
-            if (src == null) {
+            if (o == null) {
                 return def;
             }
 
-            if (src.Equals("true")) {
+            if (o.Equals("true")) {
                 return true;
             }
 
-            if (src.Equals("false")) {
+            if (o.Equals("false")) {
                 return false;
             }
 

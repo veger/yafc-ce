@@ -68,7 +68,7 @@ public static class ImmediateWidgets {
             return;
         }
 
-        SchemeColor color = obj.target.IsAccessible() ? SchemeColor.Source : SchemeColor.SourceFaint;
+        SchemeColor color = (obj.target.IsAccessible() || displayStyle.AlwaysAccessible) ? SchemeColor.Source : SchemeColor.SourceFaint;
         if (displayStyle.UseScaleSetting) {
             Rect rect = gui.AllocateRect(displayStyle.Size, displayStyle.Size, RectAlignment.Middle);
             gui.DrawIcon(rect.Expand(displayStyle.Size * (Project.current.preferences.iconScale - 1) / 2), obj.target.icon, color);
@@ -95,6 +95,12 @@ public static class ImmediateWidgets {
             Rect qualityRect = new Rect(gui.lastRect.BottomLeft - delta, size);
 
             gui.DrawIcon(qualityRect, quality.icon, SchemeColor.Source);
+        }
+        if (gui.isBuilding && obj.target is Item { baseSpoilTime: > 0 } or Entity { baseSpoilTime: > 0 }) {
+            Vector2 size = new Vector2(displayStyle.Size / 2.5f);
+            Rect spoilableRect = new Rect(gui.lastRect.TopLeft, size);
+
+            gui.DrawIcon(spoilableRect, Icon.Time, SchemeColor.PureForeground);
         }
     }
 
@@ -163,7 +169,7 @@ public static class ImmediateWidgets {
         using (gui.EnterRow()) {
             gui.BuildFactorioObjectIcon(obj, iconDisplayStyle);
             var color = gui.textColor;
-            if (obj != null && !obj.target.IsAccessible()) {
+            if (obj != null && !obj.target.IsAccessible() && !iconDisplayStyle.AlwaysAccessible) {
                 color += 1;
             }
 

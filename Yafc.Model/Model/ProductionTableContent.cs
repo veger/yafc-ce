@@ -449,15 +449,15 @@ public class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Productio
                         handledFuel = true;
                     }
 
-                    yield return (product.goods, amount, links.products[i++]);
+                    yield return (product.goods, amount, links.products[i++], product.percentSpoiled);
                 }
                 else {
-                    yield return (null, 0, null);
+                    yield return (null, 0, null, null);
                 }
             }
 
             if (!handledFuel) {
-                yield return hierarchyEnabled ? (spentFuel, fuelUsagePerSecond, links.spentFuel) : (null, 0, null);
+                yield return hierarchyEnabled ? (spentFuel, fuelUsagePerSecond, links.spentFuel, null) : (null, 0, null, null);
             }
         }
     }
@@ -745,7 +745,9 @@ public record RecipeRowIngredient(Goods? Goods, float Amount, ProductionLink? Li
         => new(value.Goods, value.Amount, value.Link, value.Variants);
 }
 
-public record RecipeRowProduct(Goods? Goods, float Amount, ProductionLink? Link) {
-    public static implicit operator (Goods? Goods, float Amount, ProductionLink? Link)(RecipeRowProduct value) => (value.Goods, value.Amount, value.Link);
-    public static implicit operator RecipeRowProduct((Goods? Goods, float Amount, ProductionLink? Link) value) => new(value.Goods, value.Amount, value.Link);
+public record RecipeRowProduct(Goods? Goods, float Amount, ProductionLink? Link, float? PercentSpoiled) {
+    public static implicit operator (Goods? Goods, float Amount, ProductionLink? Link, float? PercentSpoiled)(RecipeRowProduct value)
+        => (value.Goods, value.Amount, value.Link, value.PercentSpoiled);
+    public static implicit operator RecipeRowProduct((Goods? Goods, float Amount, ProductionLink? Link, float? PercentSpoiled) value)
+        => new(value.Goods, value.Amount, value.Link, value.PercentSpoiled);
 }

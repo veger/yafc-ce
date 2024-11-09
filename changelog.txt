@@ -18,11 +18,12 @@
 Version:
 Date:
     Features:
-        - (SA) Process accessiblilty of captured spawners, which also fixes biter eggs and subsequent Gleba recipes.
+        - (SA) Process accessibilty of captured spawners, which also fixes biter eggs and subsequent Gleba recipes.
         - (SA) Add support for the capture-spawner technology trigger.
         - Add the remaining research triggers and the mining-with-fluid research effect to the dependency/milestone
           analysis.
         - Explain what to do if Yafc fails to load a mod.
+        - (SA) Add spoiling time and result to tooltips. Add a clock overlay to icons for perishable items/entities.
     Internal changes:
         - Using the LuaContext after it is freed now produces a better error.
 ----------------------------------------------------------------------------------------------------------------------
