@@ -145,6 +145,7 @@ internal partial class LuaContext : IDisposable {
         _ = luaL_openlibs(L);
         RegisterApi(Log, "raw_log");
         RegisterApi(Require, "require");
+        RegisterApi(DebugTraceback, "debug", "traceback");
         _ = lua_pushstring(L, Project.currentYafcVersion.ToString());
         lua_setglobal(L, "yafc_version");
         var mods = NewTable();
@@ -196,23 +197,36 @@ internal partial class LuaContext : IDisposable {
         return -1;
     }
 
-    private int CreateErrorTraceback(IntPtr lua) {
-        string message = GetString(1);
-        luaL_traceback(L, L, message, 0);
-        string actualTraceback = GetString(-1);
-        string[] split = [.. actualTraceback.Split("\n\t")];
+    private string ReplaceChunkIdsInTraceback(string rawTraceback) {
+        string[] split = rawTraceback.Split("\n\t");
 
         for (int i = 0; i < split.Length; i++) {
             int chunkId = ParseTracebackEntry(split[i], out int endOfName);
 
             if (chunkId >= 0) {
-                split[i] = fullChunkNames[chunkId] + split[i][endOfName..];
+                (string mod, string name) = fullChunkNames[chunkId];
+                split[i] = $"__{mod}__/{name}{split[i][endOfName..]}";
             }
         }
 
-        string reassemble = string.Join("\n", split);
-        _ = lua_pushstring(L, reassemble);
+        string traceBack = string.Join("\n\t", split);
+        return traceBack;
+    }
 
+    private int CreateErrorTraceback(IntPtr lua) {
+        string message = GetString(1);
+        luaL_traceback(L, L, message, 0);
+        string rawTraceback = GetString(-1);
+        string traceback = ReplaceChunkIdsInTraceback(rawTraceback);
+        _ = lua_pushstring(L, traceback);
+        return 1;
+    }
+
+    private int DebugTraceback(IntPtr lua) {
+        luaL_traceback(L, L, null, 0);
+        string rawTraceback = GetString(-1);
+        string traceback = ReplaceChunkIdsInTraceback(rawTraceback);
+        _ = lua_pushstring(L, traceback);
         return 1;
     }
 
@@ -470,6 +484,16 @@ internal partial class LuaContext : IDisposable {
         lua_pushcclosure(L, Marshal.GetFunctionPointerForDelegate(callback), 0);
         lua_setglobal(L, name);
     }
+
+    private void RegisterApi(LuaCFunction callback, string topLevel, string name) {
+        neverCollect.Add(callback);
+        _ = lua_getglobal(L, topLevel);
+        _ = lua_pushstring(L, name);
+        lua_pushcclosure(L, Marshal.GetFunctionPointerForDelegate(callback), 0);
+        lua_rawset(L, -3);
+        Pop(1);
+    }
+
     private byte[] GetData(int index) {
         nint ptr = lua_tolstring(L, index, out nint len);
         byte[] buf = new byte[(int)len];
