@@ -24,6 +24,8 @@ Date:
           analysis.
         - Explain what to do if Yafc fails to load a mod.
         - (SA) Add spoiling time and result to tooltips. Add a clock overlay to icons for perishable items/entities.
+    Bugfixes:
+        - Override debug.traceback with a method that replaces the chunk IDs with __modname__/path/to/file.lua that is used by some mods.
     Internal changes:
         - Using the LuaContext after it is freed now produces a better error.
 ----------------------------------------------------------------------------------------------------------------------
