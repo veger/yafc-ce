@@ -169,33 +169,30 @@ internal partial class FactorioDataDeserializer {
         }
 
         switch (factorioType) {
-            case "transport-belt":
-                GetObject<Entity, EntityBelt>(name).beltItemsPerSecond = table.Get("speed", 0f) * 480f;
-
-                break;
-            case "inserter":
-                var inserter = GetObject<Entity, EntityInserter>(name);
-                inserter.inserterSwingTime = 1f / (table.Get("rotation_speed", 1f) * 60);
-                inserter.isBulkInserter = table.Get("bulk", false);
-
-                break;
+            // NOTE: Please add new cases in alphabetical order, even if the new case shares code with another case. That is,
+            // case "rocket-silo":
+            //    goto case "furnace";
+            // instead of 
+            // case "furnace":
+            // case "rocket-silo": // Out of order
             case "accumulator":
                 var accumulator = GetObject<Entity, EntityAccumulator>(name);
 
                 if (table.Get("energy_source", out LuaTable? accumulatorEnergy) && accumulatorEnergy.Get("buffer_capacity", out string? capacity)) {
                     accumulator.baseAccumulatorCapacity = ParseEnergy(capacity);
                 }
-
                 break;
-            case "reactor":
-                var reactor = GetObject<Entity, EntityReactor>(name);
-                reactor.reactorNeighborBonus = table.Get("neighbour_bonus", 1f); // Keep UK spelling for Factorio/LUA data objects
-                _ = table.Get("consumption", out usesPower);
-                reactor.basePower = ParseEnergy(usesPower);
-                reactor.baseCraftingSpeed = reactor.basePower;
-                recipeCrafters.Add(reactor, SpecialNames.ReactorRecipe);
-
+            case "agricultural-tower":
+                var agriculturalTower = GetObject<Entity, EntityCrafter>(name);
+                _ = table.Get("energy_usage", out usesPower);
+                agriculturalTower.basePower = ParseEnergy(usesPower);
+                float radius = table.Get("radius", 1f);
+                agriculturalTower.baseCraftingSpeed = (float)(Math.Pow(2 * radius + 1, 2) - 1);
+                agriculturalTower.itemInputs = 1;
+                recipeCrafters.Add(agriculturalTower, SpecialNames.PlantRecipe);
                 break;
+            case "assembling-machine":
+                goto case "furnace";
             case "beacon":
                 var beacon = GetObject<Entity, EntityBeacon>(name);
                 beacon.baseBeaconEfficiency = table.Get("distribution_effectivity", 0f);
@@ -203,48 +200,6 @@ internal partial class FactorioDataDeserializer {
                 _ = table.Get("energy_usage", out usesPower);
                 ParseModules(table, beacon, AllowedEffects.None);
                 beacon.basePower = ParseEnergy(usesPower);
-
-                break;
-            case "logistic-container":
-            case "container":
-                var container = GetObject<Entity, EntityContainer>(name);
-                container.inventorySize = table.Get("inventory_size", 0);
-
-                if (factorioType == "logistic-container") {
-                    container.logisticMode = table.Get("logistic_mode", "");
-                    container.logisticSlotsCount = table.Get("logistic_slots_count", 0);
-                    if (container.logisticSlotsCount == 0) {
-                        container.logisticSlotsCount = table.Get("max_logistic_slots", 1000);
-                    }
-                }
-
-                break;
-            case "character":
-                var character = GetObject<Entity, EntityCrafter>(name);
-                character.itemInputs = 255;
-
-                if (table.Get("mining_categories", out LuaTable? resourceCategories)) {
-                    foreach (string playerMining in resourceCategories.ArrayElements<string>()) {
-                        recipeCrafters.Add(character, SpecialNames.MiningRecipe + playerMining);
-                    }
-                }
-
-                if (table.Get("crafting_categories", out LuaTable? craftingCategories)) {
-                    foreach (string playerCrafting in craftingCategories.ArrayElements<string>()) {
-                        recipeCrafters.Add(character, playerCrafting);
-                    }
-                }
-
-                recipeCrafters.Add(character, SpecialNames.TechnologyTrigger);
-                recipeCrafters.Add(character, SpecialNames.SpoilRecipe);
-
-                character.energy = laborEntityEnergy;
-                if (character.name == "character") {
-                    this.character = character;
-                    character.mapGenerated = true;
-                    rootAccessible.Insert(0, character);
-                }
-
                 break;
             case "boiler":
                 var boiler = GetObject<Entity, EntityCrafter>(name);
@@ -272,10 +227,79 @@ internal partial class FactorioDataDeserializer {
                 recipe.products = [new Product(output, boiler.basePower / outputEnergyPerOneFluid)];
                 recipe.time = 1f;
                 boiler.baseCraftingSpeed = 1f;
-
                 break;
-            case "assembling-machine":
-            case "rocket-silo":
+            case "burner-generator":
+                var generator = GetObject<Entity, EntityCrafter>(name);
+
+                // generator energy input config is strange
+                if (table.Get("max_power_output", out string? maxPowerOutput)) {
+                    generator.basePower = ParseEnergy(maxPowerOutput);
+                }
+
+                if ((factorioVersion < v0_18 || factorioType == "burner-generator") && table.Get("burner", out LuaTable? burnerSource)) {
+                    ReadEnergySource(burnerSource, generator);
+                }
+                else {
+                    generator.energy = new EntityEnergy { effectivity = table.Get("effectivity", 1f) };
+                    ReadFluidEnergySource(table, generator);
+                }
+
+                recipeCrafters.Add(generator, SpecialNames.GeneratorRecipe);
+                break;
+            case "character":
+                var character = GetObject<Entity, EntityCrafter>(name);
+                character.itemInputs = 255;
+
+                if (table.Get("mining_categories", out LuaTable? resourceCategories)) {
+                    foreach (string playerMining in resourceCategories.ArrayElements<string>()) {
+                        recipeCrafters.Add(character, SpecialNames.MiningRecipe + playerMining);
+                    }
+                }
+
+                if (table.Get("crafting_categories", out LuaTable? craftingCategories)) {
+                    foreach (string playerCrafting in craftingCategories.ArrayElements<string>()) {
+                        recipeCrafters.Add(character, playerCrafting);
+                    }
+                }
+
+                recipeCrafters.Add(character, SpecialNames.TechnologyTrigger);
+                recipeCrafters.Add(character, SpecialNames.SpoilRecipe);
+
+                character.energy = laborEntityEnergy;
+                if (character.name == "character") {
+                    this.character = character;
+                    character.mapGenerated = true;
+                    rootAccessible.Insert(0, character);
+                }
+                break;
+            case "constant-combinator":
+                if (name == "constant-combinator") {
+                    Database.constantCombinatorCapacity = table.Get("item_slot_count", 18);
+                }
+                break;
+            case "container":
+                var container = GetObject<Entity, EntityContainer>(name);
+                container.inventorySize = table.Get("inventory_size", 0);
+
+                if (factorioType == "logistic-container") {
+                    container.logisticMode = table.Get("logistic_mode", "");
+                    container.logisticSlotsCount = table.Get("logistic_slots_count", 0);
+                    if (container.logisticSlotsCount == 0) {
+                        container.logisticSlotsCount = table.Get("max_logistic_slots", 1000);
+                    }
+                }
+                break;
+            case "electric-energy-interface":
+                var eei = GetObject<Entity, EntityCrafter>(name);
+                eei.energy = voidEntityEnergy;
+
+                if (table.Get("energy_production", out string? interfaceProduction)) {
+                    eei.baseCraftingSpeed = ParseEnergy(interfaceProduction);
+                    if (eei.baseCraftingSpeed > 0) {
+                        recipeCrafters.Add(eei, SpecialNames.GeneratorRecipe);
+                    }
+                }
+                break;
             case "furnace":
                 var crafter = GetObject<Entity, EntityCrafter>(name);
                 _ = table.Get("energy_usage", out usesPower);
@@ -330,28 +354,28 @@ internal partial class FactorioDataDeserializer {
                         }
                     }
                 }
-
                 break;
             case "generator":
-            case "burner-generator":
-                var generator = GetObject<Entity, EntityCrafter>(name);
-
-                // generator energy input config is strange
-                if (table.Get("max_power_output", out string? maxPowerOutput)) {
-                    generator.basePower = ParseEnergy(maxPowerOutput);
-                }
-
-                if ((factorioVersion < v0_18 || factorioType == "burner-generator") && table.Get("burner", out LuaTable? burnerSource)) {
-                    ReadEnergySource(burnerSource, generator);
-                }
-                else {
-                    generator.energy = new EntityEnergy { effectivity = table.Get("effectivity", 1f) };
-                    ReadFluidEnergySource(table, generator);
-                }
-
-                recipeCrafters.Add(generator, SpecialNames.GeneratorRecipe);
-
+                goto case "burner-generator";
+            case "inserter":
+                var inserter = GetObject<Entity, EntityInserter>(name);
+                inserter.inserterSwingTime = 1f / (table.Get("rotation_speed", 1f) * 60);
+                inserter.isBulkInserter = table.Get("bulk", false);
                 break;
+            case "lab":
+                var lab = GetObject<Entity, EntityCrafter>(name);
+                _ = table.Get("energy_usage", out usesPower);
+                ParseModules(table, lab, AllowedEffects.All ^ AllowedEffects.Quality);
+                lab.basePower = ParseEnergy(usesPower);
+                lab.baseCraftingSpeed = table.Get("researching_speed", 1f);
+                recipeCrafters.Add(lab, SpecialNames.Labs);
+                _ = table.Get("inputs", out LuaTable? inputs);
+                lab.inputs = inputs.ArrayElements<string>().Select(GetObject<Item>).ToArray();
+                sciencePacks.UnionWith(lab.inputs.Select(x => (Item)x));
+                lab.itemInputs = lab.inputs.Length;
+                break;
+            case "logistic-container":
+                goto case "container";
             case "mining-drill":
                 var drill = GetObject<Entity, EntityCrafter>(name);
                 _ = table.Get("energy_usage", out usesPower);
@@ -370,16 +394,6 @@ internal partial class FactorioDataDeserializer {
                 foreach (string resource in resourceCategories.ArrayElements<string>()) {
                     recipeCrafters.Add(drill, SpecialNames.MiningRecipe + resource);
                 }
-
-                break;
-            case "agricultural-tower":
-                var agriculturalTower = GetObject<Entity, EntityCrafter>(name);
-                _ = table.Get("energy_usage", out usesPower);
-                agriculturalTower.basePower = ParseEnergy(usesPower);
-                float radius = table.Get("radius", 1f);
-                agriculturalTower.baseCraftingSpeed = (float)(Math.Pow(2 * radius + 1, 2) - 1);
-                agriculturalTower.itemInputs = 1;
-                recipeCrafters.Add(agriculturalTower, SpecialNames.PlantRecipe);
                 break;
             case "offshore-pump":
                 var pump = GetObject<Entity, EntityCrafter>(name);
@@ -405,46 +419,6 @@ internal partial class FactorioDataDeserializer {
                     recipeCrafters.Add(pump, recipeCategory);
                     pump.energy = voidEntityEnergy;
                 }
-
-                break;
-            case "lab":
-                var lab = GetObject<Entity, EntityCrafter>(name);
-                _ = table.Get("energy_usage", out usesPower);
-                ParseModules(table, lab, AllowedEffects.All ^ AllowedEffects.Quality);
-                lab.basePower = ParseEnergy(usesPower);
-                lab.baseCraftingSpeed = table.Get("researching_speed", 1f);
-                recipeCrafters.Add(lab, SpecialNames.Labs);
-                _ = table.Get("inputs", out LuaTable? inputs);
-                lab.inputs = inputs.ArrayElements<string>().Select(GetObject<Item>).ToArray();
-                sciencePacks.UnionWith(lab.inputs.Select(x => (Item)x));
-                lab.itemInputs = lab.inputs.Length;
-
-                break;
-            case "solar-panel":
-                var solarPanel = GetObject<Entity, EntityCrafter>(name);
-                solarPanel.energy = voidEntityEnergy;
-                _ = table.Get("production", out string? powerProduction);
-                recipeCrafters.Add(solarPanel, SpecialNames.GeneratorRecipe);
-                solarPanel.baseCraftingSpeed = ParseEnergy(powerProduction) * 0.7f; // 0.7f is a solar panel ratio on nauvis
-
-                break;
-            case "electric-energy-interface":
-                var eei = GetObject<Entity, EntityCrafter>(name);
-                eei.energy = voidEntityEnergy;
-
-                if (table.Get("energy_production", out string? interfaceProduction)) {
-                    eei.baseCraftingSpeed = ParseEnergy(interfaceProduction);
-                    if (eei.baseCraftingSpeed > 0) {
-                        recipeCrafters.Add(eei, SpecialNames.GeneratorRecipe);
-                    }
-                }
-
-                break;
-            case "constant-combinator":
-                if (name == "constant-combinator") {
-                    Database.constantCombinatorCapacity = table.Get("item_slot_count", 18);
-                }
-
                 break;
             case "projectile":
                 var projectile = GetObject<Entity, EntityProjectile>(name);
@@ -467,7 +441,26 @@ internal partial class FactorioDataDeserializer {
                         projectile.placeEntities.Add(createdEntity);
                     }
                 }
-
+                break;
+            case "reactor":
+                var reactor = GetObject<Entity, EntityReactor>(name);
+                reactor.reactorNeighborBonus = table.Get("neighbour_bonus", 1f); // Keep UK spelling for Factorio/LUA data objects
+                _ = table.Get("consumption", out usesPower);
+                reactor.basePower = ParseEnergy(usesPower);
+                reactor.baseCraftingSpeed = reactor.basePower;
+                recipeCrafters.Add(reactor, SpecialNames.ReactorRecipe);
+                break;
+            case "rocket-silo":
+                goto case "furnace";
+            case "solar-panel":
+                var solarPanel = GetObject<Entity, EntityCrafter>(name);
+                solarPanel.energy = voidEntityEnergy;
+                _ = table.Get("production", out string? powerProduction);
+                recipeCrafters.Add(solarPanel, SpecialNames.GeneratorRecipe);
+                solarPanel.baseCraftingSpeed = ParseEnergy(powerProduction) * 0.7f; // 0.7f is a solar panel ratio on nauvis
+                break;
+            case "transport-belt":
+                GetObject<Entity, EntityBelt>(name).beltItemsPerSecond = table.Get("speed", 0f) * 480f;
                 break;
             case "unit-spawner":
                 var spawner = GetObject<Entity, EntitySpawner>(name);
