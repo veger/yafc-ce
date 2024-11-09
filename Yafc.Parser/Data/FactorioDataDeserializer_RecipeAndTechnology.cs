@@ -336,6 +336,7 @@ internal partial class FactorioDataDeserializer {
         recipe.products = LoadProductList(table, recipe.typeDotName, allowSimpleSyntax: false);
 
         recipe.time = table.Get("energy_required", 0.5f);
+        recipe.preserveProducts = table.Get("preserve_products_in_machine_output", false);
 
         if (table.Get("main_product", out string? mainProductName) && mainProductName != "") {
             recipe.mainProduct = recipe.products.FirstOrDefault(x => x.goods.name == mainProductName)?.goods;

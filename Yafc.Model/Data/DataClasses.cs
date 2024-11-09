@@ -170,6 +170,8 @@ public class Recipe : RecipeOrTechnology {
     public string[]? allowedModuleCategories { get; internal set; }
     public Technology[] technologyUnlock { get; internal set; } = [];
     public Dictionary<Technology, float> technologyProductivity { get; internal set; } = [];
+    public bool preserveProducts { get; internal set; }
+
     public bool HasIngredientVariants() {
         foreach (var ingredient in ingredients) {
             if (ingredient.variants != null) {

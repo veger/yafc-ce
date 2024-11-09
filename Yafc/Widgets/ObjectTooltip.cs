@@ -117,10 +117,10 @@ public class ObjectTooltip : Tooltip {
         }
     }
 
-    private static void BuildItem(ImGui gui, IFactorioObjectWrapper item) {
+    private static void BuildItem(ImGui gui, IFactorioObjectWrapper item, string? extraText = null) {
         using (gui.EnterRow()) {
             gui.BuildFactorioObjectIcon(item.target);
-            gui.BuildText(item.text, TextBlockDisplayStyle.WrappedText);
+            gui.BuildText(item.text + extraText, TextBlockDisplayStyle.WrappedText);
         }
     }
 
@@ -445,8 +445,9 @@ public class ObjectTooltip : Tooltip {
         if (recipe.products.Length > 0 && !(recipe.products.Length == 1 && recipe.products[0].IsSimple && recipe.products[0].goods is Item)) {
             BuildSubHeader(gui, "Products");
             using (gui.EnterGroup(contentPadding)) {
+                string? extraText = recipe is Recipe { preserveProducts: true } ? ", preserved until removed from the machine" : null;
                 foreach (var product in recipe.products) {
-                    BuildItem(gui, product);
+                    BuildItem(gui, product, extraText);
                 }
             }
         }

@@ -586,7 +586,13 @@ goodsHaveNoProduction:;
             else {
                 foreach (var (goods, amount, link, percentSpoiled) in recipe.Products) {
                     grid.Next();
-                    if (percentSpoiled == null) {
+                    if (recipe.recipe is Recipe { preserveProducts: true }) {
+                        view.BuildGoodsIcon(gui, goods, link, amount, ProductDropdownType.Product, recipe, recipe.linkRoot, new() {
+                            HintLocations = HintLocations.OnConsumingRecipes,
+                            ExtraSpoilInformation = gui => gui.BuildText("This recipe output does not start spoiling until removed from the machine.", TextBlockDisplayStyle.WrappedText)
+                        });
+                    }
+                    else if (percentSpoiled == null) {
                         view.BuildGoodsIcon(gui, goods, link, amount, ProductDropdownType.Product, recipe, recipe.linkRoot, HintLocations.OnConsumingRecipes);
                     }
                     else if (percentSpoiled == 0) {
