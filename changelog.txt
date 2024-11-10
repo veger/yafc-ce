@@ -17,6 +17,8 @@
 ----------------------------------------------------------------------------------------------------------------------
 Version:
 Date:
+    Features:
+        - Added Ctrl+Shift+F to search all pages.
     Fixes:
         - "Map generated" entities that don't generate in any locations could break automation analysis.
         - Recipes that are referenced without being defined do not prevent YAFC from loading.
