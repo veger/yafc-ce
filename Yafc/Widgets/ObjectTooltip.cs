@@ -44,7 +44,7 @@ public class ObjectTooltip : Tooltip {
 
             gui.BuildText(name, new TextBlockDisplayStyle(Font.header, true));
             var milestoneMask = Milestones.Instance.GetMilestoneResult(target.target);
-            if (milestoneMask.HighestBitSet() > 0) {
+            if (milestoneMask.HighestBitSet() > 0 && (target.target.IsAccessible() || Project.current.preferences.showMilestoneOnInaccessible)) {
                 float spacing = MathF.Min((22f / Milestones.Instance.currentMilestones.Length) - 1f, 0f);
                 using (gui.EnterRow(spacing)) {
                     int maskBit = 1;

@@ -4,7 +4,7 @@ using System.Numerics;
 
 namespace Yafc.Model;
 
-public struct Bits {
+public struct Bits : IComparable<Bits> {
     private int _length;
     public int length {
         readonly get => _length;

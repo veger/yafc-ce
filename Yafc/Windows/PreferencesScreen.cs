@@ -93,6 +93,7 @@ public class PreferencesScreen : PseudoScreen {
     private static void DrawGeneral(ImGui gui) {
         ProjectPreferences preferences = Project.current.preferences;
         ProjectSettings settings = Project.current.settings;
+        bool newValue;
 
         gui.BuildText("Unit of time:", Font.subheader);
         using (gui.EnterRow()) {
@@ -168,7 +169,11 @@ public class PreferencesScreen : PseudoScreen {
 
         gui.AllocateSpacing();
 
-        if (gui.BuildCheckBox("Dark mode", Preferences.Instance.darkMode, out bool newValue)) {
+        if (gui.BuildCheckBox("Show milestone overlays on inaccessible objects", preferences.showMilestoneOnInaccessible, out newValue)) {
+            preferences.RecordUndo().showMilestoneOnInaccessible = newValue;
+        }
+
+        if (gui.BuildCheckBox("Dark mode", Preferences.Instance.darkMode, out newValue)) {
             Preferences.Instance.darkMode = newValue;
             Preferences.Instance.Save();
             RenderingUtils.SetColorScheme(newValue);

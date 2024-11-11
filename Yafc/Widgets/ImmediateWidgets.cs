@@ -76,7 +76,9 @@ public static class ImmediateWidgets {
         else {
             gui.BuildIcon(obj.target.icon, displayStyle.Size, color);
         }
-        if (gui.isBuilding && displayStyle.MilestoneDisplay != MilestoneDisplay.None) {
+        if (gui.isBuilding && displayStyle.MilestoneDisplay != MilestoneDisplay.None
+            && (obj.target.IsAccessible() || Project.current.preferences.showMilestoneOnInaccessible)) {
+
             bool contain = (displayStyle.MilestoneDisplay & MilestoneDisplay.Contained) != 0;
             FactorioObject? milestone = Milestones.Instance.GetHighest(obj.target, displayStyle.MilestoneDisplay >= MilestoneDisplay.Always);
             if (milestone != null) {

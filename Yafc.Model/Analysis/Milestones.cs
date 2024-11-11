@@ -193,6 +193,36 @@ public class Milestones : Analysis {
             result[obj] = bits;
         }
 
+        // Predict the milestone mask for inaccessible items by OR-ing the masks for their parents.
+        Queue<FactorioObject> inaccessibleQueue = new(Database.objects.all.Except(accessibility[noObject]));
+        while (inaccessibleQueue.TryDequeue(out FactorioObject? inaccessible)) {
+            Bits milestoneBits = result[inaccessible];
+            foreach (DependencyList list in Dependencies.dependencyList[inaccessible]) {
+                if (list.flags.HasFlag(DependencyList.Flags.RequireEverything)) {
+                    // Add the milestones for all these parents
+                    foreach (FactorioId item in list.elements) {
+                        milestoneBits |= result[item];
+                    }
+                }
+                else if (list.elements.Length > 0) {
+                    // Add the milestones for the most accessible of these parents
+                    milestoneBits |= list.elements.Min(e => result[e]);
+                }
+            }
+
+            milestoneBits[0] = false; // Clear bit 0, since this object is inaccessible.
+
+            if (milestoneBits != result[inaccessible]) {
+                result[inaccessible] = milestoneBits;
+                foreach (FactorioObject child in Dependencies.reverseDependencies[inaccessible].Select(id => Database.objects[id])) {
+                    if (!result[child][0] && !inaccessibleQueue.Contains(child)) {
+                        // Reprocess this inaccessible child to add our new bits to its mask.
+                        inaccessibleQueue.Enqueue(child);
+                    }
+                }
+            }
+        }
+
         if (!project.settings.milestones.SequenceEqual(currentMilestones)) {
             _ = project.settings.RecordUndo();
             project.settings.milestones.Clear();
