@@ -32,7 +32,14 @@ public struct DependencyList {
 }
 
 public static class Dependencies {
+    /// <summary>
+    /// The objects the key requires, organized into useful categories. Some categories are requires-any, others are requires-all.
+    /// e.g. <c>dependencyList["Item.steel-plate"]</c> will contain the recipes that produce it and the entities that have it as loot.
+    /// </summary>
     public static Mapping<FactorioObject, DependencyList[]> dependencyList { get; private set; }
+    /// <summary>
+    /// The objects that require the key. e.g. <c>reverseDependencies["Item.steel-plate"]</c> will contain the recipes that consume steel plate.
+    /// </summary>
     public static Mapping<FactorioObject, List<FactorioId>> reverseDependencies { get; private set; }
 
     public static void Calculate() {
