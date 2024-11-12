@@ -73,7 +73,7 @@ public class ObjectTooltip : Tooltip {
         }
     }
 
-    private static void BuildIconRow(ImGui gui, IReadOnlyList<FactorioObject> objects, int maxRows) {
+    private static void BuildIconRow(ImGui gui, IReadOnlyList<IFactorioObjectWrapper> objects, int maxRows, IComparer<IFactorioObjectWrapper>? comparer = null) {
         const int itemsPerRow = 9;
         int count = objects.Count;
         if (count == 0) {
@@ -81,22 +81,22 @@ public class ObjectTooltip : Tooltip {
             return;
         }
 
-        List<FactorioObject> arr = new List<FactorioObject>(count);
+        List<IFactorioObjectWrapper> arr = new(count);
         arr.AddRange(objects);
-        arr.Sort(DataUtils.DefaultOrdering);
+        arr.Sort(comparer ?? DataUtils.DefaultOrdering);
 
         if (count <= maxRows) {
             for (int i = 0; i < count; i++) {
-                _ = gui.BuildFactorioObjectButtonWithText(arr[i]);
+                BuildItem(gui, arr[i]);
             }
 
             return;
         }
 
         int index = 0;
-        if (count - 1 < (maxRows - 1) * itemsPerRow) {
-            _ = gui.BuildFactorioObjectButtonWithText(arr[0]);
-            index++;
+        while (count - index - 2 < (maxRows - 1) * itemsPerRow && index < arr.Count) {
+            BuildItem(gui, arr[index++]);
+            maxRows--;
         }
 
         int rows = Math.Min(((count - 1 - index) / itemsPerRow) + 1, maxRows);
@@ -112,8 +112,8 @@ public class ObjectTooltip : Tooltip {
             }
         }
 
-        if (rows * itemsPerRow < count) {
-            gui.BuildText("... and " + (count - (rows * itemsPerRow)) + " more");
+        if (index < count) {
+            gui.BuildText("... and " + (count - index) + " more");
         }
     }
 
@@ -423,8 +423,13 @@ public class ObjectTooltip : Tooltip {
         }
 
         using (gui.EnterGroup(contentPadding)) {
-            foreach (var ingredient in recipe.ingredients) {
-                BuildItem(gui, ingredient);
+            if (recipe is Technology) {
+                BuildIconRow(gui, recipe.ingredients, 2, DataUtils.DefaultSciencePackOrdering);
+            }
+            else {
+                foreach (Ingredient ingredient in recipe.ingredients) {
+                    BuildItem(gui, ingredient);
+                }
             }
 
             if (recipe is Recipe rec) {
@@ -457,7 +462,7 @@ public class ObjectTooltip : Tooltip {
             }
         }
 
-        if (recipe.products.Length > 0 && !(recipe.products.Length == 1 && recipe.products[0].IsSimple && recipe.products[0].goods is Item)) {
+        if (recipe is Recipe { products.Length: > 0 } && !(recipe.products.Length == 1 && recipe.products[0].IsSimple)) {
             BuildSubHeader(gui, "Products");
             using (gui.EnterGroup(contentPadding)) {
                 string? extraText = recipe is Recipe { preserveProducts: true } ? ", preserved until removed from the machine" : null;

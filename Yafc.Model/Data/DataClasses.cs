@@ -294,9 +294,9 @@ public class Product : IFactorioObjectWrapper {
     }
 
     /// <summary>
-    /// Gets <see langword="true"/> if this product is one item with 100% probability and default spoilage behavior.
+    /// Gets <see langword="true"/> if this product is one <see cref="Item"/> with 100% probability and default spoilage behavior.
     /// </summary>
-    public bool IsSimple => amountMin == amountMax && amount == 1 && probability == 1 && percentSpoiled == null;
+    public bool IsSimple => amountMin == amountMax && amount == 1 && probability == 1 && percentSpoiled == null && goods is Item;
 
     FactorioObject IFactorioObjectWrapper.target => goods;
 
