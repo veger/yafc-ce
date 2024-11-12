@@ -353,6 +353,12 @@ internal partial class LuaContext : IDisposable {
         else if (value is int i) {
             lua_pushnumber(L, i);
         }
+        else if (value is long l) {
+            lua_pushnumber(L, l);
+        }
+        else if (value is ulong ul) {
+            lua_pushnumber(L, ul);
+        }
         else if (value is string s) {
             _ = lua_pushstring(L, s);
         }
