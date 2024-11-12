@@ -193,6 +193,15 @@ internal partial class FactorioDataDeserializer {
                 break;
             case "assembling-machine":
                 goto case "furnace";
+            case "asteroid-collector":
+                EntityCrafter collector = GetObject<Entity, EntityCrafter>(name);
+                _ = table.Get("arm_energy_usage", out usesPower);
+                collector.basePower = ParseEnergy(usesPower) * 60;
+                _ = table.Get("passive_energy_usage", out usesPower);
+                defaultDrain = ParseEnergy(usesPower) * 60;
+                collector.baseCraftingSpeed = 1;
+                recipeCrafters.Add(collector, SpecialNames.AsteroidCapture);
+                break;
             case "beacon":
                 var beacon = GetObject<Entity, EntityBeacon>(name);
                 beacon.baseBeaconEfficiency = table.Get("distribution_effectivity", 0f);
@@ -575,6 +584,16 @@ internal partial class FactorioDataDeserializer {
                 }
             }
         }
+    }
+
+    private void DeserializeAsteroidChunk(LuaTable table, ErrorCollector errorCollector) {
+        Entity chunk = DeserializeCommon<Entity>(table, "asteroid-chunk");
+        Item asteroid = GetObject<Item>(chunk.name);
+        Recipe recipe = CreateSpecialRecipe(asteroid, SpecialNames.AsteroidCapture, "mining");
+        recipe.time = 1;
+        recipe.ingredients = [];
+        recipe.products = [new Product(asteroid, 1)];
+        recipe.sourceEntity = chunk;
     }
 
     private float EstimateArgument(LuaTable args, string name, float def = 0) => args.Get(name, out LuaTable? res) ? EstimateNoiseExpression(res) : def;

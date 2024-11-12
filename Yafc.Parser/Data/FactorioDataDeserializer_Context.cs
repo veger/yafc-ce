@@ -454,6 +454,9 @@ internal partial class FactorioDataDeserializer {
                     else {
                         entity.spawnLocations = entityLocations.GetArray(entity);
                     }
+                    if (entity.spawnLocations.Length > 0) {
+                        entity.mapGenerated = true;
+                    }
                     break;
                 case Location location:
                     location.technologyUnlock = locationUnlockers.GetArray(location);

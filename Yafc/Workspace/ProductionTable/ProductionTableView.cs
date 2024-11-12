@@ -1464,7 +1464,9 @@ goodsHaveNoProduction:;
         {WarningFlags.TemperatureForIngredientNotMatch, "This recipe does care about ingredient temperature, and the temperature range does not match"},
         {WarningFlags.ReactorsNeighborsFromPrefs, "Assumes reactor formation from preferences"},
         {WarningFlags.AssumesNauvisSolarRatio, "Energy production values assumes Nauvis solar ration (70% power output). Don't forget accumulators."},
-        {WarningFlags.ExceedsBuiltCount, "This recipe requires more buildings than are currently built."}
+        {WarningFlags.ExceedsBuiltCount, "This recipe requires more buildings than are currently built."},
+        {WarningFlags.AsteroidCollectionNotModelled, "The speed of asteroid collectors depends heavily on location and travel speed. " +
+            "It also depends on the distance between adjacent collectors. These dependencies are not modeled. Expect widely varied performance."},
     };
 
     private static readonly (Icon icon, SchemeColor color)[] tagIcons = [

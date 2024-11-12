@@ -438,7 +438,7 @@ public class Location : FactorioObject {
     public override string type => "Location";
 
     public Technology[] technologyUnlock { get; internal set; } = [];
-    internal IReadOnlyList<string>? entitySpawns { get; set; }
+    internal List<string> entitySpawns { get; set; } = [];
     internal IReadOnlyList<string>? placementControls { get; set; }
 
     internal override FactorioObjectSortOrder sortingOrder => FactorioObjectSortOrder.Locations;
@@ -500,7 +500,7 @@ public class Entity : FactorioObject {
         : basePower;
     public EntityEnergy energy { get; internal set; } = null!; // TODO: Prove that this is always properly initialized. (Do we need an EntityWithEnergy type?)
     public Item[] itemsToPlace { get; internal set; } = null!; // null-forgiving: This is initialized in CalculateMaps.
-    public Location[] spawnLocations { get; internal set; } = null!; // null-forgiving: This is initialized in CalculateMaps.
+    internal Location[] spawnLocations { get; set; } = null!; // null-forgiving: This is initialized in CalculateMaps.
     internal FactorioObject[] miscSources { get; set; } = [];
     internal string? autoplaceControl { get; set; }
     public int size { get; internal set; }

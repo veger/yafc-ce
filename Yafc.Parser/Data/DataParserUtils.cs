@@ -132,4 +132,5 @@ public static class SpecialNames {
     public const string ResearchUnit = "research-unit";
     public const string SpoilRecipe = "spoil";
     public const string PlantRecipe = "plant";
+    public const string AsteroidCapture = "asteroid-capture";
 }

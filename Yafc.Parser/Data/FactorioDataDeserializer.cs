@@ -142,6 +142,7 @@ internal partial class FactorioDataDeserializer {
         DeserializePrototypes(raw, "quality", DeserializeQuality, progress, errorCollector);
         Quality.Normal = GetObject<Quality>("normal");
         rootAccessible.Add(Quality.Normal);
+        DeserializePrototypes(raw, "asteroid-chunk", DeserializeAsteroidChunk, progress, errorCollector);
 
         progress.Report(("Loading", "Loading entities"));
         LuaTable entityPrototypes = (LuaTable?)prototypes["entity"] ?? throw new ArgumentException("Could not load prototypes.entity from data argument", nameof(prototypes));
@@ -571,10 +572,18 @@ internal partial class FactorioDataDeserializer {
         Location location = DeserializeCommon<Location>(table, "space-location");
         if (table.Get("map_gen_settings", out LuaTable? mapGen)) {
             if (mapGen.Get("autoplace_controls", out LuaTable? controls)) {
-                location.placementControls = controls.ObjectElements.Keys.OfType<string>().ToList().AsReadOnly();
+                location.placementControls = controls.ObjectElements.Keys.OfType<string>().ToList();
             }
             if (mapGen.Get<LuaTable>("autoplace_settings")?.Get<LuaTable>("entity")?.Get<LuaTable>("settings") is LuaTable settings) {
-                location.entitySpawns = settings.ObjectElements.Keys.OfType<string>().ToList().AsReadOnly();
+                location.entitySpawns = settings.ObjectElements.Keys.OfType<string>().ToList();
+            }
+        }
+
+        if (table.Get("asteroid_spawn_definitions", out LuaTable? spawns)) {
+            foreach (LuaTable spawn in spawns.ArrayElements.OfType<LuaTable>()) {
+                if (spawn.Get("asteroid", out string? asteroid)) {
+                    location.entitySpawns.Add(asteroid);
+                }
             }
         }
     }

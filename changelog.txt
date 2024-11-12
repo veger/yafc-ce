@@ -15,11 +15,16 @@
 //     Internal changes:
 //         Changes to the code that do not affect the behavior of the program.
 ----------------------------------------------------------------------------------------------------------------------
+Version:
+Date:
+    Features:
+        - Add dependency information for tree and resource spawns, as well as for some asteroid mining.
+----------------------------------------------------------------------------------------------------------------------
 Version: 2.3.1
 Date: November 10th 2024
     Bugfixes:
         - Cybersyn now doesn't crash on load.
-
+----------------------------------------------------------------------------------------------------------------------
 Version: 2.3.0
 Date: November 10th 2024
     Features:
