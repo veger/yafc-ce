@@ -132,6 +132,10 @@ internal partial class FactorioDataDeserializer {
         DeserializePrototypes(raw, "fluid", DeserializeFluid, progress, errorCollector);
         progress.Report(("Loading", "Loading recipes"));
         DeserializePrototypes(raw, "recipe", DeserializeRecipe, progress, errorCollector);
+        progress.Report(("Loading", "Loading locations"));
+        DeserializePrototypes(raw, "planet", DeserializeLocation, progress, errorCollector);
+        DeserializePrototypes(raw, "space-location", DeserializeLocation, progress, errorCollector);
+        rootAccessible.Add(GetObject<Location>("nauvis"));
         progress.Report(("Loading", "Loading technologies"));
         DeserializePrototypes(raw, "technology", DeserializeTechnology, progress, errorCollector);
         progress.Report(("Loading", "Loading qualities"));
@@ -561,6 +565,10 @@ internal partial class FactorioDataDeserializer {
         }
 
         return null;
+    }
+
+    private void DeserializeLocation(LuaTable table, ErrorCollector collector) {
+        _ = DeserializeCommon<Location>(table, "space-location");
     }
 
     private T DeserializeCommon<T>(LuaTable table, string prototypeType) where T : FactorioObject, new() {

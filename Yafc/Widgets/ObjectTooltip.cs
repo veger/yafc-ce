@@ -595,6 +595,13 @@ public class ObjectTooltip : Tooltip {
             }
         }
 
+        if (technology.unlockLocations.Count > 0) {
+            BuildSubHeader(gui, "Unlocks locations");
+            using (gui.EnterGroup(contentPadding)) {
+                BuildIconRow(gui, technology.unlockLocations, 2);
+            }
+        }
+
         var packs = TechnologyScienceAnalysis.Instance.allSciencePacks[technology];
         if (packs.Length > 0) {
             BuildSubHeader(gui, "Total science required");

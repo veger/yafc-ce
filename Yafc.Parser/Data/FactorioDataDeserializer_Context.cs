@@ -156,7 +156,8 @@ internal partial class FactorioDataDeserializer {
         int firstEntity = Skip(firstTechnology, FactorioObjectSortOrder.Technologies);
         int firstTile = Skip(firstEntity, FactorioObjectSortOrder.Entities);
         int firstQuality = Skip(firstTile, FactorioObjectSortOrder.Tiles);
-        int last = Skip(firstQuality, FactorioObjectSortOrder.Qualities);
+        int firstLocation = Skip(firstQuality, FactorioObjectSortOrder.Qualities);
+        int last = Skip(firstLocation, FactorioObjectSortOrder.Locations);
         if (last != allObjects.Count) {
             throw new Exception("Something is not right");
         }
@@ -171,7 +172,8 @@ internal partial class FactorioDataDeserializer {
         Database.recipesAndTechnologies = new FactorioIdRange<RecipeOrTechnology>(firstRecipe, firstEntity, allObjects);
         Database.technologies = new FactorioIdRange<Technology>(firstTechnology, firstEntity, allObjects);
         Database.entities = new FactorioIdRange<Entity>(firstEntity, firstTile, allObjects);
-        Database.qualities = new FactorioIdRange<Quality>(firstQuality, last, allObjects);
+        Database.qualities = new FactorioIdRange<Quality>(firstQuality, firstLocation, allObjects);
+        Database.locations = new FactorioIdRange<Location>(firstLocation, last, allObjects);
         Database.fluidVariants = fluidVariants;
 
         Database.allModules = [.. allModules];
@@ -284,6 +286,7 @@ internal partial class FactorioDataDeserializer {
         DataBucket<Goods, FactorioObject> miscSources = new DataBucket<Goods, FactorioObject>();
         DataBucket<Entity, Item> entityPlacers = new DataBucket<Entity, Item>();
         DataBucket<Recipe, Technology> recipeUnlockers = new DataBucket<Recipe, Technology>();
+        DataBucket<Location, Technology> locationUnlockers = new();
         // Because actual recipe availability may be different than just "all recipes from that category" because of item slot limit and fluid usage restriction, calculate it here
         DataBucket<RecipeOrTechnology, EntityCrafter> actualRecipeCrafters = new DataBucket<RecipeOrTechnology, EntityCrafter>();
         DataBucket<Goods, Entity> usageAsFuel = new DataBucket<Goods, Entity>();
@@ -297,6 +300,9 @@ internal partial class FactorioDataDeserializer {
                 case Technology technology:
                     foreach (var recipe in technology.unlockRecipes) {
                         recipeUnlockers.Add(recipe, technology);
+                    }
+                    foreach (Location location in technology.unlockLocations) {
+                        locationUnlockers.Add(location, technology);
                     }
 
                     break;
@@ -391,6 +397,7 @@ internal partial class FactorioDataDeserializer {
         actualRecipeCrafters.Seal();
         usageAsFuel.Seal();
         recipeUnlockers.Seal();
+        locationUnlockers.Seal();
         entityPlacers.Seal();
 
         // step 2 - fill maps
@@ -429,6 +436,9 @@ internal partial class FactorioDataDeserializer {
                     break;
                 case Entity entity:
                     entity.itemsToPlace = entityPlacers.GetArray(entity);
+                    break;
+                case Location location:
+                    location.technologyUnlock = locationUnlockers.GetArray(location);
                     break;
             }
         }

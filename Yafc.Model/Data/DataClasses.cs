@@ -25,6 +25,7 @@ internal enum FactorioObjectSortOrder {
     Entities,
     Tiles,
     Qualities,
+    Locations,
 }
 
 public enum FactorioId { }
@@ -433,6 +434,18 @@ public class Fluid : Goods {
     }
 }
 
+public class Location : FactorioObject {
+    public override string type => "Location";
+
+    public Technology[] technologyUnlock { get; internal set; } = [];
+
+    internal override FactorioObjectSortOrder sortingOrder => FactorioObjectSortOrder.Locations;
+
+    public override void GetDependencies(IDependencyCollector collector, List<FactorioObject> temp) {
+        collector.Add(technologyUnlock, DependencyList.Flags.TechnologyUnlock);
+    }
+}
+
 public class Special : Goods {
     internal string? virtualSignal { get; set; }
     internal bool power;
@@ -765,7 +778,8 @@ public class EntityContainer : Entity {
 public class Technology : RecipeOrTechnology { // Technology is very similar to recipe
     public float count { get; internal set; } // TODO support formula count
     public Technology[] prerequisites { get; internal set; } = [];
-    public List<Recipe> unlockRecipes { get; internal set; } = [];
+    public List<Recipe> unlockRecipes { get; } = [];
+    public List<Location> unlockLocations { get; } = [];
     public Dictionary<Recipe, float> changeRecipeProductivity { get; internal set; } = [];
     internal bool unlocksFluidMining { get; set; }
     internal override FactorioObjectSortOrder sortingOrder => FactorioObjectSortOrder.Technologies;
