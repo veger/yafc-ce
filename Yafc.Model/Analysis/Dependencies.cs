@@ -24,6 +24,7 @@ public struct DependencyList {
         TechnologyPrerequisites = 8 | RequireEverything | OneTimeInvestment,
         IngredientVariant = 9,
         Hidden = 10,
+        Location = 11 | OneTimeInvestment,
     }
 
     public Flags flags;

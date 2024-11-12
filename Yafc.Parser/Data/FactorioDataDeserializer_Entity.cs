@@ -540,7 +540,6 @@ internal partial class FactorioDataDeserializer {
 
         if (table.Get("autoplace", out LuaTable? generation)) {
             entity.mapGenerated = true;
-            rootAccessible.Add(entity);
 
             if (generation.Get("probability_expression", out LuaTable? prob)) {
                 float probability = EstimateNoiseExpression(prob);
@@ -554,6 +553,7 @@ internal partial class FactorioDataDeserializer {
                 float estimatedAmount = coverage * (richBase + richMultiplier + (richMultiplierDist * EstimationDistanceFromCenter));
                 entity.mapGenDensity = estimatedAmount;
             }
+            entity.autoplaceControl = generation?.Get<string>("control");
         }
 
         entity.loot ??= [];

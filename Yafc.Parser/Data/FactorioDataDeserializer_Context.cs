@@ -287,6 +287,8 @@ internal partial class FactorioDataDeserializer {
         DataBucket<Entity, Item> entityPlacers = new DataBucket<Entity, Item>();
         DataBucket<Recipe, Technology> recipeUnlockers = new DataBucket<Recipe, Technology>();
         DataBucket<Location, Technology> locationUnlockers = new();
+        DataBucket<Entity, Location> entityLocations = new();
+        DataBucket<string, Location> autoplaceControlLocations = new();
         // Because actual recipe availability may be different than just "all recipes from that category" because of item slot limit and fluid usage restriction, calculate it here
         DataBucket<RecipeOrTechnology, EntityCrafter> actualRecipeCrafters = new DataBucket<RecipeOrTechnology, EntityCrafter>();
         DataBucket<Goods, Entity> usageAsFuel = new DataBucket<Goods, Entity>();
@@ -389,6 +391,14 @@ internal partial class FactorioDataDeserializer {
                     }
 
                     break;
+                case Location location:
+                    foreach (string name in location.entitySpawns ?? []) {
+                        entityLocations.Add(GetObject<Entity>(name), location);
+                    }
+                    foreach (string name in location.placementControls ?? []) {
+                        autoplaceControlLocations.Add(name, location);
+                    }
+                    break;
             }
         }
 
@@ -399,6 +409,8 @@ internal partial class FactorioDataDeserializer {
         recipeUnlockers.Seal();
         locationUnlockers.Seal();
         entityPlacers.Seal();
+        entityLocations.Seal();
+        autoplaceControlLocations.Seal();
 
         // step 2 - fill maps
 
@@ -436,6 +448,12 @@ internal partial class FactorioDataDeserializer {
                     break;
                 case Entity entity:
                     entity.itemsToPlace = entityPlacers.GetArray(entity);
+                    if (entity.autoplaceControl != null) {
+                        entity.spawnLocations = [.. entityLocations.GetArray(entity).Union(autoplaceControlLocations.GetArray(entity.autoplaceControl))];
+                    }
+                    else {
+                        entity.spawnLocations = entityLocations.GetArray(entity);
+                    }
                     break;
                 case Location location:
                     location.technologyUnlock = locationUnlockers.GetArray(location);

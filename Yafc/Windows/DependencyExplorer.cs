@@ -26,6 +26,7 @@ public class DependencyExplorer : PseudoScreen {
         {DependencyList.Flags.ItemToPlace, ("Item", "This entity cannot be placed")},
         {DependencyList.Flags.SourceEntity, ("Source", "This recipe requires another entity")},
         {DependencyList.Flags.Hidden, ("", "This technology is hidden")},
+        {DependencyList.Flags.Location, ("Location", "There are no locations that spawn this entity")},
     };
 
     public DependencyExplorer(FactorioObject current) : base(60f) {

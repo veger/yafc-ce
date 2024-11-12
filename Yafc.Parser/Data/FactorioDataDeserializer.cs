@@ -568,7 +568,15 @@ internal partial class FactorioDataDeserializer {
     }
 
     private void DeserializeLocation(LuaTable table, ErrorCollector collector) {
-        _ = DeserializeCommon<Location>(table, "space-location");
+        Location location = DeserializeCommon<Location>(table, "space-location");
+        if (table.Get("map_gen_settings", out LuaTable? mapGen)) {
+            if (mapGen.Get("autoplace_controls", out LuaTable? controls)) {
+                location.placementControls = controls.ObjectElements.Keys.OfType<string>().ToList().AsReadOnly();
+            }
+            if (mapGen.Get<LuaTable>("autoplace_settings")?.Get<LuaTable>("entity")?.Get<LuaTable>("settings") is LuaTable settings) {
+                location.entitySpawns = settings.ObjectElements.Keys.OfType<string>().ToList().AsReadOnly();
+            }
+        }
     }
 
     private T DeserializeCommon<T>(LuaTable table, string prototypeType) where T : FactorioObject, new() {
