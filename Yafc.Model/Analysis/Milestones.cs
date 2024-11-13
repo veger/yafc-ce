@@ -94,7 +94,9 @@ public class Milestones : Analysis {
 
     public override void Compute(Project project, ErrorCollector warnings) {
         if (project.settings.milestones.Count == 0) {
-            ComputeWithParameters(project, warnings, Database.allSciencePacks, true);
+            FactorioObject[] milestones = new List<FactorioObject>([.. Database.allSciencePacks, .. Database.locations.all])
+                .Where(m => m is not Location { name: "nauvis" or "space-location-unknown" }).ToArray();
+            ComputeWithParameters(project, warnings, milestones, true);
         }
         else {
             ComputeWithParameters(project, warnings, [.. project.settings.milestones], false);
