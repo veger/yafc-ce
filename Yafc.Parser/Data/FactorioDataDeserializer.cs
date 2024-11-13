@@ -437,14 +437,7 @@ internal partial class FactorioDataDeserializer {
                 launchProducts = [];
             }
 
-            var recipe = CreateSpecialRecipe(item, SpecialNames.RocketLaunch, "launched");
-            recipe.ingredients =
-            [
-                new Ingredient(item, item.stackSize),
-                new Ingredient(rocketLaunch, 1)
-            ];
-            recipe.products = launchProducts;
-            recipe.time = 0f; // TODO what to put here?
+            EnsureLaunchRecipe(item, launchProducts);
         }
 
         if (GetRef(table, "spoil_result", out Item? spoiled)) {
@@ -483,6 +476,23 @@ internal partial class FactorioDataDeserializer {
         if (table.Get("plant_result", out string? plantResult) && !string.IsNullOrEmpty(plantResult)) {
             plantResults[item] = plantResult;
         }
+    }
+
+    /// <summary>
+    /// Creates, or confirms the existence of, a recipe for launching a particular item.
+    /// </summary>
+    /// <param name="item">The <see cref="Item"/> to be launched.</param>
+    /// <param name="launchProducts">The result of launching <see cref="Item"/>, if known. Otherwise <see langword="null"/>, to preserve
+    /// the existing launch products of a preexisting recipe, or set no products for a new recipe.</param>
+    private void EnsureLaunchRecipe(Item item, Product[]? launchProducts) {
+        Recipe recipe = CreateSpecialRecipe(item, SpecialNames.RocketLaunch, "launched");
+        recipe.ingredients =
+        [
+            new Ingredient(item, item.stackSize),
+            new Ingredient(rocketLaunch, 1),
+        ];
+        recipe.products = launchProducts ?? recipe.products ?? [];
+        recipe.time = 0f; // TODO what to put here?
     }
 
     private Fluid SplitFluid(Fluid basic, int temperature) {
