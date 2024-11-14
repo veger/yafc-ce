@@ -51,7 +51,8 @@ public class DependencyExplorer : PseudoScreen {
 
     private void DrawDependencies(ImGui gui) {
         gui.spacing = 0f;
-        foreach (var data in Dependencies.dependencyList[current]) {
+
+        Dependencies.dependencyList[current].Draw(gui, (gui, data) => {
             if (!dependencyListTexts.TryGetValue(data.flags, out var dependencyType)) {
                 dependencyType = (data.flags.ToString(), "Missing " + data.flags);
             }
@@ -84,7 +85,7 @@ public class DependencyExplorer : PseudoScreen {
 
                 gui.BuildText(text, TextBlockDisplayStyle.WrappedText);
             }
-        }
+        });
     }
 
     private void DrawDependents(ImGui gui) {
@@ -111,7 +112,7 @@ public class DependencyExplorer : PseudoScreen {
                 SelectSingleObjectPanel.Select(Database.objects.explorable, "Select something", Change);
             }
 
-            gui.BuildText("(Click to change)", TextBlockDisplayStyle.HintText);
+            gui.DrawText(gui.lastRect, "(Click to change)", RectAlignment.MiddleRight, color: TextBlockDisplayStyle.HintText.Color);
         }
         using (gui.EnterRow()) {
             var settings = Project.current.settings;

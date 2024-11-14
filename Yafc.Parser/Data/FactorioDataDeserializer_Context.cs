@@ -624,7 +624,9 @@ internal partial class FactorioDataDeserializer {
         foreach (Ammo ammo in captureAmmo) {
             foreach (EntitySpawner spawner in allObjects.OfType<EntitySpawner>()) {
                 if ((ammo.targetFilter == null || ammo.targetFilter.Contains(spawner.name)) && spawner.capturedEntityName != null) {
-                    entities[spawner.capturedEntityName].miscSources = [.. entities[spawner.capturedEntityName].miscSources.Append(ammo).Distinct()];
+                    if (!entities[spawner.capturedEntityName].captureAmmo.Contains(ammo)) {
+                        entities[spawner.capturedEntityName].captureAmmo.Add(ammo);
+                    }
                 }
             }
         }

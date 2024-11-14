@@ -53,45 +53,7 @@ public class AutomationAnalysis : Analysis {
             var dependencies = Dependencies.dependencyList[index];
             var automationState = Milestones.Instance.IsAccessibleWithCurrentMilestones(index) ? AutomationStatus.AutomatableNow : AutomationStatus.AutomatableLater;
 
-            foreach (var depGroup in dependencies) {
-                if (!depGroup.flags.HasFlags(DependencyList.Flags.OneTimeInvestment)) {
-                    if (depGroup.flags.HasFlags(DependencyList.Flags.RequireEverything)) {
-                        foreach (var element in depGroup.elements) {
-                            if (state[element] < automationState) {
-                                automationState = state[element];
-                            }
-                        }
-                    }
-                    else {
-                        var localHighest = AutomationStatus.NotAutomatable;
-
-                        foreach (var element in depGroup.elements) {
-                            if (state[element] > localHighest) {
-                                localHighest = state[element];
-                            }
-                        }
-
-                        if (localHighest < automationState) {
-                            automationState = localHighest;
-                        }
-                    }
-                }
-                else if (automationState == AutomationStatus.AutomatableNow && depGroup.flags == DependencyList.Flags.CraftingEntity) {
-                    // If only character is accessible at current milestones as a crafting entity, don't count the object as currently automatable
-                    bool hasMachine = false;
-
-                    foreach (var element in depGroup.elements) {
-                        if (element != Database.character?.id && Milestones.Instance.IsAccessibleWithCurrentMilestones(element)) {
-                            hasMachine = true;
-                            break;
-                        }
-                    }
-
-                    if (!hasMachine) {
-                        automationState = AutomationStatus.AutomatableLater;
-                    }
-                }
-            }
+            automationState = dependencies.IsAutomatable(id => state[id], automationState);
 
             if (automationState == UnknownInQueue) {
                 automationState = Unknown;
