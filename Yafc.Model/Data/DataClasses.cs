@@ -95,9 +95,11 @@ public enum RecipeFlags {
     HasResearchTriggerBuildEntity = 1 << 7,
     /// <summary>Set when the technology has a research trigger to launch a space platform starter pack</summary>
     HasResearchTriggerCreateSpacePlatform = 1 << 8,
+    /// <summary>Set when the technology has a research trigger to launch an arbitrary item.</summary>
+    HasResearchTriggerSendToOrbit = 1 << 9,
 
     HasResearchTriggerMask = HasResearchTriggerCraft | HasResearchTriggerCaptureEntity | HasResearchTriggerMineEntity | HasResearchTriggerBuildEntity
-        | HasResearchTriggerCreateSpacePlatform,
+        | HasResearchTriggerCreateSpacePlatform | HasResearchTriggerSendToOrbit,
 }
 
 public abstract class RecipeOrTechnology : FactorioObject {
@@ -773,6 +775,7 @@ public class Technology : RecipeOrTechnology { // Technology is very similar to 
     /// </summary>
     /// <remarks>Lazy-loaded so the database can load and correctly type (eg EntityCrafter, EntitySpawner, etc.) the entities without having to do another pass.</remarks>
     public IReadOnlyList<Entity> triggerEntities => getTriggerEntities.Value;
+    public Item? triggerItem { get; internal set; }
 
     /// <summary>
     /// Sets the value used to construct <see cref="triggerEntities"/>.
@@ -794,6 +797,9 @@ public class Technology : RecipeOrTechnology { // Technology is very similar to 
         if (flags.HasFlag(RecipeFlags.HasResearchTriggerCreateSpacePlatform)) {
             var items = Database.items.all.Where(i => i.factorioType == "space-platform-starter-pack");
             collector.Add([.. items.Select(i => Database.objectsByTypeName["Mechanics.launch." + i.name])], DependencyList.Flags.Source);
+        }
+        if (flags.HasFlag(RecipeFlags.HasResearchTriggerSendToOrbit)) {
+            collector.Add([Database.objectsByTypeName["Mechanics.launch." + triggerItem]], DependencyList.Flags.Source);
         }
 
         if (hidden && !enabled) {

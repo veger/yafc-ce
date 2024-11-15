@@ -325,6 +325,17 @@ internal partial class FactorioDataDeserializer {
             case "create-space-platform":
                 technology.flags = RecipeFlags.HasResearchTriggerCreateSpacePlatform;
                 break;
+            case "send-item-to-orbit":
+                if (!researchTriggerTable.Get("item", out string? itemName)) {
+                    errorCollector.Error($"Research trigger {type} of {technology.typeDotName} does not have an item field", ErrorSeverity.MinorDataLoss);
+                    break;
+                }
+                Item item = GetObject<Item>(itemName);
+                technology.triggerItem = item;
+                technology.flags |= RecipeFlags.HasResearchTriggerSendToOrbit;
+                // Create a launch recipe for items without a `rocket_launch_products`, without altering existing launch recipes.
+                EnsureLaunchRecipe(item, null);
+                break;
             default:
                 errorCollector.Error($"Research trigger of {technology.typeDotName} has an unsupported type {type}", ErrorSeverity.MinorDataLoss);
                 break;

@@ -529,6 +529,7 @@ public class ObjectTooltip : Tooltip {
         bool isResearchTriggerMine = technology.flags.HasFlag(RecipeFlags.HasResearchTriggerMineEntity);
         bool isResearchTriggerBuild = technology.flags.HasFlag(RecipeFlags.HasResearchTriggerBuildEntity);
         bool isResearchTriggerPlatform = technology.flags.HasFlag(RecipeFlags.HasResearchTriggerCreateSpacePlatform);
+        bool isResearchTriggerLaunch = technology.flags.HasFlag(RecipeFlags.HasResearchTriggerSendToOrbit);
 
         if (!technology.flags.HasFlagAny(RecipeFlags.HasResearchTriggerMask)) {
             BuildRecipe(technology, gui);
@@ -578,6 +579,12 @@ public class ObjectTooltip : Tooltip {
             BuildSubHeader(gui, items.Count == 1 ? "Launch this item" : "Launch any item");
             using (gui.EnterGroup(contentPadding)) {
                 BuildIconRow(gui, items, 2);
+            }
+        }
+        else if (isResearchTriggerLaunch) {
+            BuildSubHeader(gui, "Launch this item");
+            using (gui.EnterGroup(contentPadding)) {
+                gui.BuildFactorioObjectButtonWithText(technology.triggerItem);
             }
         }
 
