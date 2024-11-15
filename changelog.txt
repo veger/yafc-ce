@@ -18,7 +18,7 @@
 Version:
 Date:
     Features:
-        - Add dependency information for tree and resource spawns, as well as for some asteroid mining.
+        - Add dependency information for tree and resource spawns, fluid pumping, and some asteroid mining.
 ----------------------------------------------------------------------------------------------------------------------
 Version: 2.3.1
 Date: November 10th 2024

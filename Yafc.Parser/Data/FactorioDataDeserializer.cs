@@ -531,6 +531,7 @@ internal partial class FactorioDataDeserializer {
                 recipe.ingredients = [];
                 recipe.time = 1f;
             }
+            recipe.sourceTiles.Add(tile);
         }
     }
 
@@ -574,8 +575,13 @@ internal partial class FactorioDataDeserializer {
             if (mapGen.Get("autoplace_controls", out LuaTable? controls)) {
                 location.placementControls = controls.ObjectElements.Keys.OfType<string>().ToList();
             }
-            if (mapGen.Get<LuaTable>("autoplace_settings")?.Get<LuaTable>("entity")?.Get<LuaTable>("settings") is LuaTable settings) {
-                location.entitySpawns = settings.ObjectElements.Keys.OfType<string>().ToList();
+            if (mapGen.Get<LuaTable>("autoplace_settings")?.Get<LuaTable>("entity")?.Get<LuaTable>("settings") is LuaTable entities) {
+                location.entitySpawns = entities.ObjectElements.Keys.OfType<string>().ToList();
+            }
+            if (mapGen.Get<LuaTable>("autoplace_settings")?.Get<LuaTable>("tile")?.Get<LuaTable>("settings") is LuaTable tiles) {
+                foreach (string tile in tiles.ObjectElements.Keys.Cast<string>()) {
+                    allObjects.OfType<Tile>().Single(t => t.name == tile).locations.Add(location);
+                }
             }
         }
 

@@ -107,7 +107,8 @@ public abstract class RecipeOrTechnology : FactorioObject {
     public EntityCrafter[] crafters { get; internal set; } = null!; // null-forgiving: Initialized by CalculateMaps
     public Ingredient[] ingredients { get; internal set; } = null!; // null-forgiving: Initialized by LoadRecipeData, LoadTechnologyData, and after all calls to CreateSpecialRecipe
     public Product[] products { get; internal set; } = null!; // null-forgiving: Initialized by LoadRecipeData, LoadTechnologyData, and after all calls to CreateSpecialRecipe
-    public Entity? sourceEntity { get; internal set; }
+    internal Entity? sourceEntity { get; set; }
+    internal HashSet<Tile> sourceTiles { get; } = [];
     public Goods? mainProduct { get; internal set; }
     public float time { get; internal set; }
     public bool enabled { get; internal set; }
@@ -135,6 +136,9 @@ public abstract class RecipeOrTechnology : FactorioObject {
         collector.Add(crafters, DependencyList.Flags.CraftingEntity);
         if (sourceEntity != null) {
             collector.Add(new[] { sourceEntity.id }, DependencyList.Flags.SourceEntity);
+        }
+        if (sourceTiles.Count > 0) {
+            collector.Add([.. sourceTiles.SelectMany(t => t.locations).Distinct()], DependencyList.Flags.Location);
         }
     }
 
@@ -484,6 +488,8 @@ public class Tile : FactorioObject {
 
     internal override FactorioObjectSortOrder sortingOrder => FactorioObjectSortOrder.Tiles;
     public override string type => "Tile";
+
+    internal HashSet<Location> locations { get; } = [];
 
     public override void GetDependencies(IDependencyCollector collector, List<FactorioObject> temp) {
     }
