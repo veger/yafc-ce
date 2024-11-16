@@ -16,6 +16,7 @@ internal partial class FactorioDataDeserializer {
     private readonly DataBucket<Recipe, Module> recipeModules = new DataBucket<Recipe, Module>();
     private readonly Dictionary<Item, List<string>> placeResults = [];
     private readonly Dictionary<Item, string> plantResults = [];
+    private readonly DataBucket<string, Entity> asteroids = new();
     private readonly List<Module> allModules = [];
     private readonly HashSet<Item> sciencePacks = [];
     private readonly Dictionary<string, List<Fluid>> fluidVariants = [];
@@ -411,6 +412,7 @@ internal partial class FactorioDataDeserializer {
         entityPlacers.Seal();
         entityLocations.Seal();
         autoplaceControlLocations.Seal();
+        asteroids.Seal();
 
         // step 2 - fill maps
 
@@ -457,6 +459,8 @@ internal partial class FactorioDataDeserializer {
                     if (entity.spawnLocations.Length > 0) {
                         entity.mapGenerated = true;
                     }
+
+                    entity.sourceEntities = asteroids.GetArray(entity.name).ToList();
                     break;
                 case Location location:
                     location.technologyUnlock = locationUnlockers.GetArray(location);

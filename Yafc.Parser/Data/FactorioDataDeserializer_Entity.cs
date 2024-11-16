@@ -193,6 +193,19 @@ internal partial class FactorioDataDeserializer {
                 break;
             case "assembling-machine":
                 goto case "furnace";
+            case "asteroid":
+                Entity asteroid = GetObject<Entity>(name);
+                if (table.Get("dying_trigger_effect", out LuaTable? death)) {
+                    death.ReadObjectOrArray(trigger => {
+                        switch (trigger.Get<string>("type")) {
+                            case "create-entity" when trigger.Get("entity_name", out string? result):
+                            case "create-asteroid-chunk" when trigger.Get("asteroid_name", out result):
+                                asteroids.Add(result, asteroid);
+                                break;
+                        }
+                    });
+                }
+                break;
             case "asteroid-collector":
                 EntityCrafter collector = GetObject<Entity, EntityCrafter>(name);
                 _ = table.Get("arm_energy_usage", out usesPower);

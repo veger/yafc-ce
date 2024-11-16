@@ -18,7 +18,7 @@
 Version:
 Date:
     Features:
-        - Add dependency information for tree and resource spawns, fluid pumping, and some asteroid mining.
+        - Add dependency information for tree and resource spawns, fluid pumping, and asteroid mining.
         - (SA) Locations (except nauvis) are now part of the default milestone list.
         - Milestone overlays can be displayed on inaccessible objects.
     Internal changes:

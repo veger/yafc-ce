@@ -513,6 +513,7 @@ public class Entity : FactorioObject {
     public Item[] itemsToPlace { get; internal set; } = null!; // null-forgiving: This is initialized in CalculateMaps.
     internal Location[] spawnLocations { get; set; } = null!; // null-forgiving: This is initialized in CalculateMaps.
     internal List<Ammo> captureAmmo { get; } = [];
+    internal List<Entity> sourceEntities { get; set; } = null!;
     internal string? autoplaceControl { get; set; }
     public int size { get; internal set; }
     internal override FactorioObjectSortOrder sortingOrder => FactorioObjectSortOrder.Entities;
@@ -536,17 +537,21 @@ public class Entity : FactorioObject {
     internal Lazy<Entity?>? getSpoilResult;
 
     public sealed override DependencyNode GetDependencies() {
-        // Asteroid chunks require locations OR bigger-asteroid
         List<DependencyList> collector = [];
         if (energy != null) {
             collector.Add(new(energy.fuels, DependencyList.Flags.Fuel));
         }
+        if (spawnLocations.Length != 0) {
+            collector.Add(new(spawnLocations, DependencyList.Flags.Location));
+        }
+
+        if (sourceEntities.Count > 0) {
+            // Asteroid chunks require locations OR bigger-asteroid
+            collector.Add(new(sourceEntities, DependencyList.Flags.Source));
+            return DependencyNode.RequireAny(collector);
+        }
 
         if (captureAmmo.Count == 0) {
-            if (spawnLocations.Length != 0) {
-                collector.Add(new(spawnLocations, DependencyList.Flags.Location));
-            }
-
             if (!mapGenerated) {
                 collector.Add(new(itemsToPlace, DependencyList.Flags.ItemToPlace));
             }
