@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using System.Numerics;
 
 namespace Yafc.Model;
@@ -333,4 +334,6 @@ public struct Bits : IComparable<Bits> {
 
         return bitsString.ToString();
     }
+
+    public readonly int PopCount() => data?.Sum(BitOperations.PopCount) ?? 0;
 }
