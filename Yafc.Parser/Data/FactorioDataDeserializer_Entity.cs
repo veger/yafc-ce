@@ -193,6 +193,28 @@ internal partial class FactorioDataDeserializer {
                 break;
             case "assembling-machine":
                 goto case "furnace";
+            case "asteroid":
+                Entity asteroid = GetObject<Entity>(name);
+                if (table.Get("dying_trigger_effect", out LuaTable? death)) {
+                    death.ReadObjectOrArray(trigger => {
+                        switch (trigger.Get<string>("type")) {
+                            case "create-entity" when trigger.Get("entity_name", out string? result):
+                            case "create-asteroid-chunk" when trigger.Get("asteroid_name", out result):
+                                asteroids.Add(result, asteroid);
+                                break;
+                        }
+                    });
+                }
+                break;
+            case "asteroid-collector":
+                EntityCrafter collector = GetObject<Entity, EntityCrafter>(name);
+                _ = table.Get("arm_energy_usage", out usesPower);
+                collector.basePower = ParseEnergy(usesPower) * 60;
+                _ = table.Get("passive_energy_usage", out usesPower);
+                defaultDrain = ParseEnergy(usesPower) * 60;
+                collector.baseCraftingSpeed = 1;
+                recipeCrafters.Add(collector, SpecialNames.AsteroidCapture);
+                break;
             case "beacon":
                 var beacon = GetObject<Entity, EntityBeacon>(name);
                 beacon.baseBeaconEfficiency = table.Get("distribution_effectivity", 0f);
@@ -540,7 +562,6 @@ internal partial class FactorioDataDeserializer {
 
         if (table.Get("autoplace", out LuaTable? generation)) {
             entity.mapGenerated = true;
-            rootAccessible.Add(entity);
 
             if (generation.Get("probability_expression", out LuaTable? prob)) {
                 float probability = EstimateNoiseExpression(prob);
@@ -554,6 +575,7 @@ internal partial class FactorioDataDeserializer {
                 float estimatedAmount = coverage * (richBase + richMultiplier + (richMultiplierDist * EstimationDistanceFromCenter));
                 entity.mapGenDensity = estimatedAmount;
             }
+            entity.autoplaceControl = generation?.Get<string>("control");
         }
 
         entity.loot ??= [];
@@ -575,6 +597,16 @@ internal partial class FactorioDataDeserializer {
                 }
             }
         }
+    }
+
+    private void DeserializeAsteroidChunk(LuaTable table, ErrorCollector errorCollector) {
+        Entity chunk = DeserializeCommon<Entity>(table, "asteroid-chunk");
+        Item asteroid = GetObject<Item>(chunk.name);
+        Recipe recipe = CreateSpecialRecipe(asteroid, SpecialNames.AsteroidCapture, "mining");
+        recipe.time = 1;
+        recipe.ingredients = [];
+        recipe.products = [new Product(asteroid, 1)];
+        recipe.sourceEntity = chunk;
     }
 
     private float EstimateArgument(LuaTable args, string name, float def = 0) => args.Get(name, out LuaTable? res) ? EstimateNoiseExpression(res) : def;

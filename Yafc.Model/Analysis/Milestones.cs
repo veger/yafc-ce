@@ -94,7 +94,9 @@ public class Milestones : Analysis {
 
     public override void Compute(Project project, ErrorCollector warnings) {
         if (project.settings.milestones.Count == 0) {
-            ComputeWithParameters(project, warnings, Database.allSciencePacks, true);
+            FactorioObject[] milestones = new List<FactorioObject>([.. Database.allSciencePacks, .. Database.locations.all])
+                .Where(m => m is not Location { name: "nauvis" or "space-location-unknown" }).ToArray();
+            ComputeWithParameters(project, warnings, milestones, true);
         }
         else {
             ComputeWithParameters(project, warnings, [.. project.settings.milestones], false);
@@ -108,155 +110,98 @@ public class Milestones : Analysis {
         }
 
         Stopwatch time = Stopwatch.StartNew();
-        var result = Database.objects.CreateMapping<Bits>();
-        var processing = Database.objects.CreateMapping<ProcessingFlags>();
-        Queue<FactorioId> processingQueue = new Queue<FactorioId>();
+        Dictionary<FactorioId, HashSet<FactorioObject>> accessibility = [];
+        const FactorioId noObject = (FactorioId)(-1);
 
-        foreach (var rootAccessible in Database.rootAccessible) {
-            result[rootAccessible] = new Bits(true);
-            processingQueue.Enqueue(rootAccessible.id);
-            processing[rootAccessible] = ProcessingFlags.Initial | ProcessingFlags.InQueue;
-        }
-
-        foreach (var (obj, flag) in project.settings.itemFlags) {
-            if (flag.HasFlags(ProjectPerItemFlags.MarkedAccessible)) {
-                result[obj] = new Bits(true);
-                processingQueue.Enqueue(obj.id);
-                processing[obj] = ProcessingFlags.Initial | ProcessingFlags.InQueue;
-            }
-            else if (flag.HasFlag(ProjectPerItemFlags.MarkedInaccessible)) {
-                processing[obj] = ProcessingFlags.ForceInaccessible;
+        List<FactorioObject> sortedMilestones = [];
+        HashSet<FactorioObject> markedInaccessible = [];
+        foreach ((FactorioObject item, ProjectPerItemFlags flags) in project.settings.itemFlags) {
+            if (flags.HasFlag(ProjectPerItemFlags.MarkedInaccessible)) {
+                markedInaccessible.Add(item);
             }
         }
 
+        foreach (FactorioObject? milestone in milestones.Prepend(null)) {
+            logger.Information("Processing milestone {Milestone}", milestone?.locName);
+            // Queue the known-accessible items for graph walking, and mark them accessible without the current milestone.
+            Queue<FactorioObject> processingQueue = new(Database.rootAccessible);
+            foreach ((FactorioObject obj, ProjectPerItemFlags flag) in project.settings.itemFlags) {
+                if (flag.HasFlags(ProjectPerItemFlags.MarkedAccessible)) {
+                    processingQueue.Enqueue(obj);
+                }
+            }
+            HashSet<FactorioObject> accessibleWithoutMilestone = accessibility[milestone?.id ?? noObject] = new(processingQueue);
+
+            // Walk the dependency graph to find accessible items. The first walk, when milestone == null, is for basic accessibility.
+            // The rest of the walks prune the graph at the selected milestone and are for milestone flags.
+            while (processingQueue.TryDequeue(out FactorioObject? node)) {
+                if (node == milestone || markedInaccessible.Contains(node)) {
+                    // We're looking for things that can be accessed without this milestone, or the user flagged this as inaccessible.
+                    continue;
+                }
+
+                bool accessible = true;
+                if (!accessibleWithoutMilestone.Contains(node)) {
+                    // This object is accessible if all its parents are accessible.
+                    accessible = Dependencies.dependencyList[node].IsAccessible(e => accessibleWithoutMilestone.Contains(Database.objects[e]));
+                }
+
+                if (accessible) {
+                    accessibleWithoutMilestone.Add(node);
+                    if (milestones.Contains(node) && !sortedMilestones.Contains(node)) {
+                        // Sort milestones in the order we unlock them in the accessibility walk.
+                        sortedMilestones.Add(node);
+                    }
+
+                    // Recheck this objects children, if necessary.
+                    foreach (FactorioObject child in Dependencies.reverseDependencies[node].Select(id => Database.objects[id])) {
+                        if (!accessibleWithoutMilestone.Contains(child) && !processingQueue.Contains(child)) {
+                            processingQueue.Enqueue(child);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Apply the milestone sort results, if requested.
         if (autoSort) {
-            // Adding default milestones AND special flag to auto-order them
-            foreach (var milestone in milestones) {
-                processing[milestone] |= ProcessingFlags.MilestoneNeedOrdering;
-            }
-
-            currentMilestones = new FactorioObject[milestones.Length];
+            // If the user has inaccessible milestones, restore them at the end of the list.
+            currentMilestones = [.. sortedMilestones.Union(milestones)];
         }
         else {
             currentMilestones = milestones;
-
-            for (int i = 0; i < milestones.Length; i++) {
-                //  result[milestones[i]] = (1ul << (i + 1)) | 1;
-                Bits b = new Bits(true);
-                b[i + 1] = true;
-                result[milestones[i]] = b;
-            }
         }
 
-        var dependencyList = Dependencies.dependencyList;
-        var reverseDependencies = Dependencies.reverseDependencies;
-        List<FactorioObject>? milestonesNotReachable = null;
+        // Turn the walk results into milestone bitmasks.
+        Mapping<FactorioObject, Bits> result = Database.objects.CreateMapping<Bits>();
+        foreach (FactorioObject obj in accessibility[noObject]) {
+            Bits bits = new(true);
 
-        Bits nextMilestoneMask = new Bits();
-        nextMilestoneMask[1] = true;
-        int nextMilestoneIndex = 0;
-        int accessibleObjects = 0;
-
-        Bits flagMask = new Bits();
-        for (int i = 0; i <= currentMilestones.Length; i++) {
-            flagMask[i] = true;
-
-            if (i > 0) {
-                var milestone = currentMilestones[i - 1];
-
-                if (milestone == null) {
-                    milestonesNotReachable = [];
-
-                    foreach (var pack in Database.allSciencePacks) {
-                        if (Array.IndexOf(currentMilestones, pack) == -1) {
-                            currentMilestones[nextMilestoneIndex++] = pack;
-                            milestonesNotReachable.Add(pack);
-                        }
-                    }
-                    Array.Resize(ref currentMilestones, nextMilestoneIndex);
-
-                    break;
+            for (int i = 0; i < currentMilestones.Length; i++) {
+                FactorioObject milestone = currentMilestones[i];
+                if (!accessibility[milestone.id].Contains(obj)) {
+                    bits[i + 1] = true;
                 }
-                logger.Information("Processing milestone {Milestone}", milestone.locName);
-                processingQueue.Enqueue(milestone.id);
-                processing[milestone] = ProcessingFlags.Initial | ProcessingFlags.InQueue;
             }
+            result[obj] = bits;
+        }
 
-            while (processingQueue.Count > 0) {
-                var elem = processingQueue.Dequeue();
-                var entry = dependencyList[elem];
+        // Predict the milestone mask for inaccessible items by OR-ing the masks for their parents.
+        Queue<FactorioObject> inaccessibleQueue = new(Database.objects.all.Except(accessibility[noObject]));
+        while (inaccessibleQueue.TryDequeue(out FactorioObject? inaccessible)) {
+            Bits milestoneBits = Dependencies.dependencyList[inaccessible].AggregateBits(id => result[id]);
 
-                var cur = result[elem];
-                var elementFlags = cur;
-                bool isInitial = (processing[elem] & ProcessingFlags.Initial) != 0;
-                processing[elem] &= ProcessingFlags.MilestoneNeedOrdering;
+            milestoneBits[0] = false; // Clear bit 0, since this object is inaccessible.
 
-                foreach (var list in entry) {
-                    if ((list.flags & DependencyList.Flags.RequireEverything) != 0) {
-                        foreach (var req in list.elements) {
-                            var reqFlags = result[req];
-
-                            if (reqFlags.IsClear() && !isInitial) {
-                                goto skip;
-                            }
-
-                            elementFlags |= reqFlags;
-                        }
-                    }
-                    else {
-                        Bits groupFlags = new Bits();
-
-                        foreach (var req in list.elements) {
-                            var acc = result[req];
-
-                            if (acc.IsClear()) {
-                                continue;
-                            }
-
-                            if (acc < groupFlags || groupFlags.IsClear()) {
-                                groupFlags = acc;
-                            }
-                        }
-
-                        if (groupFlags.IsClear() && !isInitial) {
-                            goto skip;
-                        }
-
-                        elementFlags |= groupFlags;
+            if (milestoneBits != result[inaccessible]) {
+                // Be sure to OR this; some inaccessible objects will otherwise flip infinitely between two different sets of milestones.
+                result[inaccessible] |= milestoneBits;
+                foreach (FactorioObject child in Dependencies.reverseDependencies[inaccessible].Select(id => Database.objects[id])) {
+                    if (!result[child][0] && !inaccessibleQueue.Contains(child)) {
+                        // Reprocess this inaccessible child to add our new bits to its mask.
+                        inaccessibleQueue.Enqueue(child);
                     }
                 }
-
-                if (!isInitial) {
-                    if (elementFlags == cur || (elementFlags | flagMask) != flagMask) {
-                        continue;
-                    }
-                }
-                else {
-                    elementFlags &= flagMask;
-                }
-
-                accessibleObjects++;
-                //var obj = Database.objects[elem];
-                //logger.Information("Added object {LocalizedName} [{Type}] with mask {MilestoneMask} (was {PreviousMask})", obj.locName, obj.GetType().Name, elementFlags, cur);
-                if (processing[elem] == ProcessingFlags.MilestoneNeedOrdering) {
-                    processing[elem] = 0;
-                    elementFlags |= nextMilestoneMask;
-                    nextMilestoneMask <<= 1;
-                    currentMilestones[nextMilestoneIndex++] = Database.objects[elem];
-                }
-
-                result[elem] = elementFlags;
-
-                foreach (var reverseDependency in reverseDependencies[elem]) {
-                    if ((processing[reverseDependency] & ~ProcessingFlags.MilestoneNeedOrdering) != 0 || !result[reverseDependency].IsClear()) {
-                        continue;
-                    }
-
-                    processing[reverseDependency] |= ProcessingFlags.InQueue;
-                    processingQueue.Enqueue(reverseDependency);
-                }
-
-skip:;
             }
         }
 
@@ -267,7 +212,9 @@ skip:;
         }
         GetLockedMaskFromProject();
 
+        int accessibleObjects = accessibility[noObject].Count;
         bool hasAutomatableRocketLaunch = result[Database.objectsByTypeName["Special.launch"]] != 0;
+        List<FactorioObject> milestonesNotReachable = [.. milestones.Except(sortedMilestones)];
         if (accessibleObjects < Database.objects.count / 2) {
             warnings.Error("More than 50% of all in-game objects appear to be inaccessible in this project with your current mod list. This can have a variety of reasons like objects " +
                 "being accessible via scripts," + MaybeBug + MilestoneAnalysisIsImportant + UseDependencyExplorer, ErrorSeverity.AnalysisWarning);
@@ -276,7 +223,7 @@ skip:;
             warnings.Error("Rocket launch appear to be inaccessible. This means that rocket may not be launched in this mod pack, or it requires mod script to spawn or unlock some items," +
                 MaybeBug + MilestoneAnalysisIsImportant + UseDependencyExplorer, ErrorSeverity.AnalysisWarning);
         }
-        else if (milestonesNotReachable != null) {
+        else if (milestonesNotReachable.Count > 0) {
             warnings.Error("There are some milestones that are not accessible: " + string.Join(", ", milestonesNotReachable.Select(x => x.locName)) +
                 ". You may remove these from milestone list," + MaybeBug + MilestoneAnalysisIsImportant + UseDependencyExplorer, ErrorSeverity.AnalysisWarning);
         }

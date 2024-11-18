@@ -16,6 +16,7 @@ internal partial class FactorioDataDeserializer {
     private readonly DataBucket<Recipe, Module> recipeModules = new DataBucket<Recipe, Module>();
     private readonly Dictionary<Item, List<string>> placeResults = [];
     private readonly Dictionary<Item, string> plantResults = [];
+    private readonly DataBucket<string, Entity> asteroids = new();
     private readonly List<Module> allModules = [];
     private readonly HashSet<Item> sciencePacks = [];
     private readonly Dictionary<string, List<Fluid>> fluidVariants = [];
@@ -156,7 +157,8 @@ internal partial class FactorioDataDeserializer {
         int firstEntity = Skip(firstTechnology, FactorioObjectSortOrder.Technologies);
         int firstTile = Skip(firstEntity, FactorioObjectSortOrder.Entities);
         int firstQuality = Skip(firstTile, FactorioObjectSortOrder.Tiles);
-        int last = Skip(firstQuality, FactorioObjectSortOrder.Qualities);
+        int firstLocation = Skip(firstQuality, FactorioObjectSortOrder.Qualities);
+        int last = Skip(firstLocation, FactorioObjectSortOrder.Locations);
         if (last != allObjects.Count) {
             throw new Exception("Something is not right");
         }
@@ -171,7 +173,8 @@ internal partial class FactorioDataDeserializer {
         Database.recipesAndTechnologies = new FactorioIdRange<RecipeOrTechnology>(firstRecipe, firstEntity, allObjects);
         Database.technologies = new FactorioIdRange<Technology>(firstTechnology, firstEntity, allObjects);
         Database.entities = new FactorioIdRange<Entity>(firstEntity, firstTile, allObjects);
-        Database.qualities = new FactorioIdRange<Quality>(firstQuality, last, allObjects);
+        Database.qualities = new FactorioIdRange<Quality>(firstQuality, firstLocation, allObjects);
+        Database.locations = new FactorioIdRange<Location>(firstLocation, last, allObjects);
         Database.fluidVariants = fluidVariants;
 
         Database.allModules = [.. allModules];
@@ -284,6 +287,9 @@ internal partial class FactorioDataDeserializer {
         DataBucket<Goods, FactorioObject> miscSources = new DataBucket<Goods, FactorioObject>();
         DataBucket<Entity, Item> entityPlacers = new DataBucket<Entity, Item>();
         DataBucket<Recipe, Technology> recipeUnlockers = new DataBucket<Recipe, Technology>();
+        DataBucket<Location, Technology> locationUnlockers = new();
+        DataBucket<Entity, Location> entityLocations = new();
+        DataBucket<string, Location> autoplaceControlLocations = new();
         // Because actual recipe availability may be different than just "all recipes from that category" because of item slot limit and fluid usage restriction, calculate it here
         DataBucket<RecipeOrTechnology, EntityCrafter> actualRecipeCrafters = new DataBucket<RecipeOrTechnology, EntityCrafter>();
         DataBucket<Goods, Entity> usageAsFuel = new DataBucket<Goods, Entity>();
@@ -297,6 +303,9 @@ internal partial class FactorioDataDeserializer {
                 case Technology technology:
                     foreach (var recipe in technology.unlockRecipes) {
                         recipeUnlockers.Add(recipe, technology);
+                    }
+                    foreach (Location location in technology.unlockLocations) {
+                        locationUnlockers.Add(location, technology);
                     }
 
                     break;
@@ -383,6 +392,14 @@ internal partial class FactorioDataDeserializer {
                     }
 
                     break;
+                case Location location:
+                    foreach (string name in location.entitySpawns ?? []) {
+                        entityLocations.Add(GetObject<Entity>(name), location);
+                    }
+                    foreach (string name in location.placementControls ?? []) {
+                        autoplaceControlLocations.Add(name, location);
+                    }
+                    break;
             }
         }
 
@@ -391,7 +408,11 @@ internal partial class FactorioDataDeserializer {
         actualRecipeCrafters.Seal();
         usageAsFuel.Seal();
         recipeUnlockers.Seal();
+        locationUnlockers.Seal();
         entityPlacers.Seal();
+        entityLocations.Seal();
+        autoplaceControlLocations.Seal();
+        asteroids.Seal();
 
         // step 2 - fill maps
 
@@ -429,6 +450,20 @@ internal partial class FactorioDataDeserializer {
                     break;
                 case Entity entity:
                     entity.itemsToPlace = entityPlacers.GetArray(entity);
+                    if (entity.autoplaceControl != null) {
+                        entity.spawnLocations = [.. entityLocations.GetArray(entity).Union(autoplaceControlLocations.GetArray(entity.autoplaceControl))];
+                    }
+                    else {
+                        entity.spawnLocations = entityLocations.GetArray(entity);
+                    }
+                    if (entity.spawnLocations.Length > 0) {
+                        entity.mapGenerated = true;
+                    }
+
+                    entity.sourceEntities = asteroids.GetArray(entity.name).ToList();
+                    break;
+                case Location location:
+                    location.technologyUnlock = locationUnlockers.GetArray(location);
                     break;
             }
         }
@@ -593,7 +628,9 @@ internal partial class FactorioDataDeserializer {
         foreach (Ammo ammo in captureAmmo) {
             foreach (EntitySpawner spawner in allObjects.OfType<EntitySpawner>()) {
                 if ((ammo.targetFilter == null || ammo.targetFilter.Contains(spawner.name)) && spawner.capturedEntityName != null) {
-                    entities[spawner.capturedEntityName].miscSources = [.. entities[spawner.capturedEntityName].miscSources.Append(ammo).Distinct()];
+                    if (!entities[spawner.capturedEntityName].captureAmmo.Contains(ammo)) {
+                        entities[spawner.capturedEntityName].captureAmmo.Add(ammo);
+                    }
                 }
             }
         }

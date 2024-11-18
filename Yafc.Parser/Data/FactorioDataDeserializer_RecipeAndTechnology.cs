@@ -163,6 +163,13 @@ internal partial class FactorioDataDeserializer {
                             technology.unlocksFluidMining = true;
                             break;
                         }
+                    case "unlock-space-location": {
+                            if (!GetRef(modifier, "space_location", out Location? location)) {
+                                continue;
+                            }
+                            technology.unlockLocations.Add(location);
+                            break;
+                        }
                 }
             }
         }

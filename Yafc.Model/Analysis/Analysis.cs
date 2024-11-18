@@ -44,7 +44,7 @@ public abstract class Analysis {
 }
 
 public static class AnalysisExtensions {
-    public static bool IsAccessible(this FactorioObject obj) => Milestones.Instance.GetMilestoneResult(obj) != 0;
+    public static bool IsAccessible(this FactorioObject obj) => Milestones.Instance.GetMilestoneResult(obj)[0];
 
     public static bool IsAccessibleWithCurrentMilestones(this FactorioObject obj) => Milestones.Instance.IsAccessibleWithCurrentMilestones(obj);
 

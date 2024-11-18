@@ -38,6 +38,7 @@ public static class Database {
     public static FactorioIdRange<Technology> technologies { get; internal set; } = null!;
     public static FactorioIdRange<Entity> entities { get; internal set; } = null!;
     public static FactorioIdRange<Quality> qualities { get; internal set; } = null!;
+    public static FactorioIdRange<Location> locations { get; internal set; } = null!;
     public static int constantCombinatorCapacity { get; internal set; } = 18;
 
     /// <summary>

@@ -15,16 +15,16 @@ namespace Yafc.Model;
 public static partial class DataUtils {
     private static readonly ILogger logger = Logging.GetLogger(typeof(DataUtils));
 
-    public static readonly FactorioObjectComparer<FactorioObject> DefaultOrdering = new FactorioObjectComparer<FactorioObject>((x, y) => {
-        float yFlow = y.ApproximateFlow();
-        float xFlow = x.ApproximateFlow();
+    public static readonly FactorioObjectComparer<IFactorioObjectWrapper> DefaultOrdering = new FactorioObjectComparer<IFactorioObjectWrapper>((x, y) => {
+        float yFlow = y.target.ApproximateFlow();
+        float xFlow = x.target.ApproximateFlow();
 
         if (xFlow != yFlow) {
             return xFlow.CompareTo(yFlow);
         }
 
-        Recipe? rx = x as Recipe;
-        Recipe? ry = y as Recipe;
+        Recipe? rx = x.target as Recipe;
+        Recipe? ry = y.target as Recipe;
 
         if (rx != null || ry != null) {
             float xWaste = rx?.RecipeWaste() ?? 0;
@@ -33,7 +33,7 @@ public static partial class DataUtils {
             return xWaste.CompareTo(yWaste);
         }
 
-        return y.Cost().CompareTo(x.Cost());
+        return y.target.Cost().CompareTo(x.target.Cost());
     });
     public static readonly FactorioObjectComparer<Goods> FuelOrdering = new FactorioObjectComparer<Goods>((x, y) => {
         if (x.fuelValue <= 0f && y.fuelValue <= 0f) {
@@ -66,6 +66,17 @@ public static partial class DataUtils {
         }
 
         return x.Cost().CompareTo(y.Cost());
+    });
+
+    public static readonly FactorioObjectComparer<IFactorioObjectWrapper> DefaultSciencePackOrdering = new((x, y) => {
+        float yFlow = y.target.ApproximateFlow();
+        float xFlow = x.target.ApproximateFlow();
+
+        if (xFlow != yFlow) {
+            return yFlow.CompareTo(xFlow);
+        }
+
+        return x.target.Cost().CompareTo(y.target.Cost());
     });
 
     public static FavoritesComparer<Goods> FavoriteFuel { get; private set; } = null!; // null-forgiving: Set by SetupForProject when loading a project.
@@ -176,16 +187,16 @@ public static partial class DataUtils {
         FavoriteModule = new FavoritesComparer<Module>(project, DefaultOrdering);
     }
 
-    private class FactorioObjectDeterministicComparer : IComparer<FactorioObject> {
+    private class FactorioObjectDeterministicComparer : IComparer<IFactorioObjectWrapper> {
         // id comparison is deterministic because objects are sorted deterministically
-        public int Compare(FactorioObject? x, FactorioObject? y) => Comparer<int?>.Default.Compare((int?)x?.id, (int?)y?.id);
+        public int Compare(IFactorioObjectWrapper? x, IFactorioObjectWrapper? y) => Comparer<int?>.Default.Compare((int?)x?.target.id, (int?)y?.target.id);
     }
 
     private class FluidTemperatureComparerImp : IComparer<Fluid> {
         public int Compare(Fluid? x, Fluid? y) => Comparer<int?>.Default.Compare(x?.temperature, y?.temperature);
     }
 
-    public class FactorioObjectComparer<T>(Comparison<T> similarComparison) : IComparer<T> where T : FactorioObject {
+    public class FactorioObjectComparer<T>(Comparison<T> similarComparison) : IComparer<T> where T : IFactorioObjectWrapper {
         private readonly Comparison<T> similarComparison = similarComparison;
 
         public int Compare(T? x, T? y) {
@@ -197,12 +208,12 @@ public static partial class DataUtils {
                 return -1;
             }
 
-            if (x.specialType != y.specialType) {
-                return x.specialType - y.specialType;
+            if (x.target.specialType != y.target.specialType) {
+                return x.target.specialType - y.target.specialType;
             }
 
-            var msx = GetMilestoneOrder(x.id);
-            var msy = GetMilestoneOrder(y.id);
+            Bits msx = GetMilestoneOrder(x.target.id);
+            Bits msy = GetMilestoneOrder(y.target.id);
 
             if (msx != msy) {
                 return msx.CompareTo(msy);

@@ -132,12 +132,17 @@ internal partial class FactorioDataDeserializer {
         DeserializePrototypes(raw, "fluid", DeserializeFluid, progress, errorCollector);
         progress.Report(("Loading", "Loading recipes"));
         DeserializePrototypes(raw, "recipe", DeserializeRecipe, progress, errorCollector);
+        progress.Report(("Loading", "Loading locations"));
+        DeserializePrototypes(raw, "planet", DeserializeLocation, progress, errorCollector);
+        DeserializePrototypes(raw, "space-location", DeserializeLocation, progress, errorCollector);
+        rootAccessible.Add(GetObject<Location>("nauvis"));
         progress.Report(("Loading", "Loading technologies"));
         DeserializePrototypes(raw, "technology", DeserializeTechnology, progress, errorCollector);
         progress.Report(("Loading", "Loading qualities"));
         DeserializePrototypes(raw, "quality", DeserializeQuality, progress, errorCollector);
         Quality.Normal = GetObject<Quality>("normal");
         rootAccessible.Add(Quality.Normal);
+        DeserializePrototypes(raw, "asteroid-chunk", DeserializeAsteroidChunk, progress, errorCollector);
 
         progress.Report(("Loading", "Loading entities"));
         LuaTable entityPrototypes = (LuaTable?)prototypes["entity"] ?? throw new ArgumentException("Could not load prototypes.entity from data argument", nameof(prototypes));
@@ -526,6 +531,7 @@ internal partial class FactorioDataDeserializer {
                 recipe.ingredients = [];
                 recipe.time = 1f;
             }
+            recipe.sourceTiles.Add(tile);
         }
     }
 
@@ -561,6 +567,31 @@ internal partial class FactorioDataDeserializer {
         }
 
         return null;
+    }
+
+    private void DeserializeLocation(LuaTable table, ErrorCollector collector) {
+        Location location = DeserializeCommon<Location>(table, "space-location");
+        if (table.Get("map_gen_settings", out LuaTable? mapGen)) {
+            if (mapGen.Get("autoplace_controls", out LuaTable? controls)) {
+                location.placementControls = controls.ObjectElements.Keys.OfType<string>().ToList();
+            }
+            if (mapGen.Get<LuaTable>("autoplace_settings")?.Get<LuaTable>("entity")?.Get<LuaTable>("settings") is LuaTable entities) {
+                location.entitySpawns = entities.ObjectElements.Keys.OfType<string>().ToList();
+            }
+            if (mapGen.Get<LuaTable>("autoplace_settings")?.Get<LuaTable>("tile")?.Get<LuaTable>("settings") is LuaTable tiles) {
+                foreach (string tile in tiles.ObjectElements.Keys.Cast<string>()) {
+                    allObjects.OfType<Tile>().Single(t => t.name == tile).locations.Add(location);
+                }
+            }
+        }
+
+        if (table.Get("asteroid_spawn_definitions", out LuaTable? spawns)) {
+            foreach (LuaTable spawn in spawns.ArrayElements.OfType<LuaTable>()) {
+                if (spawn.Get("asteroid", out string? asteroid)) {
+                    location.entitySpawns.Add(asteroid);
+                }
+            }
+        }
     }
 
     private T DeserializeCommon<T>(LuaTable table, string prototypeType) where T : FactorioObject, new() {
