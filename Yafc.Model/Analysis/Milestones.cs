@@ -123,44 +123,10 @@ public class Milestones : Analysis {
 
         foreach (FactorioObject? milestone in milestones.Prepend(null)) {
             logger.Information("Processing milestone {Milestone}", milestone?.locName);
-            // Queue the known-accessible items for graph walking, and mark them accessible without the current milestone.
-            Queue<FactorioObject> processingQueue = new(Database.rootAccessible);
-            foreach ((FactorioObject obj, ProjectPerItemFlags flag) in project.settings.itemFlags) {
-                if (flag.HasFlags(ProjectPerItemFlags.MarkedAccessible)) {
-                    processingQueue.Enqueue(obj);
-                }
-            }
-            HashSet<FactorioObject> accessibleWithoutMilestone = accessibility[milestone?.id ?? noObject] = new(processingQueue);
-
-            // Walk the dependency graph to find accessible items. The first walk, when milestone == null, is for basic accessibility.
+            // Walk the accessibility graph to find accessible items. The first walk, when milestone == null, is for basic accessibility.
             // The rest of the walks prune the graph at the selected milestone and are for milestone flags.
-            while (processingQueue.TryDequeue(out FactorioObject? node)) {
-                if (node == milestone || markedInaccessible.Contains(node)) {
-                    // We're looking for things that can be accessed without this milestone, or the user flagged this as inaccessible.
-                    continue;
-                }
-
-                bool accessible = true;
-                if (!accessibleWithoutMilestone.Contains(node)) {
-                    // This object is accessible if all its parents are accessible.
-                    accessible = Dependencies.dependencyList[node].IsAccessible(e => accessibleWithoutMilestone.Contains(Database.objects[e]));
-                }
-
-                if (accessible) {
-                    accessibleWithoutMilestone.Add(node);
-                    if (milestones.Contains(node) && !sortedMilestones.Contains(node)) {
-                        // Sort milestones in the order we unlock them in the accessibility walk.
-                        sortedMilestones.Add(node);
-                    }
-
-                    // Recheck this objects children, if necessary.
-                    foreach (FactorioObject child in Dependencies.reverseDependencies[node].Select(id => Database.objects[id])) {
-                        if (!accessibleWithoutMilestone.Contains(child) && !processingQueue.Contains(child)) {
-                            processingQueue.Enqueue(child);
-                        }
-                    }
-                }
-            }
+            HashSet<FactorioObject> pruneAt = milestone == null ? markedInaccessible : new(markedInaccessible.Append(milestone));
+            accessibility[milestone?.id ?? noObject] = WalkAccessibilityGraph(project, pruneAt, milestones, sortedMilestones);
         }
 
         // Apply the milestone sort results, if requested.
@@ -230,6 +196,65 @@ public class Milestones : Analysis {
 
         logger.Information("Milestones calculation finished in {ElapsedTime}ms.", time.ElapsedMilliseconds);
         milestoneResult = result;
+    }
+
+    /// <summary>
+    /// Walks the accessibility graph, refusing to traverse the specified nodes, and determines what objects are accessible. If requested, also
+    /// adds objects from <paramref name="milestones"/> to <paramref name="sortedMilestones"/>, based on the order they were encountered.
+    /// </summary>
+    /// <param name="project">The project to be analyzed, for reading <see cref="ProjectPerItemFlags.MarkedAccessible"/>.</param>
+    /// <param name="pruneAt">The nodes that should be ignored when walking the graph.</param>
+    /// <param name="milestones">The milestones to sort, or an empty array if milestone sorting is not desired.</param>
+    /// <param name="sortedMilestones">A list that will receive the milestones in the order they were encountered. Must not be
+    /// <see langword="null"/> if <paramref name="milestones"/> is not empty.
+    /// </param>
+    /// <returns>The set of objects that can be accessed without using any of the nodes in <paramref name="pruneAt"/>.</returns>
+    private static HashSet<FactorioObject> WalkAccessibilityGraph(Project project, HashSet<FactorioObject> pruneAt, FactorioObject[] milestones,
+        List<FactorioObject>? sortedMilestones) {
+
+        if (milestones.Length != 0) {
+            ArgumentNullException.ThrowIfNull(sortedMilestones);
+        }
+
+        // Queue the known-accessible items for graph walking.
+        Queue<FactorioObject> processingQueue = new(Database.rootAccessible);
+        foreach ((FactorioObject obj, ProjectPerItemFlags flag) in project.settings.itemFlags) {
+            if (flag.HasFlags(ProjectPerItemFlags.MarkedAccessible)) {
+                processingQueue.Enqueue(obj);
+            }
+        }
+        HashSet<FactorioObject> accessibleWithoutPruning = [.. processingQueue];
+
+        while (processingQueue.TryDequeue(out FactorioObject? node)) {
+            if (pruneAt.Contains(node)) {
+                // We're looking for things that can be accessed without this milestone, or the user flagged this as inaccessible.
+                continue;
+            }
+
+            bool accessible = true;
+            if (!accessibleWithoutPruning.Contains(node)) {
+                // This object is accessible if all its parents are accessible.
+                accessible = Dependencies.dependencyList[node].IsAccessible(e => accessibleWithoutPruning.Contains(Database.objects[e]));
+            }
+
+            if (accessible) {
+                accessibleWithoutPruning.Add(node);
+                // null-forgiving: sortedMilestones is not null when milestones is not empty.
+                if (milestones.Contains(node) && !sortedMilestones!.Contains(node)) {
+                    // Sort milestones in the order we unlock them in the accessibility walk.
+                    sortedMilestones.Add(node);
+                }
+
+                // Recheck this objects children, if necessary.
+                foreach (FactorioObject child in Dependencies.reverseDependencies[node].Select(id => Database.objects[id])) {
+                    if (!accessibleWithoutPruning.Contains(child) && !processingQueue.Contains(child)) {
+                        processingQueue.Enqueue(child);
+                    }
+                }
+            }
+        }
+
+        return accessibleWithoutPruning;
     }
 
     private const string MaybeBug = " or it might be due to a bug inside a mod or YAFC.";
