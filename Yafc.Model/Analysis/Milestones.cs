@@ -217,44 +217,33 @@ public class Milestones : Analysis {
         }
 
         // Queue the known-accessible items for graph walking.
-        Queue<FactorioObject> processingQueue = new(Database.rootAccessible);
+        Queue<FactorioObject> accessibleQueue = new(Database.rootAccessible.Except(pruneAt));
         foreach ((FactorioObject obj, ProjectPerItemFlags flag) in project.settings.itemFlags) {
             if (flag.HasFlags(ProjectPerItemFlags.MarkedAccessible)) {
-                processingQueue.Enqueue(obj);
+                accessibleQueue.Enqueue(obj);
             }
         }
-        HashSet<FactorioObject> accessibleWithoutPruning = [.. processingQueue];
+        HashSet<FactorioId> accessibleWithoutPruning = [.. accessibleQueue.Select(o => o.id)];
 
-        while (processingQueue.TryDequeue(out FactorioObject? node)) {
-            if (pruneAt.Contains(node)) {
-                // We're looking for things that can be accessed without this milestone, or the user flagged this as inaccessible.
-                continue;
+        while (accessibleQueue.TryDequeue(out FactorioObject? node)) {
+            // null-forgiving: sortedMilestones is not null when milestones is not empty.
+            if (milestones.Contains(node) && !sortedMilestones!.Contains(node)) {
+                // Sort milestones in the order we unlock them in the accessibility walk.
+                sortedMilestones.Add(node);
             }
 
-            bool accessible = true;
-            if (!accessibleWithoutPruning.Contains(node)) {
-                // This object is accessible if all its parents are accessible.
-                accessible = Dependencies.dependencyList[node].IsAccessible(e => accessibleWithoutPruning.Contains(Database.objects[e]));
-            }
+            // Mark and queue this object's newly-accessible children.
+            foreach (FactorioObject child in Dependencies.reverseDependencies[node].Select(id => Database.objects[id])) {
+                if (!accessibleWithoutPruning.Contains(child.id) && !pruneAt.Contains(child)
+                    && Dependencies.dependencyList[child.id].IsAccessible(accessibleWithoutPruning.Contains)) {
 
-            if (accessible) {
-                accessibleWithoutPruning.Add(node);
-                // null-forgiving: sortedMilestones is not null when milestones is not empty.
-                if (milestones.Contains(node) && !sortedMilestones!.Contains(node)) {
-                    // Sort milestones in the order we unlock them in the accessibility walk.
-                    sortedMilestones.Add(node);
-                }
-
-                // Recheck this objects children, if necessary.
-                foreach (FactorioObject child in Dependencies.reverseDependencies[node].Select(id => Database.objects[id])) {
-                    if (!accessibleWithoutPruning.Contains(child) && !processingQueue.Contains(child)) {
-                        processingQueue.Enqueue(child);
-                    }
+                    accessibleWithoutPruning.Add(child.id);
+                    accessibleQueue.Enqueue(child);
                 }
             }
         }
 
-        return accessibleWithoutPruning;
+        return new(accessibleWithoutPruning.Select(id => Database.objects[id]));
     }
 
     private const string MaybeBug = " or it might be due to a bug inside a mod or YAFC.";
