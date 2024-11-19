@@ -260,6 +260,8 @@ public class ProjectPreferences(Project owner) : ModelObject<Project>(owner) {
     /// The scale to use when drawing icons that have information stored in their background color, stored as a ratio from 0 to 1.
     /// </summary>
     public float iconScale { get; set; } = .9f;
+    /// <summary>The maximum number of milestone icons in each line when drawing tooltip headers.</summary>
+    public int maxMilestonesPerTooltipLine { get; set; } = 28;
     public bool showMilestoneOnInaccessible { get; set; } = true;
 
     protected internal override void AfterDeserialize() {

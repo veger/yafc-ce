@@ -143,6 +143,20 @@ public class PreferencesScreen : PseudoScreen {
             }
         }
 
+        // Don't show this preference if it isn't relevant.
+        // (Takes ~3ms for pY, which would concern me in the regular UI, but should be fine here.)
+        if (Database.objects.all.Any(o => Milestones.Instance.GetMilestoneResult(o).PopCount() > 22)) {
+            string overlapMessage = "Some tooltips may want to show multiple rows of milestones. Increasing this number will draw fewer lines in some tooltips, by forcing the milestones to overlap.\n\n"
+                + "Minimum: 22\nDefault: 28";
+            using (gui.EnterRowWithHelpIcon(overlapMessage)) {
+                gui.BuildText("Maximum milestones per line in tooltips:", topOffset: 0.5f);
+                if (gui.BuildIntegerInput(preferences.maxMilestonesPerTooltipLine, out int newIntValue) && newIntValue >= 22) {
+                    preferences.RecordUndo().maxMilestonesPerTooltipLine = newIntValue;
+                    gui.Rebuild();
+                }
+            }
+        }
+
         using (gui.EnterRow()) {
             gui.BuildText("Reactor layout:", topOffset: 0.5f);
             if (gui.BuildTextInput(settings.reactorSizeX + "x" + settings.reactorSizeY, out string newSize, null, delayed: true)) {

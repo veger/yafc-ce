@@ -51,13 +51,13 @@ public class ObjectTooltip : Tooltip {
                 }
 
                 // All rows except the last will show at least 22 milestones.
-                // If displaying 23-28 items per row reduces the number of rows, squish the milestones together slightly.
-                const int maxItemsPerRow = 28;
+                // If displaying more items per row (up to the user's limit) reduces the number of rows, squish the milestones together slightly.
+                int maxItemsPerRow = Project.current.preferences.maxMilestonesPerTooltipLine;
                 const int minItemsPerRow = 22;
                 int rows = (milestoneCount + maxItemsPerRow - 1) / maxItemsPerRow;
                 int itemsPerRow = Math.Max((milestoneCount + rows - 1) / rows, minItemsPerRow);
                 // 22.5 is the width of the available area of the tooltip. The original code used spacings from -1 (100% overlap) to 0
-                // (no overlap). We now allow spacings of -0.196 (19.6% overlap) to 0.023 (2.3% stretch).
+                // (no overlap). At the default max of 28 per row, we allow spacings of -0.196 (19.6% overlap) to 0.023 (2.3% stretch).
                 float spacing = 22.5f / itemsPerRow - 1f;
 
                 using var milestones = Milestones.Instance.currentMilestones.AsEnumerable().GetEnumerator();
