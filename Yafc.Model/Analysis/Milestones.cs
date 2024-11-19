@@ -1,7 +1,9 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading.Tasks;
 using Serilog;
 using Yafc.UI;
 
@@ -110,7 +112,7 @@ public class Milestones : Analysis {
         }
 
         Stopwatch time = Stopwatch.StartNew();
-        Dictionary<FactorioId, HashSet<FactorioObject>> accessibility = [];
+        ConcurrentDictionary<FactorioId, HashSet<FactorioObject>> accessibility = [];
         const FactorioId noObject = (FactorioId)(-1);
 
         List<FactorioObject> sortedMilestones = [];
@@ -121,13 +123,17 @@ public class Milestones : Analysis {
             }
         }
 
-        foreach (FactorioObject? milestone in milestones.Prepend(null)) {
-            logger.Information("Processing milestone {Milestone}", milestone?.locName);
-            // Walk the accessibility graph to find accessible items. The first walk, when milestone == null, is for basic accessibility.
-            // The rest of the walks prune the graph at the selected milestone and are for milestone flags.
-            HashSet<FactorioObject> pruneAt = milestone == null ? markedInaccessible : new(markedInaccessible.Append(milestone));
-            accessibility[milestone?.id ?? noObject] = WalkAccessibilityGraph(project, pruneAt, milestones, sortedMilestones);
-        }
+        // Walk the accessibility graph to find accessible items. The first walk is for basic accessibility and milestone sorting.
+        logger.Information("Processing object accessibility");
+        accessibility[noObject] = WalkAccessibilityGraph(project, markedInaccessible, milestones, sortedMilestones);
+
+        // The rest of the walks prune the graph at the selected milestone, for computing milestone flags.
+        // Do these in parallel; the only write operation for these is setting the dictionary value at the end.
+        Parallel.ForEach(milestones, milestone => {
+            logger.Information("Processing milestone {Milestone}", milestone.locName);
+            HashSet<FactorioObject> pruneAt = new(markedInaccessible.Append(milestone));
+            accessibility[milestone.id] = WalkAccessibilityGraph(project, pruneAt, [], null);
+        });
 
         // Apply the milestone sort results, if requested.
         if (autoSort) {
