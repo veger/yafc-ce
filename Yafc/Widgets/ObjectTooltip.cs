@@ -45,19 +45,43 @@ public class ObjectTooltip : Tooltip {
             gui.BuildText(name, new TextBlockDisplayStyle(Font.header, true));
             var milestoneMask = Milestones.Instance.GetMilestoneResult(target.target);
             if (milestoneMask.HighestBitSet() > 0 && (target.target.IsAccessible() || Project.current.preferences.showMilestoneOnInaccessible)) {
-                float spacing = MathF.Min((22f / Milestones.Instance.currentMilestones.Length) - 1f, 0f);
-                using (gui.EnterRow(spacing)) {
-                    int maskBit = 1;
-                    foreach (var milestone in Milestones.Instance.currentMilestones) {
-                        if (milestoneMask[maskBit]) {
-                            gui.BuildIcon(milestone.icon, 1f, SchemeColor.Source);
-                        }
+                int milestoneCount = milestoneMask.PopCount();
+                if (milestoneMask[0]) {
+                    milestoneCount--; // Bit 0 is accessibility, not a milestone flag.
+                }
 
-                        maskBit++;
+                // All rows except the last will show at least 22 milestones.
+                // If displaying more items per row (up to the user's limit) reduces the number of rows, squish the milestones together slightly.
+                int maxItemsPerRow = Project.current.preferences.maxMilestonesPerTooltipLine;
+                const int minItemsPerRow = 22;
+                int rows = (milestoneCount + maxItemsPerRow - 1) / maxItemsPerRow;
+                int itemsPerRow = Math.Max((milestoneCount + rows - 1) / rows, minItemsPerRow);
+                // 22.5 is the width of the available area of the tooltip. The original code used spacings from -1 (100% overlap) to 0
+                // (no overlap). At the default max of 28 per row, we allow spacings of -0.196 (19.6% overlap) to 0.023 (2.3% stretch).
+                float spacing = 22.5f / itemsPerRow - 1f;
+
+                using var milestones = Milestones.Instance.currentMilestones.AsEnumerable().GetEnumerator();
+                int maskBit = 1;
+                for (int i = 0; i < rows; i++) {
+                    using (gui.EnterRow(spacing)) {
+                        // Draw itemsPerRow items, then exit this row and allocate a new one
+                        for (int j = 0; j < itemsPerRow; /* increment after drawing a milestone */) {
+                            if (!milestones.MoveNext()) {
+                                goto doneDrawing;
+                            }
+                            if (milestoneMask[maskBit]) {
+                                gui.BuildIcon(milestones.Current.icon, 1f, SchemeColor.Source);
+                                j++;
+                            }
+
+                            maskBit++;
+                        }
                     }
                 }
+doneDrawing:;
             }
         }
+
         if (gui.isBuilding) {
             gui.DrawRectangle(gui.lastRect, SchemeColor.Primary);
         }
