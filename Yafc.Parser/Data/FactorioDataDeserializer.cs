@@ -380,9 +380,8 @@ internal partial class FactorioDataDeserializer {
     }
 
     private void DeserializeItem(LuaTable table, ErrorCollector _1) {
-        string name = table.Get("name", "");
         if (table.Get("type", "") == "module" && table.Get("effect", out LuaTable? moduleEffect)) {
-            Module module = GetObject<Item, Module>(name);
+            Module module = GetObject<Item, Module>(table);
             var effect = ParseEffect(moduleEffect);
             module.moduleSpecification = new ModuleSpecification {
                 category = table.Get("category", ""),
@@ -394,7 +393,7 @@ internal partial class FactorioDataDeserializer {
             };
         }
         else if (table.Get("type", "") == "ammo" && table["ammo_type"] is LuaTable ammo_type) {
-            Ammo ammo = GetObject<Item, Ammo>(name);
+            Ammo ammo = GetObject<Item, Ammo>(table);
             ammo_type.ReadObjectOrArray(readAmmoType);
 
             if (ammo_type["target_filter"] is LuaTable targets) {
@@ -556,13 +555,13 @@ internal partial class FactorioDataDeserializer {
     private Goods? LoadItemOrFluid(LuaTable table, bool useTemperature) {
         if (table.Get("type", out string? type) && table.Get("name", out string? name)) {
             if (type == "item") {
-                return GetObject<Item>(name);
+                return GetObject<Item>(table);
             }
             else if (type == "fluid") {
                 if (useTemperature && table.Get("temperature", out int temperature)) {
                     return GetFluidFixedTemp(name, temperature);
                 }
-                return GetObject<Fluid>(name);
+                return GetObject<Fluid>(table);
             }
         }
 
@@ -599,7 +598,7 @@ internal partial class FactorioDataDeserializer {
             throw new NotSupportedException($"Read a definition of a {prototypeType} that does not have a name.");
         }
 
-        var target = GetObject<T>(name);
+        var target = GetObject<T>(table);
         target.factorioType = table.Get("type", "");
 
         if (table.Get("localised_name", out object? loc)) {  // Keep UK spelling for Factorio/LUA data objects

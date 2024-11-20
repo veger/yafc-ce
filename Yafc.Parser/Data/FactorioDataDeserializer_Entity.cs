@@ -176,14 +176,14 @@ internal partial class FactorioDataDeserializer {
             // case "furnace":
             // case "rocket-silo": // Out of order
             case "accumulator":
-                var accumulator = GetObject<Entity, EntityAccumulator>(name);
+                var accumulator = GetObject<Entity, EntityAccumulator>(table);
 
                 if (table.Get("energy_source", out LuaTable? accumulatorEnergy) && accumulatorEnergy.Get("buffer_capacity", out string? capacity)) {
                     accumulator.baseAccumulatorCapacity = ParseEnergy(capacity);
                 }
                 break;
             case "agricultural-tower":
-                var agriculturalTower = GetObject<Entity, EntityCrafter>(name);
+                var agriculturalTower = GetObject<Entity, EntityCrafter>(table);
                 _ = table.Get("energy_usage", out usesPower);
                 agriculturalTower.basePower = ParseEnergy(usesPower);
                 float radius = table.Get("radius", 1f);
@@ -194,7 +194,7 @@ internal partial class FactorioDataDeserializer {
             case "assembling-machine":
                 goto case "furnace";
             case "asteroid":
-                Entity asteroid = GetObject<Entity>(name);
+                Entity asteroid = GetObject<Entity>(table);
                 if (table.Get("dying_trigger_effect", out LuaTable? death)) {
                     death.ReadObjectOrArray(trigger => {
                         switch (trigger.Get<string>("type")) {
@@ -207,7 +207,7 @@ internal partial class FactorioDataDeserializer {
                 }
                 break;
             case "asteroid-collector":
-                EntityCrafter collector = GetObject<Entity, EntityCrafter>(name);
+                EntityCrafter collector = GetObject<Entity, EntityCrafter>(table);
                 _ = table.Get("arm_energy_usage", out usesPower);
                 collector.basePower = ParseEnergy(usesPower) * 60;
                 _ = table.Get("passive_energy_usage", out usesPower);
@@ -216,7 +216,7 @@ internal partial class FactorioDataDeserializer {
                 recipeCrafters.Add(collector, SpecialNames.AsteroidCapture);
                 break;
             case "beacon":
-                var beacon = GetObject<Entity, EntityBeacon>(name);
+                var beacon = GetObject<Entity, EntityBeacon>(table);
                 beacon.baseBeaconEfficiency = table.Get("distribution_effectivity", 0f);
                 beacon.profile = table.Get("profile", out LuaTable? profile) ? profile.ArrayElements<double>().Select(x => (float)x).ToArray() : [1f];
                 _ = table.Get("energy_usage", out usesPower);
@@ -224,7 +224,7 @@ internal partial class FactorioDataDeserializer {
                 beacon.basePower = ParseEnergy(usesPower);
                 break;
             case "boiler":
-                var boiler = GetObject<Entity, EntityCrafter>(name);
+                var boiler = GetObject<Entity, EntityCrafter>(table);
                 _ = table.Get("energy_consumption", out usesPower);
                 boiler.basePower = ParseEnergy(usesPower);
                 boiler.fluidInputs = 1;
@@ -251,7 +251,7 @@ internal partial class FactorioDataDeserializer {
                 boiler.baseCraftingSpeed = 1f;
                 break;
             case "burner-generator":
-                var generator = GetObject<Entity, EntityCrafter>(name);
+                var generator = GetObject<Entity, EntityCrafter>(table);
 
                 // generator energy input config is strange
                 if (table.Get("max_power_output", out string? maxPowerOutput)) {
@@ -269,7 +269,7 @@ internal partial class FactorioDataDeserializer {
                 recipeCrafters.Add(generator, SpecialNames.GeneratorRecipe);
                 break;
             case "character":
-                var character = GetObject<Entity, EntityCrafter>(name);
+                var character = GetObject<Entity, EntityCrafter>(table);
                 character.itemInputs = 255;
 
                 if (table.Get("mining_categories", out LuaTable? resourceCategories)) {
@@ -300,7 +300,7 @@ internal partial class FactorioDataDeserializer {
                 }
                 break;
             case "container":
-                var container = GetObject<Entity, EntityContainer>(name);
+                var container = GetObject<Entity, EntityContainer>(table);
                 container.inventorySize = table.Get("inventory_size", 0);
 
                 if (factorioType == "logistic-container") {
@@ -312,7 +312,7 @@ internal partial class FactorioDataDeserializer {
                 }
                 break;
             case "electric-energy-interface":
-                var eei = GetObject<Entity, EntityCrafter>(name);
+                var eei = GetObject<Entity, EntityCrafter>(table);
                 eei.energy = voidEntityEnergy;
 
                 if (table.Get("energy_production", out string? interfaceProduction)) {
@@ -323,7 +323,7 @@ internal partial class FactorioDataDeserializer {
                 }
                 break;
             case "furnace":
-                var crafter = GetObject<Entity, EntityCrafter>(name);
+                var crafter = GetObject<Entity, EntityCrafter>(table);
                 _ = table.Get("energy_usage", out usesPower);
                 ParseModules(table, crafter, AllowedEffects.None);
                 crafter.basePower = ParseEnergy(usesPower);
@@ -380,12 +380,12 @@ internal partial class FactorioDataDeserializer {
             case "generator":
                 goto case "burner-generator";
             case "inserter":
-                var inserter = GetObject<Entity, EntityInserter>(name);
+                var inserter = GetObject<Entity, EntityInserter>(table);
                 inserter.inserterSwingTime = 1f / (table.Get("rotation_speed", 1f) * 60);
                 inserter.isBulkInserter = table.Get("bulk", false);
                 break;
             case "lab":
-                var lab = GetObject<Entity, EntityCrafter>(name);
+                var lab = GetObject<Entity, EntityCrafter>(table);
                 _ = table.Get("energy_usage", out usesPower);
                 ParseModules(table, lab, AllowedEffects.All ^ AllowedEffects.Quality);
                 lab.basePower = ParseEnergy(usesPower);
@@ -399,7 +399,7 @@ internal partial class FactorioDataDeserializer {
             case "logistic-container":
                 goto case "container";
             case "mining-drill":
-                var drill = GetObject<Entity, EntityCrafter>(name);
+                var drill = GetObject<Entity, EntityCrafter>(table);
                 _ = table.Get("energy_usage", out usesPower);
                 drill.basePower = ParseEnergy(usesPower);
                 ParseModules(table, drill, AllowedEffects.All);
@@ -418,7 +418,7 @@ internal partial class FactorioDataDeserializer {
                 }
                 break;
             case "offshore-pump":
-                var pump = GetObject<Entity, EntityCrafter>(name);
+                var pump = GetObject<Entity, EntityCrafter>(table);
                 _ = table.Get("energy_usage", out usesPower);
                 pump.basePower = ParseEnergy(usesPower);
                 pump.baseCraftingSpeed = table.Get("pumping_speed", 20f) / 20f;
@@ -443,7 +443,7 @@ internal partial class FactorioDataDeserializer {
                 }
                 break;
             case "projectile":
-                var projectile = GetObject<Entity, EntityProjectile>(name);
+                var projectile = GetObject<Entity, EntityProjectile>(table);
                 if (table["action"] is LuaTable actions) {
                     actions.ReadObjectOrArray(parseAction);
                 }
@@ -465,7 +465,7 @@ internal partial class FactorioDataDeserializer {
                 }
                 break;
             case "reactor":
-                var reactor = GetObject<Entity, EntityReactor>(name);
+                var reactor = GetObject<Entity, EntityReactor>(table);
                 reactor.reactorNeighborBonus = table.Get("neighbour_bonus", 1f); // Keep UK spelling for Factorio/LUA data objects
                 _ = table.Get("consumption", out usesPower);
                 reactor.basePower = ParseEnergy(usesPower);
@@ -475,17 +475,17 @@ internal partial class FactorioDataDeserializer {
             case "rocket-silo":
                 goto case "furnace";
             case "solar-panel":
-                var solarPanel = GetObject<Entity, EntityCrafter>(name);
+                var solarPanel = GetObject<Entity, EntityCrafter>(table);
                 solarPanel.energy = voidEntityEnergy;
                 _ = table.Get("production", out string? powerProduction);
                 recipeCrafters.Add(solarPanel, SpecialNames.GeneratorRecipe);
                 solarPanel.baseCraftingSpeed = ParseEnergy(powerProduction) * 0.7f; // 0.7f is a solar panel ratio on nauvis
                 break;
             case "transport-belt":
-                GetObject<Entity, EntityBelt>(name).beltItemsPerSecond = table.Get("speed", 0f) * 480f;
+                GetObject<Entity, EntityBelt>(table).beltItemsPerSecond = table.Get("speed", 0f) * 480f;
                 break;
             case "unit-spawner":
-                var spawner = GetObject<Entity, EntitySpawner>(name);
+                var spawner = GetObject<Entity, EntitySpawner>(table);
                 spawner.capturedEntityName = table.Get<string>("captured_spawner_entity");
                 break;
         }
@@ -602,11 +602,13 @@ internal partial class FactorioDataDeserializer {
     private void DeserializeAsteroidChunk(LuaTable table, ErrorCollector errorCollector) {
         Entity chunk = DeserializeCommon<Entity>(table, "asteroid-chunk");
         Item asteroid = GetObject<Item>(chunk.name);
-        Recipe recipe = CreateSpecialRecipe(asteroid, SpecialNames.AsteroidCapture, "mining");
-        recipe.time = 1;
-        recipe.ingredients = [];
-        recipe.products = [new Product(asteroid, 1)];
-        recipe.sourceEntity = chunk;
+        if (asteroid.showInExplorers) { // don't create mining recipes for parameter chunks.
+            Recipe recipe = CreateSpecialRecipe(asteroid, SpecialNames.AsteroidCapture, "mining");
+            recipe.time = 1;
+            recipe.ingredients = [];
+            recipe.products = [new Product(asteroid, 1)];
+            recipe.sourceEntity = chunk;
+        }
     }
 
     private float EstimateArgument(LuaTable args, string name, float def = 0) => args.Get(name, out LuaTable? res) ? EstimateNoiseExpression(res) : def;

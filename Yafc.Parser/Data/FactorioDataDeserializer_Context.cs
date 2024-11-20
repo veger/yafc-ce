@@ -108,8 +108,54 @@ internal partial class FactorioDataDeserializer {
         totalItemOutput = createSpecialItem("item-total-output", "Total item production", "This item represents the combined total item output of a multi-product recipe. It can be used to set or measure the number of sushi belts required to handle the products of this recipe row.", "__base__/graphics/icons/signal/signal_O.png");
     }
 
+    /// <summary>
+    /// Calls <see cref="GetObject{TNominal, TActual}(LuaTable)"/>, with both type parameters set to <typeparamref name="T"/>.
+    /// </summary>
+    private T GetObject<T>(LuaTable table) where T : FactorioObject, new() => GetObject<T, T>(table);
+
+    /// <summary>
+    /// Gets or creates an object with the specified nominal and actual types, based on the supplied <see cref="LuaTable"/>. If
+    /// <paramref name="table"/> describes a blueprint parameter, the returned object will not be shown in NEIE, Dependency Explorer, or
+    /// Desired Product windows.
+    /// </summary>
+    /// <typeparam name="TNominal">The nominal type. In general, this is the most-derived type such that all possible callers will know the
+    /// object is of this type, and the least-derived type such that <c>(typeof(<typeparamref name="TNominal"/>),
+    /// <paramref name="table"/>["name"])</c> is unique across all objects.</typeparam>
+    /// <typeparam name="TActual">The concrete type of the object. This can be either same as <typeparamref name="TNominal"/>, or a type derived
+    /// from it. If the object already exists, it must have been created as an object of this type (or a derived type).</typeparam>
+    /// <param name="table">The <see cref="LuaTable"/> to read when to get the object's name. This table must have a <c>name</c> key. If the
+    /// value of its <c>parameter</c> key is <see langword="true"/>, <see cref="FactorioObject.showInExplorers"/> and
+    /// <see cref="Goods.isLinkable"/>, if applicable, will be set to <see langword="false"/>.</param>
+    /// <returns>The new or pre-existing object described by <typeparamref name="TNominal"/> and <c><paramref name="table"/>["name"]</c>.</returns>
+    private TActual GetObject<TNominal, TActual>(LuaTable table) where TNominal : FactorioObject where TActual : TNominal, new() {
+        if (!table.Get("name", out string? name)) {
+            throw new ArgumentException($"{nameof(table)} must contain a 'name' key. Call GetObject(string) instead.", nameof(table));
+        }
+        TActual result = GetObject<TNominal, TActual>(name);
+        if (table.Get("parameter", false)) {
+            result.showInExplorers = false;
+            if (result is Goods goods) {
+                goods.isLinkable = false;
+            }
+        }
+        return result;
+    }
+
+    /// <summary>
+    /// Calls <see cref="GetObject{TNominal, TActual}(string)"/>, with both type parameters set to <typeparamref name="T"/>.
+    /// </summary>
     private T GetObject<T>(string name) where T : FactorioObject, new() => GetObject<T, T>(name);
 
+    /// <summary>
+    /// Gets or creates an object with the specified nominal and actual types, with the supplied name.
+    /// </summary>
+    /// <typeparam name="TNominal">The nominal type. In general, this is the most-derived type such that all possible callers will know the
+    /// object is of this type, and the least-derived type such that <c>(typeof(<typeparamref name="TNominal"/>),
+    /// <paramref name="name"/>)</c> is unique across all objects.</typeparam>
+    /// <typeparam name="TActual">The concrete type of the object. This can be either same as <typeparamref name="TNominal"/>, or a type derived
+    /// from it. If the object already exists, it must have been created as an object of this type (or a derived type).</typeparam>
+    /// <param name="table">The name of the object to get or create.</param>
+    /// <returns>The new or pre-existing object described by <typeparamref name="TNominal"/> and <paramref name="name"/>.</returns>
     private TActual GetObject<TNominal, TActual>(string name) where TNominal : FactorioObject where TActual : TNominal, new() {
         var key = (typeof(TNominal), name);
         if (registeredObjects.TryGetValue(key, out FactorioObject? existing)) {
