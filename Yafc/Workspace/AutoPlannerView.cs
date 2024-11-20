@@ -50,7 +50,7 @@ public class AutoPlannerView : ProjectPageView<AutoPlanner> {
                 }
                 grid.Next();
                 if (gui.BuildButton(Icon.Plus, SchemeColor.Primary, SchemeColor.PrimaryAlt, size: 2.5f)) {
-                    SelectSingleObjectPanel.Select(Database.goods.all, "New production goal", x => {
+                    SelectSingleObjectPanel.Select(Database.goods.explorable, "New production goal", x => {
                         goal.Add(new AutoPlannerGoal { amount = 1f, item = x });
                         gui.Rebuild();
                     });
