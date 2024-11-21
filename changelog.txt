@@ -15,8 +15,8 @@
 //     Internal changes:
 //         Changes to the code that do not affect the behavior of the program.
 ----------------------------------------------------------------------------------------------------------------------
-Version:
-Date:
+Version: 2.4.0
+Date: November 21st 2024
     Features:
         - Add dependency information for tree and resource spawns, fluid pumping, and asteroid mining.
         - (SA) Locations (except nauvis) are now part of the default milestone list.
