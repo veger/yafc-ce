@@ -32,6 +32,7 @@ Date: November 21st 2024
         - Hide blueprint parameters and the synthetic I and O items from more selection windows.
     Internal changes:
         - Dependency and automation analysis allows more ORs, e.g. "(spawner and capture-ammo) or item-to-place".
+        - Scroll views can appear on tab controls.
 ----------------------------------------------------------------------------------------------------------------------
 Version: 2.3.1
 Date: November 10th 2024
