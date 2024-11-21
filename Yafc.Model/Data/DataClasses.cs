@@ -490,6 +490,9 @@ public enum AllowedEffects {
 }
 
 public class Tile : FactorioObject {
+    // Tiles participate in accessibility analysis, but only until the pumping recipes get around to reading the locations where their tiles
+    // appear. They often don't have an icon, and don't participate in anything else Yafc cares about, so hide them.
+    public Tile() => showInExplorers = false;
     public Fluid? Fluid { get; internal set; }
 
     internal override FactorioObjectSortOrder sortingOrder => FactorioObjectSortOrder.Tiles;

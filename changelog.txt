@@ -22,6 +22,9 @@ Date:
         - (SA) Locations (except nauvis) are now part of the default milestone list.
         - Milestone overlays can be displayed on inaccessible objects.
         - With 22+ milestones, tooltip headers don't draw them unnecessarily overlapped, and can use multiple lines.
+    Fixes:
+        - Hide blueprint parameters and tiles from the Dependency Explorer and NEIE.
+        - Hide blueprint parameters and the synthetic I and O items from more selection windows.
     Internal changes:
         - Dependency and automation analysis allows more ORs, e.g. "(spawner and capture-ammo) or item-to-place".
 ----------------------------------------------------------------------------------------------------------------------

@@ -259,7 +259,7 @@ goodsHaveNoProduction:;
                         r => table.AddRecipe(r, DefaultVariantOrdering), checkMark: r => table.recipes.Any(rr => rr.recipe == r));
                 }
                 else {
-                    SelectMultiObjectPanel.Select(Database.recipes.all, "Select raw recipe",
+                    SelectMultiObjectPanel.Select(Database.recipes.explorable, "Select raw recipe",
                         r => table.AddRecipe(r, DefaultVariantOrdering), checkMark: r => table.recipes.Any(rr => rr.recipe == r));
                 }
             }
