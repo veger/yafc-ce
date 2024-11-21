@@ -239,6 +239,8 @@ public sealed class TabControl {
         rows.Reverse();
     }
 
+    private PageDrawer? drawer;
+
     /// <summary>
     /// Call to draw this <see cref="TabControl"/> and its active page.
     /// </summary>
@@ -316,12 +318,36 @@ public sealed class TabControl {
 
         using var controller = gui.StartOverlappingAllocations(false);
 
-        for (int i = 0; i < tabPages.Length; i++) {
-            controller.StartNextAllocatePass(i == activePage);
-            tabPages[i].Drawer?.Invoke(gui);
+        drawer = new(gui, controller, tabPages, activePage);
+        while (drawer.DrawNextPage()) { }
+        drawer = null;
+        #endregion
+    }
+
+    /// <summary>
+    /// Requests the tab control report its remaining available content height. As a side effect, the active tab page will pause drawing until
+    /// all other tabs have been drawn. It is not advisable to draw tab content taller than the height returned by this method.
+    /// </summary>
+    /// <remarks>It is possible for multiple tabs to call this method. If that happens, tabs that call this method earlier will get more accurate
+    /// results. That is, if Tab A calls this method, Tab B draws normally, and Tab C calls this method, Tab C will get a response based on the
+    /// height of Tab B, and can (but should not) further increase the content height. Tab A will then get a response based on the taller of tabs
+    /// B and C. Like tab C, A can (but also should not) again increase the content height. If A does, it will defeat tab C's attempt to use all
+    /// available vertical space.</remarks>
+    /// <param name="minimumHeight">The minimum height that the remaining content needs. The return value will not be smaller than this
+    /// parameter.</param>
+    /// <returns>The available content height, based on all tabs that did not call this method and any tabs that called this method after the
+    /// current tab.</returns>
+    /// <exception cref="InvalidOperationException">Thrown if this <see cref="TabControl"/> is not actively drawing tab pages.</exception>
+    public float GetRemainingContentHeight(float minimumHeight = 0) {
+        if (drawer == null) {
+            throw new InvalidOperationException($"{nameof(GetRemainingContentHeight)} must only be called from a {nameof(GuiBuilder)} that is currently building a {nameof(TabPage)}.");
         }
 
-        #endregion
+        using (drawer.RememberState()) {
+            drawer.gui.AllocateRect(0, minimumHeight);
+            while (drawer.DrawNextPage()) { }
+        }
+        return drawer.GetHeight();
     }
 
     /// <summary>
@@ -361,6 +387,42 @@ public sealed class TabControl {
         }
 
         public static implicit operator TabRow((int Start, int End, float Compression) value) => new TabRow(value.Start, value.End, value.Compression);
+    }
+
+    /// <summary>
+    /// Tracks the necessary details to allow <see cref="GetRemainingContentHeight"/> to start drawing a second tab while preserving the drawing
+    /// state of the current tab. Each call to <see cref="GetRemainingContentHeight"/> will interrupt the current tab drawer and the current
+    /// <c>while (drawer.DrawNextPage()) { }</c> loop and start a new loop. The new loop will drawing the remaining tabs (unless interrupted
+    /// itself) and <see cref="GetRemainingContentHeight"/> will return the height available for use by the calling tab drawer.
+    /// </summary>
+    private sealed class PageDrawer(ImGui gui, ImGui.OverlappingAllocations controller, TabPage[] tabPages, int activePage) {
+        public ImGui gui { get; } = gui;
+        private int i = -1;
+        private float height;
+        public bool DrawNextPage() {
+            if (++i >= tabPages.Length) {
+                return false;
+            }
+            controller.StartNextAllocatePass(i == activePage);
+            tabPages[i].Drawer?.Invoke(gui);
+
+            return true;
+        }
+
+        public float GetHeight() => height = controller.maximumBottom - gui.statePosition.Top;
+
+        public IDisposable RememberState() => new State(gui, controller, i == activePage);
+
+        /// <summary>
+        /// Saves and restores the current state when <see cref="GetRemainingContentHeight"/> needs to interrupt the current tab drawing.
+        /// </summary>
+        private sealed class State(ImGui gui, ImGui.OverlappingAllocations controller, bool drawing) : IDisposable {
+            private readonly float initialTop = controller.currentTop;
+            public void Dispose() {
+                controller.StartNextAllocatePass(drawing);
+                gui.AllocateRect(0, initialTop - controller.currentTop);
+            }
+        }
     }
 }
 

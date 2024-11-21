@@ -267,7 +267,8 @@ public partial class ImGui {
         private readonly ImGui gui;
         private readonly bool initialDrawState;
         private readonly float initialTop;
-        private float maximumBottom;
+        internal float currentTop => gui.state.top;
+        internal float maximumBottom { get; private set; }
 
         internal OverlappingAllocations(ImGui gui, bool alsoDraw) {
             this.gui = gui;
