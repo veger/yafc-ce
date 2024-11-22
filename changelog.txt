@@ -15,6 +15,11 @@
 //     Internal changes:
 //         Changes to the code that do not affect the behavior of the program.
 ----------------------------------------------------------------------------------------------------------------------
+Version:
+Date:
+    Fixes:
+        - "Map generated" entities that don't generate in any locations could break automation analysis.
+----------------------------------------------------------------------------------------------------------------------
 Version: 2.4.0
 Date: November 21st 2024
     Features:

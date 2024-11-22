@@ -540,24 +540,32 @@ public class Entity : FactorioObject {
     internal Lazy<Entity?>? getSpoilResult;
 
     public sealed override DependencyNode GetDependencies() {
-        List<DependencyList> collector = [];
+        List<DependencyNode> collector = [];
         if (energy != null) {
-            collector.Add(new(energy.fuels, DependencyList.Flags.Fuel));
+            collector.Add(new DependencyList(energy.fuels, DependencyList.Flags.Fuel));
         }
-        if (spawnLocations.Length != 0) {
-            collector.Add(new(spawnLocations, DependencyList.Flags.Location));
+        if (mapGenerated) {
+            if (itemsToPlace.Length != 0) {
+                collector.Add(DependencyNode.RequireAny(
+                    new DependencyList(spawnLocations, DependencyList.Flags.Location),
+                    new DependencyList(itemsToPlace, DependencyList.Flags.ItemToPlace)));
+            }
+            else {
+                collector.Add(new DependencyList(spawnLocations, DependencyList.Flags.Location));
+            }
         }
 
         if (sourceEntities.Count > 0) {
             // Asteroid chunks require locations OR bigger-asteroid
-            collector.Add(new(sourceEntities, DependencyList.Flags.Source));
+            collector.Add(new DependencyList(sourceEntities, DependencyList.Flags.Source));
             return DependencyNode.RequireAny(collector);
         }
 
         if (captureAmmo.Count == 0) {
             if (!mapGenerated) {
-                collector.Add(new(itemsToPlace, DependencyList.Flags.ItemToPlace));
+                collector.Add(new DependencyList(itemsToPlace, DependencyList.Flags.ItemToPlace));
             }
+
             return DependencyNode.RequireAll(collector);
         }
 
@@ -600,7 +608,12 @@ public class Entity : FactorioObject {
             nonFuel.Add(DependencyNode.Create(new(Array.Empty<FactorioId>(), DependencyList.Flags.Source)));
         }
 
-        return DependencyNode.RequireAll(DependencyNode.Create(collector[0]), DependencyNode.RequireAny(nonFuel));
+        if (energy != null) {
+            return DependencyNode.RequireAll(collector[0] /* fuel */, DependencyNode.RequireAny(nonFuel));
+        }
+        else { // Doesn't require fuel
+            return DependencyNode.RequireAny(nonFuel);
+        }
     }
 
     private sealed class ListComparer : IEqualityComparer<List<EntitySpawner>> {
