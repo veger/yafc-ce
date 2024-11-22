@@ -119,6 +119,10 @@ public abstract class DependencyNode {
             }
             realDependencies = realDependencies.Distinct().ToList();
 
+            if (realDependencies.Count == 0) {
+                throw new ArgumentException($"Must not join zero nodes with an 'and'. Instead, create an empty DependencyList to explain what expected dependencies are missing.");
+            }
+
             // Prevent single-child nodes, so the drawing and preceding unpacking code doesn't have to handle that.
             if (realDependencies.Count == 1) {
                 return realDependencies[0];
@@ -175,6 +179,10 @@ public abstract class DependencyNode {
             }
             realDependencies = realDependencies.Distinct().ToList();
 
+            if (realDependencies.Count == 0) {
+                throw new ArgumentException($"Must not join zero nodes with an 'or'. Instead, create an empty DependencyList to explain what expected dependencies are missing.");
+            }
+
             // Prevent single-child nodes, so the drawing and preceding unpacking code doesn't have to handle that.
             if (realDependencies.Count == 1) {
                 return realDependencies[0];
@@ -186,7 +194,7 @@ public abstract class DependencyNode {
         internal override IEnumerable<FactorioId> Flatten() => dependencies.SelectMany(d => d.Flatten());
 
         internal override bool IsAccessible(Func<FactorioId, bool> isAccessible) => dependencies.Any(d => d.IsAccessible(isAccessible));
-        internal override Bits AggregateBits(Func<FactorioId, Bits> getBits) => dependencies.Select(d => d.AggregateBits(getBits)).Min();
+        internal override Bits AggregateBits(Func<FactorioId, Bits> getBits) => dependencies.Min(d => d.AggregateBits(getBits));
         internal override AutomationStatus IsAutomatable(Func<FactorioId, AutomationStatus> isAutomatable, AutomationStatus automationState)
             => dependencies.Max(d => d.IsAutomatable(isAutomatable, automationState));
 
@@ -234,7 +242,7 @@ public abstract class DependencyNode {
                 return bits;
             }
             else if (dependencies.elements.Length > 0) {
-                return bits | dependencies.elements.Select(getBits).Min();
+                return bits | dependencies.elements.Min(getBits);
             }
             return bits;
         }
