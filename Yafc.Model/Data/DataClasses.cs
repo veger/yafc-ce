@@ -120,28 +120,28 @@ public abstract class RecipeOrTechnology : FactorioObject {
 
     public sealed override DependencyNode GetDependencies() => DependencyNode.RequireAll(GetDependenciesHelper());
 
-    protected virtual List<DependencyList> GetDependenciesHelper() {
-        List<DependencyList> collector = [];
+    protected virtual List<DependencyNode> GetDependenciesHelper() {
+        List<DependencyNode> collector = [];
         if (ingredients.Length > 0) {
             List<FactorioObject> ingredients = [];
             foreach (Ingredient ingredient in this.ingredients) {
                 if (ingredient.variants != null) {
-                    collector.Add(new(ingredient.variants, DependencyList.Flags.IngredientVariant));
+                    collector.Add((ingredient.variants, DependencyNode.Flags.IngredientVariant));
                 }
                 else {
                     ingredients.Add(ingredient.goods);
                 }
             }
             if (ingredients.Count > 0) {
-                collector.Add(new(ingredients, DependencyList.Flags.Ingredient));
+                collector.Add((ingredients, DependencyNode.Flags.Ingredient));
             }
         }
-        collector.Add(new(crafters, DependencyList.Flags.CraftingEntity));
+        collector.Add((crafters, DependencyNode.Flags.CraftingEntity));
         if (sourceEntity != null) {
-            collector.Add(new([sourceEntity.id], DependencyList.Flags.SourceEntity));
+            collector.Add(([sourceEntity], DependencyNode.Flags.SourceEntity));
         }
         if (sourceTiles.Count > 0) {
-            collector.Add(new([.. sourceTiles.SelectMany(t => t.locations).Distinct()], DependencyList.Flags.Location));
+            collector.Add((sourceTiles.SelectMany(t => t.locations).Distinct(), DependencyNode.Flags.Location));
         }
 
         return collector;
@@ -194,13 +194,13 @@ public class Recipe : RecipeOrTechnology {
         return false;
     }
 
-    protected override List<DependencyList> GetDependenciesHelper() {
-        List<DependencyList> lists = base.GetDependenciesHelper();
+    protected override List<DependencyNode> GetDependenciesHelper() {
+        List<DependencyNode> nodes = base.GetDependenciesHelper();
 
         if (!enabled) {
-            lists.Add(new(technologyUnlock, DependencyList.Flags.TechnologyUnlock));
+            nodes.Add((technologyUnlock, DependencyNode.Flags.TechnologyUnlock));
         }
-        return lists;
+        return nodes;
     }
 
     public override bool CanAcceptModule(Module module) => EntityWithModules.CanAcceptModule(module.moduleSpecification, allowedEffects, allowedModuleCategories);
@@ -353,8 +353,7 @@ public abstract class Goods : FactorioObject {
     public abstract UnitOfMeasure flowUnitOfMeasure { get; }
     public bool isLinkable { get; internal set; } = true;
 
-    public override DependencyNode GetDependencies()
-        => DependencyNode.Create(new(production.Concat(miscSources), DependencyList.Flags.Source));
+    public override DependencyNode GetDependencies() => (production.Concat(miscSources), DependencyNode.Flags.Source);
 
     public virtual bool HasSpentFuel([MaybeNullWhen(false)] out Item spent) {
         spent = null;
@@ -454,8 +453,7 @@ public class Location : FactorioObject {
 
     internal override FactorioObjectSortOrder sortingOrder => FactorioObjectSortOrder.Locations;
 
-    public override DependencyNode GetDependencies()
-        => DependencyNode.Create(new(technologyUnlock, DependencyList.Flags.TechnologyUnlock));
+    public override DependencyNode GetDependencies() => (technologyUnlock, DependencyNode.Flags.TechnologyUnlock);
 }
 
 public class Special : Goods {
@@ -469,7 +467,7 @@ public class Special : Goods {
     internal override FactorioObjectSortOrder sortingOrder => FactorioObjectSortOrder.SpecialGoods;
     public override DependencyNode GetDependencies() {
         if (isResearch) {
-            return DependencyNode.Create(new(Database.technologies.all, DependencyList.Flags.Source));
+            return (Database.technologies.all, DependencyNode.Flags.Source);
         }
         else {
             return base.GetDependencies();
@@ -500,7 +498,7 @@ public class Tile : FactorioObject {
 
     internal HashSet<Location> locations { get; } = [];
 
-    public override DependencyNode GetDependencies() => DependencyNode.Create(new(locations, DependencyList.Flags.Location));
+    public override DependencyNode GetDependencies() => (locations, DependencyNode.Flags.Location);
 }
 
 public class Entity : FactorioObject {
@@ -555,13 +553,13 @@ public class Entity : FactorioObject {
         List<DependencyNode> sources = [];
 
         if (mapGenerated) {
-            sources.Add(new DependencyList(spawnLocations, DependencyList.Flags.Location));
+            sources.Add((spawnLocations, DependencyNode.Flags.Location));
         }
         if (itemsToPlace.Length > 0) {
-            sources.Add(new DependencyList(itemsToPlace, DependencyList.Flags.Source));
+            sources.Add((itemsToPlace, DependencyNode.Flags.Source));
         }
         if (sourceEntities.Count > 0) { // Asteroid death
-            sources.Add(new DependencyList(sourceEntities, DependencyList.Flags.Source));
+            sources.Add((sourceEntities, DependencyNode.Flags.Source));
         }
 
         if (captureAmmo.Count > 0) {
@@ -585,21 +583,18 @@ public class Entity : FactorioObject {
             var groups = sourceSpawners.GroupBy(s => s.spawners, new ListComparer()).Select(g => (g.Select(l => l.ammo), g.Key));
 
             foreach ((IEnumerable<Ammo> ammo, List<EntitySpawner> spawners) in groups) {
-                sources.Add(DependencyNode.RequireAll(
-                    DependencyNode.Create(new(ammo, DependencyList.Flags.Source)),
-                    DependencyNode.Create(new(spawners, DependencyList.Flags.Source))
-                ));
+                sources.Add(DependencyNode.RequireAll((ammo, DependencyNode.Flags.Source), (spawners, DependencyNode.Flags.Source)));
             }
         }
 
         // If there are no sources, blame it on not having any items that can place the entity.
         // (Map-generated entities with no locations got a zero-element list in the `if (mapGenerated)` test.)
         if (sources.Count == 0) {
-            sources.Add(new DependencyList(Array.Empty<FactorioId>(), DependencyList.Flags.ItemToPlace));
+            sources.Add(([], DependencyNode.Flags.ItemToPlace));
         }
 
         if (energy != null) {
-            return DependencyNode.RequireAll(new DependencyList(energy.fuels, DependencyList.Flags.Fuel), DependencyNode.RequireAny(sources));
+            return DependencyNode.RequireAll((energy.fuels, DependencyNode.Flags.Fuel), DependencyNode.RequireAny(sources));
         }
         else { // Doesn't require fuel
             return DependencyNode.RequireAny(sources);
@@ -714,12 +709,12 @@ public sealed class Quality : FactorioObject {
 
     public override DependencyNode GetDependencies() {
         List<DependencyNode> collector = [];
-        collector.Add(DependencyNode.Create(new(technologyUnlock, DependencyList.Flags.TechnologyUnlock)));
+        collector.Add((technologyUnlock, DependencyNode.Flags.TechnologyUnlock));
         if (previousQuality != null) {
-            collector.Add(DependencyNode.Create(new([previousQuality], DependencyList.Flags.Source)));
+            collector.Add(([previousQuality], DependencyNode.Flags.Source));
         }
         if (level != 0) {
-            collector.Add(DependencyNode.Create(new(Database.allModules.Where(m => m.moduleSpecification.baseQuality > 0).ToArray(), DependencyList.Flags.Source)));
+            collector.Add((Database.allModules.Where(m => m.moduleSpecification.baseQuality > 0), DependencyNode.Flags.Source));
         }
         return DependencyNode.RequireAll(collector);
     }
@@ -892,32 +887,32 @@ public class Technology : RecipeOrTechnology { // Technology is very similar to 
     /// </summary>
     internal Lazy<IReadOnlyList<Entity>> getTriggerEntities { get; set; } = new Lazy<IReadOnlyList<Entity>>(() => []);
 
-    protected override List<DependencyList> GetDependenciesHelper() {
-        List<DependencyList> lists = base.GetDependenciesHelper();
+    protected override List<DependencyNode> GetDependenciesHelper() {
+        List<DependencyNode> nodes = base.GetDependenciesHelper();
 
         if (prerequisites.Length > 0) {
-            lists.Add(new(prerequisites, DependencyList.Flags.TechnologyPrerequisites));
+            nodes.Add((prerequisites, DependencyNode.Flags.TechnologyPrerequisites));
         }
         if (flags.HasFlag(RecipeFlags.HasResearchTriggerMineEntity)) {
             // If we have a mining mechanic, use that as the source; otherwise just use the entity.
             var sources = triggerEntities.Select(e => Database.mechanics.all.SingleOrDefault(m => m.source == e) ?? (FactorioObject)e);
-            lists.Add(new(sources, DependencyList.Flags.Source));
+            nodes.Add((sources, DependencyNode.Flags.Source));
         }
         if (flags.HasFlag(RecipeFlags.HasResearchTriggerBuildEntity)) {
-            lists.Add(new(triggerEntities, DependencyList.Flags.Source));
+            nodes.Add((triggerEntities, DependencyNode.Flags.Source));
         }
         if (flags.HasFlag(RecipeFlags.HasResearchTriggerCreateSpacePlatform)) {
             var items = Database.items.all.Where(i => i.factorioType == "space-platform-starter-pack");
-            lists.Add(new([.. items.Select(i => Database.objectsByTypeName["Mechanics.launch." + i.name])], DependencyList.Flags.Source));
+            nodes.Add((items.Select(i => Database.objectsByTypeName["Mechanics.launch." + i.name]), DependencyNode.Flags.Source));
         }
         if (flags.HasFlag(RecipeFlags.HasResearchTriggerSendToOrbit)) {
-            lists.Add(new([Database.objectsByTypeName["Mechanics.launch." + triggerItem]], DependencyList.Flags.Source));
+            nodes.Add(([Database.objectsByTypeName["Mechanics.launch." + triggerItem]], DependencyNode.Flags.Source));
         }
 
         if (hidden && !enabled) {
-            lists.Add(new(Array.Empty<FactorioId>(), DependencyList.Flags.Hidden));
+            nodes.Add(([], DependencyNode.Flags.Hidden));
         }
-        return lists;
+        return nodes;
     }
 }
 

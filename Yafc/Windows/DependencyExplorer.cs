@@ -14,19 +14,19 @@ public class DependencyExplorer : PseudoScreen {
     private readonly List<FactorioObject> history = [];
     private FactorioObject current;
 
-    private static readonly Dictionary<DependencyList.Flags, (string name, string missingText)> dependencyListTexts = new Dictionary<DependencyList.Flags, (string, string)>()
+    private static readonly Dictionary<DependencyNode.Flags, (string name, string missingText)> dependencyListTexts = new Dictionary<DependencyNode.Flags, (string, string)>()
     {
-        {DependencyList.Flags.Fuel, ("Fuel", "There is no fuel to power this entity")},
-        {DependencyList.Flags.Ingredient, ("Ingredient", "There are no ingredients to this recipe")},
-        {DependencyList.Flags.IngredientVariant, ("Ingredient", "There are no ingredient variants for this recipe")},
-        {DependencyList.Flags.CraftingEntity, ("Crafter", "There are no crafters that can craft this item")},
-        {DependencyList.Flags.Source, ("Source", "This item have no sources")},
-        {DependencyList.Flags.TechnologyUnlock, ("Research", "This recipe is disabled and there are no technologies to unlock it")},
-        {DependencyList.Flags.TechnologyPrerequisites, ("Research", "There are no technology prerequisites")},
-        {DependencyList.Flags.ItemToPlace, ("Item", "This entity cannot be placed")},
-        {DependencyList.Flags.SourceEntity, ("Source", "This recipe requires another entity")},
-        {DependencyList.Flags.Hidden, ("", "This technology is hidden")},
-        {DependencyList.Flags.Location, ("Location", "There are no locations that spawn this entity")},
+        {DependencyNode.Flags.Fuel, ("Fuel", "There is no fuel to power this entity")},
+        {DependencyNode.Flags.Ingredient, ("Ingredient", "There are no ingredients to this recipe")},
+        {DependencyNode.Flags.IngredientVariant, ("Ingredient", "There are no ingredient variants for this recipe")},
+        {DependencyNode.Flags.CraftingEntity, ("Crafter", "There are no crafters that can craft this item")},
+        {DependencyNode.Flags.Source, ("Source", "This item have no sources")},
+        {DependencyNode.Flags.TechnologyUnlock, ("Research", "This recipe is disabled and there are no technologies to unlock it")},
+        {DependencyNode.Flags.TechnologyPrerequisites, ("Research", "There are no technology prerequisites")},
+        {DependencyNode.Flags.ItemToPlace, ("Item", "This entity cannot be placed")},
+        {DependencyNode.Flags.SourceEntity, ("Source", "This recipe requires another entity")},
+        {DependencyNode.Flags.Hidden, ("", "This technology is hidden")},
+        {DependencyNode.Flags.Location, ("Location", "There are no locations that spawn this entity")},
     };
 
     public DependencyExplorer(FactorioObject current) : base(60f) {
@@ -52,17 +52,17 @@ public class DependencyExplorer : PseudoScreen {
     private void DrawDependencies(ImGui gui) {
         gui.spacing = 0f;
 
-        Dependencies.dependencyList[current].Draw(gui, (gui, data) => {
-            if (!dependencyListTexts.TryGetValue(data.flags, out var dependencyType)) {
-                dependencyType = (data.flags.ToString(), "Missing " + data.flags);
+        Dependencies.dependencyList[current].Draw(gui, (gui, elements, flags) => {
+            if (!dependencyListTexts.TryGetValue(flags, out var dependencyType)) {
+                dependencyType = (flags.ToString(), "Missing " + flags);
             }
 
-            if (data.elements.Length > 0) {
+            if (elements.Count > 0) {
                 gui.AllocateSpacing(0.5f);
-                if (data.elements.Length == 1) {
+                if (elements.Count == 1) {
                     gui.BuildText("Require this " + dependencyType.name + ":");
                 }
-                else if (data.flags.HasFlags(DependencyList.Flags.RequireEverything)) {
+                else if (flags.HasFlags(DependencyNode.Flags.RequireEverything)) {
                     gui.BuildText("Require ALL of these " + dependencyType.name + "s:");
                 }
                 else {
@@ -70,7 +70,7 @@ public class DependencyExplorer : PseudoScreen {
                 }
 
                 gui.AllocateSpacing(0.5f);
-                foreach (var id in data.elements.OrderByDescending(x => CostAnalysis.Instance.flow[x])) {
+                foreach (var id in elements.OrderByDescending(x => CostAnalysis.Instance.flow[x])) {
                     DrawFactorioObject(gui, id);
                 }
             }
