@@ -540,79 +540,69 @@ public class Entity : FactorioObject {
     internal Lazy<Entity?>? getSpoilResult;
 
     public sealed override DependencyNode GetDependencies() {
-        List<DependencyNode> collector = [];
-        if (energy != null) {
-            collector.Add(new DependencyList(energy.fuels, DependencyList.Flags.Fuel));
-        }
+        // All entities require at least one source. Some also require fuel.
+        // Implemented sources are:
+        // - map gen location (e.g. spawners, ores, asteroids)
+        // - itemsToPlace (TODO: requires valid location, possibly not the same as map gen location)
+        // - asteroid death
+        // - entity capture (e.g. captured spawners)
+        // Unimplemented sources include:
+        // - entity spawn (e.g. biters from spawners)
+        // - item spoilage (e.g. egg spoilage)
+        // - most projectile effects (e.g. strafer pentapod projectiles)
+        // - entity death (e.g. spawner reversion, explosions, corpses)
+
+        List<DependencyNode> sources = [];
+
         if (mapGenerated) {
-            if (itemsToPlace.Length != 0) {
-                collector.Add(DependencyNode.RequireAny(
-                    new DependencyList(spawnLocations, DependencyList.Flags.Location),
-                    new DependencyList(itemsToPlace, DependencyList.Flags.ItemToPlace)));
-            }
-            else {
-                collector.Add(new DependencyList(spawnLocations, DependencyList.Flags.Location));
-            }
+            sources.Add(new DependencyList(spawnLocations, DependencyList.Flags.Location));
         }
-
-        if (sourceEntities.Count > 0) {
-            // Asteroid chunks require locations OR bigger-asteroid
-            collector.Add(new DependencyList(sourceEntities, DependencyList.Flags.Source));
-            return DependencyNode.RequireAny(collector);
-        }
-
-        if (captureAmmo.Count == 0) {
-            if (!mapGenerated) {
-                collector.Add(new DependencyList(itemsToPlace, DependencyList.Flags.ItemToPlace));
-            }
-
-            return DependencyNode.RequireAll(collector);
-        }
-
-        // Captive spawners require fuel AND (placement-items OR (spawners AND capture-ammo))
-
-        // Find the (ammo, [.. spawner]) pairs that can create this, grouped by ammo.
-        List<(Ammo ammo, List<EntitySpawner> spawners)> sourceSpawners = [];
-        foreach (Ammo ammo in captureAmmo) {
-            List<EntitySpawner> sources;
-            if (ammo.targetFilter == null) {
-                sources = Database.objects.all.OfType<EntitySpawner>().Where(s => s.capturedEntityName == name).ToList();
-            }
-            else {
-                sources = ammo.targetFilter.Select(t => Database.objectsByTypeName["Entity." + t] as EntitySpawner)
-                    .Where(s => s!.capturedEntityName == name).ToList()!;
-            }
-            sourceSpawners.Add((ammo, sources));
-        }
-
-        // group the ammo by spawner list, to make ([.. ammo], [.. spawner]) pairs.
-        var groups = sourceSpawners.GroupBy(s => s.spawners, new ListComparer()).Select(g => (g.Select(l => l.ammo).ToList(), g.Key)).ToList();
-
-        List<DependencyNode> ammoPlusSpawner = [];
-        foreach ((List<Ammo> ammo, List<EntitySpawner> spawners) in groups) {
-            ammoPlusSpawner.Add(DependencyNode.RequireAll(
-                DependencyNode.Create(new(ammo, DependencyList.Flags.Source)),
-                DependencyNode.Create(new(spawners, DependencyList.Flags.Source))
-            ));
-        }
-
-        // The non-fuel requirements
-        List<DependencyNode> nonFuel = [];
         if (itemsToPlace.Length > 0) {
-            nonFuel.Add(DependencyNode.Create(new(itemsToPlace, DependencyList.Flags.ItemToPlace)));
+            sources.Add(new DependencyList(itemsToPlace, DependencyList.Flags.Source));
         }
-        if (ammoPlusSpawner.Count > 0) {
-            nonFuel.Add(DependencyNode.RequireAny(ammoPlusSpawner));
+        if (sourceEntities.Count > 0) { // Asteroid death
+            sources.Add(new DependencyList(sourceEntities, DependencyList.Flags.Source));
         }
-        if (nonFuel.Count == 0) {
-            nonFuel.Add(DependencyNode.Create(new(Array.Empty<FactorioId>(), DependencyList.Flags.Source)));
+
+        if (captureAmmo.Count > 0) {
+            // Capture sources require spawners and capture-ammo
+
+            // Find the (ammo, [.. spawner]) pairs that can create this, grouped by ammo.
+            List<(Ammo ammo, List<EntitySpawner> spawners)> sourceSpawners = [];
+            foreach (Ammo ammo in captureAmmo) {
+                List<EntitySpawner> spawners;
+                if (ammo.targetFilter == null) {
+                    spawners = Database.objects.all.OfType<EntitySpawner>().Where(s => s.capturedEntityName == name).ToList();
+                }
+                else {
+                    spawners = ammo.targetFilter.Select(t => Database.objectsByTypeName["Entity." + t] as EntitySpawner)
+                        .Where(s => s?.capturedEntityName == name).ToList()!;
+                }
+                sourceSpawners.Add((ammo, spawners));
+            }
+
+            // group the ammo by spawner list, to make ([.. ammo], [.. spawner]) pairs.
+            var groups = sourceSpawners.GroupBy(s => s.spawners, new ListComparer()).Select(g => (g.Select(l => l.ammo), g.Key));
+
+            foreach ((IEnumerable<Ammo> ammo, List<EntitySpawner> spawners) in groups) {
+                sources.Add(DependencyNode.RequireAll(
+                    DependencyNode.Create(new(ammo, DependencyList.Flags.Source)),
+                    DependencyNode.Create(new(spawners, DependencyList.Flags.Source))
+                ));
+            }
+        }
+
+        // If there are no sources, blame it on not having any items that can place the entity.
+        // (Map-generated entities with no locations got a zero-element list in the `if (mapGenerated)` test.)
+        if (sources.Count == 0) {
+            sources.Add(new DependencyList(Array.Empty<FactorioId>(), DependencyList.Flags.ItemToPlace));
         }
 
         if (energy != null) {
-            return DependencyNode.RequireAll(collector[0] /* fuel */, DependencyNode.RequireAny(nonFuel));
+            return DependencyNode.RequireAll(new DependencyList(energy.fuels, DependencyList.Flags.Fuel), DependencyNode.RequireAny(sources));
         }
         else { // Doesn't require fuel
-            return DependencyNode.RequireAny(nonFuel);
+            return DependencyNode.RequireAny(sources);
         }
     }
 
