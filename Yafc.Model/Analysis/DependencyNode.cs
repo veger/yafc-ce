@@ -141,7 +141,17 @@ public abstract class DependencyNode {
 
         internal override IEnumerable<FactorioId> Flatten() => dependencies.SelectMany(d => d.Flatten());
 
-        internal override bool IsAccessible(Func<FactorioId, bool> isAccessible) => dependencies.All(d => d.IsAccessible(isAccessible));
+        internal override bool IsAccessible(Func<FactorioId, bool> isAccessible) {
+            // Use foreach instead of dependencies.All(d => d.IsAccessible(isAccessible)) to reduce allocations and increase speed.
+            // Unlike ListNode, switching to for here did not significantly improve speed.
+            foreach (DependencyNode item in dependencies) {
+                if (!item.IsAccessible(isAccessible)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
         internal override Bits AggregateBits(Func<FactorioId, Bits> getBits) {
             Bits result = default;
             foreach (DependencyNode item in dependencies) {
@@ -236,15 +246,27 @@ public abstract class DependencyNode {
         internal override IEnumerable<FactorioId> Flatten() => elements;
 
         internal override bool IsAccessible(Func<FactorioId, bool> isAccessible) {
-            if (flags.HasFlag(Flags.RequireEverything)) {
-                return elements.All(isAccessible);
+            // Use for instead of foreach or elements.All(isAccessible) to reduce allocations and increase speed.
+            if (flags.HasFlags(Flags.RequireEverything)) {
+                for (int i = 0; i < elements.Count; i++) {
+                    if (!isAccessible(elements[i])) {
+                        return false;
+                    }
+                }
+                return true;
             }
-            return elements.Any(isAccessible);
+
+            for (int i = 0; i < elements.Count; i++) {
+                if (isAccessible(elements[i])) {
+                    return true;
+                }
+            }
+            return false;
         }
 
         internal override Bits AggregateBits(Func<FactorioId, Bits> getBits) {
             Bits bits = new();
-            if (flags.HasFlag(Flags.RequireEverything)) {
+            if (flags.HasFlags(Flags.RequireEverything)) {
                 foreach (FactorioId item in elements) {
                     bits |= getBits(item);
                 }
