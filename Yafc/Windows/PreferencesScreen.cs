@@ -9,7 +9,9 @@ namespace Yafc;
 public class PreferencesScreen : PseudoScreen {
     private static readonly PreferencesScreen Instance = new PreferencesScreen();
     private const int GENERAL_PAGE = 0, PROGRESSION_PAGE = 1;
-    private readonly TabControl tabControl = new(("General", DrawGeneral), ("Progression", DrawProgression));
+    private readonly TabControl tabControl;
+
+    private PreferencesScreen() => tabControl = new(("General", DrawGeneral), ("Progression", DrawProgression));
 
     public override void Build(ImGui gui) {
         BuildHeader(gui, "Preferences");
@@ -29,7 +31,9 @@ public class PreferencesScreen : PseudoScreen {
         }
     }
 
-    private static void DrawProgression(ImGui gui) {
+    private static VirtualScrollList<Technology>? technologyList;
+
+    private void DrawProgression(ImGui gui) {
         ProjectPreferences preferences = Project.current.preferences;
 
         ChooseObject(gui, "Default belt:", Database.allBelts, preferences.defaultBelt, s => {
@@ -75,17 +79,29 @@ public class PreferencesScreen : PseudoScreen {
             }
         }
 
-        IEnumerable<Technology> productivityTech = Database.technologies.all
-            .Where(x => x.changeRecipeProductivity.Count != 0)
-            .OrderBy(x => x.locName);
-        foreach (var tech in productivityTech) {
-            using (gui.EnterRow()) {
-                gui.BuildFactorioObjectButton(tech, ButtonDisplayStyle.Default);
-                gui.BuildText($"{tech.locName} Level: ", topOffset: 0.5f);
-                int currentLevel = Project.current.settings.productivityTechnologyLevels.GetValueOrDefault(tech, 0);
-                if (gui.BuildIntegerInput(currentLevel, out int newLevel) && newLevel >= 0) {
-                    Project.current.settings.RecordUndo().productivityTechnologyLevels[tech] = newLevel;
-                }
+        int count = technologyList?.data.Count ?? Database.technologies.all.Count(x => x.changeRecipeProductivity.Count != 0);
+        float height = tabControl.GetRemainingContentHeight(Math.Min(count, 6) * 2.75f + 0.25f);
+        if (technologyList?.height != height) {
+            technologyList = new(height, new(gui.layoutRect.Width, 2.75f), DrawTechnology) {
+                data = [.. Database.technologies.all
+                    .Where(x => x.changeRecipeProductivity.Count != 0)
+                    .OrderBy(x => x.locName)]
+            };
+        }
+
+        technologyList.Build(gui);
+        technologyList.RebuildContents();
+    }
+
+    private void DrawTechnology(ImGui gui, Technology tech, int _) {
+        using (gui.EnterGroup(new(0, .25f, 0, .75f)))
+        using (gui.EnterRow()) {
+            gui.allocator = RectAllocator.LeftRow;
+            gui.BuildFactorioObjectButton(tech, ButtonDisplayStyle.Default);
+            gui.BuildText($"{tech.locName} Level: ");
+            int currentLevel = Project.current.settings.productivityTechnologyLevels.GetValueOrDefault(tech, 0);
+            if (gui.BuildIntegerInput(currentLevel, out int newLevel) && newLevel >= 0) {
+                Project.current.settings.RecordUndo().productivityTechnologyLevels[tech] = newLevel;
             }
         }
     }

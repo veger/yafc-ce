@@ -229,7 +229,7 @@ public static class ImGuiUtils {
             gui.BuildText(text, TextBlockDisplayStyle.Default(color));
         }
 
-        if (gui.OnClick(gui.lastRect)) {
+        if (gui.enableDrawing && gui.OnClick(gui.lastRect)) {
             newValue = !value;
             return true;
         }

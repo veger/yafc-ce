@@ -27,6 +27,10 @@ public abstract class Scrollable(bool vertical, bool horizontal, bool collapsibl
     /// <param name="availableHeight">Available height in parent context for the Scrollable</param>
     public void Build(ImGui gui, float availableHeight, bool useBottomPadding = false) {
         this.gui = gui;
+        if (!gui.enableDrawing) {
+            return;
+        }
+
         var rect = gui.statePosition;
         float width = rect.Width;
 
@@ -151,6 +155,10 @@ public abstract class Scrollable(bool vertical, bool horizontal, bool collapsibl
     public abstract Vector2 MeasureContent(float width, ImGui gui);
 
     public bool KeyDown(SDL.SDL_Keysym key) {
+        if (gui?.enableDrawing != true) {
+            return false;
+        }
+
         bool ctrl = InputSystem.Instance.control;
         bool shift = InputSystem.Instance.shift;
 
@@ -242,7 +250,8 @@ public abstract class Scrollable(bool vertical, bool horizontal, bool collapsibl
 /// <summary>Provides a builder to the Scrollable to render the contents.</summary>
 public abstract class ScrollAreaBase : Scrollable {
     protected ImGui contents;
-    protected readonly float height;
+    private ImGui.OverlappingAllocations? controller;
+    public float height { get; }
 
     public ScrollAreaBase(float height, Padding padding, bool collapsible = false, bool vertical = true, bool horizontal = false) : base(vertical, horizontal, collapsible) {
         contents = new ImGui(BuildContents, padding, clip: true);
@@ -254,7 +263,12 @@ public abstract class ScrollAreaBase : Scrollable {
         contents.offset = -scroll;
     }
 
-    public void Build(ImGui gui) => Build(gui, height);
+    public void Build(ImGui gui) {
+        controller?.Dispose();
+        // Copy enableDrawing permission from gui to contents.
+        controller = contents.StartOverlappingAllocations(gui.enableDrawing);
+        Build(gui, height);
+    }
 
     protected abstract void BuildContents(ImGui gui);
 
@@ -271,18 +285,17 @@ public class ScrollArea(float height, GuiBuilder builder, Padding padding = defa
     public void Rebuild() => RebuildContents();
 }
 
-public class VirtualScrollList<TData> : ScrollAreaBase {
-    private readonly Vector2 elementSize;
+public class VirtualScrollList<TData>(float height, Vector2 elementSize, VirtualScrollList<TData>.Drawer drawer, Padding padding = default,
+    Action<int, int>? reorder = null, bool collapsible = false) : ScrollAreaBase(height, padding, collapsible) {
+
     // When rendering the scrollable content, render 'blocks' of 4 rows at a time. (As far as I can tell, any positive value works. Shadow picked 4, so I kept that.)
-    private readonly int bufferRows = 4;
+    private const int BufferRows = 4;
     // The first block of bufferRows that was rendered last time BuildContents was called. If it changes while scrolling, we need to re-render the scrollable content.
     private int firstVisibleBlock;
     private int elementsPerRow;
     private IReadOnlyList<TData> _data = [];
-    private readonly int maxRowsVisible;
-    private readonly Drawer drawer;
+    private readonly int maxRowsVisible = MathUtils.Ceil(height / elementSize.Y) + BufferRows + 1;
     private float _spacing;
-    private readonly Action<int, int>? reorder;
 
     public float spacing {
         get => _spacing;
@@ -302,14 +315,7 @@ public class VirtualScrollList<TData> : ScrollAreaBase {
         }
     }
 
-    public VirtualScrollList(float height, Vector2 elementSize, Drawer drawer, Padding padding = default, Action<int, int>? reorder = null, bool collapsible = false) : base(height, padding, collapsible) {
-        this.elementSize = elementSize;
-        maxRowsVisible = MathUtils.Ceil(height / this.elementSize.Y) + bufferRows + 1;
-        this.drawer = drawer;
-        this.reorder = reorder;
-    }
-
-    private int CalculateFirstBlock() => Math.Max(0, MathUtils.Floor((scrollY - contents.initialPadding.top) / (elementSize.Y * bufferRows)));
+    private int CalculateFirstBlock() => Math.Max(0, MathUtils.Floor((scrollY - contents.initialPadding.top) / (elementSize.Y * BufferRows)));
 
     public override Vector2 scroll {
         get => base.scroll;
@@ -333,7 +339,7 @@ public class VirtualScrollList<TData> : ScrollAreaBase {
         int rowCount = ((_data.Count - 1) / elementsPerRow) + 1;
         firstVisibleBlock = CalculateFirstBlock();
         // Scroll up until there are maxRowsVisible, or to the top.
-        int firstRow = Math.Max(0, Math.Min(firstVisibleBlock * bufferRows, rowCount - maxRowsVisible));
+        int firstRow = Math.Max(0, Math.Min(firstVisibleBlock * BufferRows, rowCount - maxRowsVisible));
         int index = firstRow * elementsPerRow;
 
         if (index >= _data.Count) {
