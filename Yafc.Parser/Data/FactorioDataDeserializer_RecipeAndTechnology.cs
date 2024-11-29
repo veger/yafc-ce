@@ -68,8 +68,14 @@ internal partial class FactorioDataDeserializer {
         }
     }
 
-    private void UpdateRecipeIngredientFluids() {
+    private void UpdateRecipeIngredientFluids(ErrorCollector errorCollector) {
         foreach (var recipe in allObjects.OfType<Recipe>()) {
+            if (recipe.ingredients == null || recipe.products == null) {
+                errorCollector.Error($"The recipe '{recipe.name}' is not defined in data.raw[\"recipe\"].", ErrorSeverity.Important);
+                recipe.ingredients = [];
+                recipe.products = [];
+                continue;
+            }
             foreach (var ingredient in recipe.ingredients) {
                 if (ingredient.goods is Fluid fluid && fluid.variants != null) {
                     int min = -1, max = fluid.variants.Count - 1;

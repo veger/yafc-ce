@@ -163,7 +163,7 @@ internal partial class FactorioDataDeserializer {
 
         UpdateSplitFluids();
         var iconRenderTask = renderIcons ? Task.Run(RenderIcons) : Task.CompletedTask;
-        UpdateRecipeIngredientFluids();
+        UpdateRecipeIngredientFluids(errorCollector);
         UpdateRecipeCatalysts();
         CalculateMaps(netProduction);
         ExportBuiltData();
