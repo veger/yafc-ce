@@ -250,14 +250,14 @@ public partial class MainScreen : WindowMain, IKeyboardFocus, IProgress<(string,
             }
 
             gui.allocator = RectAllocator.RightRow;
-            var spaceForDropdown = gui.AllocateRect(2.1f, 2.1f);
-            tabBar.Build(gui);
-
-            gui.DrawIcon(spaceForDropdown.Expand(-0.3f), Icon.DropDown, SchemeColor.BackgroundText);
-            if (gui.BuildButton(spaceForDropdown, SchemeColor.None, SchemeColor.Grey)) {
+            if (gui.BuildButton(Icon.DropDown, SchemeColor.None, SchemeColor.Grey).WithTooltip(gui, "List and search all pages (Ctrl+Shift+" +
+                ImGuiUtils.ScanToString(SDL.SDL_Scancode.SDL_SCANCODE_F) + ")") || showSearchAll) {
+                showSearchAll = false;
                 updatePageList();
-                ShowDropDown(gui, spaceForDropdown, missingPagesDropdown, new Padding(0f, 0f, 0f, 0.5f), 30f);
+                ShowDropDown(gui, gui.lastRect, missingPagesDropdown, new Padding(0f, 0f, 0f, 0.5f), 30f);
             }
+
+            tabBar.Build(gui);
         }
         gui.DrawRectangle(gui.lastRect, SchemeColor.PureBackground);
 
@@ -434,6 +434,8 @@ public partial class MainScreen : WindowMain, IKeyboardFocus, IProgress<(string,
     }
 
     private bool saveConfirmationActive;
+    private bool showSearchAll;
+
     public override bool preventQuit => true;
 
     protected override async void Close() {
@@ -571,24 +573,22 @@ public partial class MainScreen : WindowMain, IKeyboardFocus, IProgress<(string,
                 case SDL.SDL_Scancode.SDL_SCANCODE_S:
                     SaveProject().CaptureException();
                     break;
-                case SDL.SDL_Scancode.SDL_SCANCODE_Z:
-                    if ((key.mod & SDL.SDL_Keymod.KMOD_SHIFT) != 0) {
-                        project.undo.PerformRedo();
-                    }
-                    else {
-                        project.undo.PerformUndo();
-                    }
-
-                    _activePageView?.Rebuild(false);
-                    secondaryPageView?.Rebuild(false);
-                    break;
+                case SDL.SDL_Scancode.SDL_SCANCODE_Z when shift:
                 case SDL.SDL_Scancode.SDL_SCANCODE_Y:
                     project.undo.PerformRedo();
                     _activePageView?.Rebuild(false);
                     secondaryPageView?.Rebuild(false);
                     break;
+                case SDL.SDL_Scancode.SDL_SCANCODE_Z:
+                    project.undo.PerformUndo();
+                    _activePageView?.Rebuild(false);
+                    secondaryPageView?.Rebuild(false);
+                    break;
                 case SDL.SDL_Scancode.SDL_SCANCODE_N:
                     ShowNeie();
+                    break;
+                case SDL.SDL_Scancode.SDL_SCANCODE_F when shift:
+                    showSearchAll = true;
                     break;
                 case SDL.SDL_Scancode.SDL_SCANCODE_F:
                     ShowSearch();
