@@ -43,7 +43,7 @@ We also have the following materials to improve your Yafc experience:
 * [Shortcuts](/Docs/Shortcuts.md) for quality of life.
 
 ## Project features
-- Works with any combination of mods for Factorio 0.17+.
+- Works with any combination of mods for Factorio 2.0+. If you use Factorio 1.1, then the most recent version that supports it is 0.9.1.
 - Multiple pages, the Undo button (Ctrl+Z).
 - Dependency Explorer tool that allows to see which objects are needed for what.
 - Never Enough Items tool that helps to find out how to produce any item, and also which way YAFC thinks is optimal.
