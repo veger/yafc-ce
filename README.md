@@ -22,9 +22,9 @@ Yet Another Factorio Calculator or YAFC is a planner and analyzer. The main goal
 
 YAFC is more than just a calculator. It uses multiple algorithms to understand what is going on in your modpack to the point of calculating the whole late-game base. It knows what items are more important and what recipes are more efficient.
 
-It was created as an answer to deeply recursive Pyanodon recipes, which the tools like Helmod could not handle. YAFC uses Google's [OrTools](https://developers.google.com/optimization) as a model solver to handle them extremely well.
+It was created as an answer to recursive [Pyanodon](https://mods.factorio.com/user/pyanodon) recipes that tools like Helmod could not handle. YAFC uses Google's [OrTools](https://developers.google.com/optimization) as a model solver to handle them extremely well.
 
-Among other things YAFC has Never Enough Items, which is FNEI on steroids. In addition to showing the recipes, it shows which ones you probably want to use, and how much.
+YAFC also has its own Never Enough Items, which is FNEI on steroids. In addition to showing the recipes, it shows which ones you want to use and how much.
 
 ## Getting started
 
@@ -42,28 +42,31 @@ We also have the following materials to improve your Yafc experience:
 * [Tips and Tricks](/Docs/TipsAndTricks.md) and the [in-built tips](https://github.com/shpaass/yafc-ce/blob/master/Yafc/Data/Tips.txt) for useful info.
 * [Shortcuts](/Docs/Shortcuts.md) for quality of life.
 
+If you want to build Yafc from source, you need to install [.NET 8](https://dotnet.microsoft.com/en-us/download/dotnet/8.0).  
+You can run `build.sh` with [Git Bash](https://git-scm.com/downloads) to build for all systems, or just a single line from it that contains `dotnet publish` to build for your system.
+
 ## Project features
-- Works with any combination of mods for Factorio 2.0+. If you use Factorio 1.1, then the most recent version that supports it is 0.9.1.
+- Works with any combination of mods for Factorio 2.0+. The most recent version that supports Factorio 1.1 is 0.9.1.
 - Multiple pages, the Undo button (Ctrl+Z).
-- Dependency Explorer tool that allows to see which objects are needed for what.
-- Never Enough Items tool that helps to find out how to produce any item, and also which way YAFC thinks is optimal.
+- Dependency Explorer that allows to see which objects are needed for what.
+- Never Enough Items that helps to find out how to produce any item, and which option YAFC considers optimal.
 - Main calculator sheet:
     - Links: YAFC will try to balance production/consumption only for linked goods. Unlinked goods are calculated but not balanced. It is a core difference from Helmod, which attempts to balance everything and breaks on deeply recursive recipes.
-    - Nested sheets: You can attach a nested sheet to any recipe. When a sheet is collapsed, you will see a summary for all recipes in it. Nested sheets have their own set of links. For example, you can create a nested sheet for electronic circuits, and put copper cables inside that sheet. If you add an internal link for copper cables, it will be separate, so you can calculate copper cables just for electronic circuits.
-    - Auto modules: You can add modules to recipes by using a single slider. Based on your milestones, it will automatically add modules you have access to. It will prioritize putting modules into buildings that benefit the most from them. <details><summary>Expand to see it in action</summary><IMG src="/Docs/Media/AutoModules.gif"  alt="AutoModules.gif"/></details>
-    - Fluid temperatures, although without mixing them, allow to calculate energy generation.
-    - Fuel, including electricity. You can even add energy generation exactly enough for your sheet. However, inserters are not included.
+    - Nested tables: You can attach a nested table to any recipe. When a table is collapsed, you will see a summary for all recipes in it. Nested tables have their own set of links. For example, if a nested table has copper cables that are linked inside, then these cables will be calculated only inside the nested table.
+    - Auto modules: You can add modules to recipes by using a single slider. It will add modules based on your milestones and will prioritize modules in buildings that benefit most. <details><summary>Expand to see it in action</summary><IMG src="/Docs/Media/AutoModules.gif"  alt="AutoModules.gif"/></details>
+    - Fluid temperatures, without mixing.
+    - Fuel and electricity. You can even add exactly enough energy for your sheet. However, inserters are not included.
 - Multiple analyses:
-    - Accessibility analysis: Shows inaccessible objects. Mods often hide objects, and Factorio has a bunch of hidden ones too. However, it is impossible to find objects that are spawned by mods or map scripts. This analysis may fail for modpacks like Seablock, but you can mark some objects as accessible manually.
+    - Accessibility analysis shows inaccessible objects. Mods often hide objects, and Factorio has a bunch of hidden ones too. However, it is impossible to find objects that are spawned by mods or map scripts. This analysis may fail for modpacks like Seablock, but you can mark some objects as accessible manually.
     - Milestone analysis: You can add anything as a milestone. YAFC will display that milestone icon on every object that is locked behind it, directly or indirectly. Science packs are natural milestones, and so they are added by default.
-    - Automation analysis: YAFC tries to find objects that can be fully automated. For example, wood in a vanilla game cannot be fully automated because it requires to cut trees.
-    - Cost analysis: YAFC assigns a cost to each object. The cost is a sum of logistic actions you need to perform to get that object, using the most optimal recipes. YAFC cost is very useful to quickly compare items and recipes. This cost also helps to find which recipes are suboptimal.
-    - Flow analysis: YAFC calculates a base that produces enough science packs for all non-infinite research. It knows how much of everything you will probably need.
+    - Automation analysis finds objects that cannot be fully automated. For example, wood in a vanilla.
+    - Cost analysis assigns a cost to each object. The cost is a sum of logistic actions you need to perform to get that object when using optimal recipes. It helps to compare which recipe is better.
+    - Flow analysis calculates a base that produces enough science packs for all non-infinite research.
 - Load projects from the [command line](/Docs/CLI.md).
 
 ## Possible incompatibilities
 
-YAFC loads mods in an environment that is not completely compatible with Factorio. If you notice any bugs, please report them in the [issues](https://github.com/have-fun-was-taken/yafc-ce/issues).
+YAFC loads mods in environment that is not completely compatible with Factorio. If you notice any bugs, please report them in the [issues](https://github.com/have-fun-was-taken/yafc-ce/issues).
 
 > I am playing Seablock / Other "scripted progression" mod, and YAFC thinks that items are inaccessible
 
