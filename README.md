@@ -74,6 +74,8 @@ No ultimate solution to this has been found, but you can open Dependency Explore
 
 For Seablock specifically, please check [this](https://github.com/ShadowTheAge/yafc/issues/31) issue that contains a small list of things to enable at first.
 
+For PyHM, enable copper-mining.
+
 For mod authors: You can detect YAFC by checking the `data.data_crawler` variable during the data stage. It will be equal to `yafc a.b.c.d` where `a.b.c.d` is yafc version. For instance, `yafc 0.5.4.0`.
 	
 
