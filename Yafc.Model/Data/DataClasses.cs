@@ -175,6 +175,7 @@ public enum FactorioObjectSpecialType {
     Stacking,
     Pressurization,
     Crating,
+    Recycling,
 }
 
 public class Recipe : RecipeOrTechnology {
