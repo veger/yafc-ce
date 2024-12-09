@@ -1,7 +1,9 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading.Tasks;
 using Serilog;
 using Yafc.UI;
 
@@ -110,7 +112,7 @@ public class Milestones : Analysis {
         }
 
         Stopwatch time = Stopwatch.StartNew();
-        Dictionary<FactorioId, HashSet<FactorioObject>> accessibility = [];
+        ConcurrentDictionary<FactorioId, bool[]> accessibility = [];
         const FactorioId noObject = (FactorioId)(-1);
 
         List<FactorioObject> sortedMilestones = [];
@@ -121,47 +123,17 @@ public class Milestones : Analysis {
             }
         }
 
-        foreach (FactorioObject? milestone in milestones.Prepend(null)) {
-            logger.Information("Processing milestone {Milestone}", milestone?.locName);
-            // Queue the known-accessible items for graph walking, and mark them accessible without the current milestone.
-            Queue<FactorioObject> processingQueue = new(Database.rootAccessible);
-            foreach ((FactorioObject obj, ProjectPerItemFlags flag) in project.settings.itemFlags) {
-                if (flag.HasFlags(ProjectPerItemFlags.MarkedAccessible)) {
-                    processingQueue.Enqueue(obj);
-                }
-            }
-            HashSet<FactorioObject> accessibleWithoutMilestone = accessibility[milestone?.id ?? noObject] = new(processingQueue);
+        // Walk the accessibility graph to find accessible items. The first walk is for basic accessibility and milestone sorting.
+        logger.Information("Processing object accessibility");
+        accessibility[noObject] = WalkAccessibilityGraph(project, markedInaccessible, milestones, sortedMilestones);
 
-            // Walk the dependency graph to find accessible items. The first walk, when milestone == null, is for basic accessibility.
-            // The rest of the walks prune the graph at the selected milestone and are for milestone flags.
-            while (processingQueue.TryDequeue(out FactorioObject? node)) {
-                if (node == milestone || markedInaccessible.Contains(node)) {
-                    // We're looking for things that can be accessed without this milestone, or the user flagged this as inaccessible.
-                    continue;
-                }
-
-                bool accessible = true;
-                if (!accessibleWithoutMilestone.Contains(node)) {
-                    // This object is accessible if all its parents are accessible.
-                    accessible = Dependencies.dependencyList[node].IsAccessible(e => accessibleWithoutMilestone.Contains(Database.objects[e]));
-                }
-
-                if (accessible) {
-                    accessibleWithoutMilestone.Add(node);
-                    if (milestones.Contains(node) && !sortedMilestones.Contains(node)) {
-                        // Sort milestones in the order we unlock them in the accessibility walk.
-                        sortedMilestones.Add(node);
-                    }
-
-                    // Recheck this objects children, if necessary.
-                    foreach (FactorioObject child in Dependencies.reverseDependencies[node].Select(id => Database.objects[id])) {
-                        if (!accessibleWithoutMilestone.Contains(child) && !processingQueue.Contains(child)) {
-                            processingQueue.Enqueue(child);
-                        }
-                    }
-                }
-            }
-        }
+        // The rest of the walks prune the graph at the selected milestone, for computing milestone flags.
+        // Do these in parallel; the only write operation for these is setting the dictionary value at the end.
+        Parallel.ForEach(milestones, milestone => {
+            logger.Information("Processing milestone {Milestone}", milestone.locName);
+            HashSet<FactorioObject> pruneAt = new(markedInaccessible.Append(milestone));
+            accessibility[milestone.id] = WalkAccessibilityGraph(project, pruneAt, [], null);
+        });
 
         // Apply the milestone sort results, if requested.
         if (autoSort) {
@@ -174,12 +146,12 @@ public class Milestones : Analysis {
 
         // Turn the walk results into milestone bitmasks.
         Mapping<FactorioObject, Bits> result = Database.objects.CreateMapping<Bits>();
-        foreach (FactorioObject obj in accessibility[noObject]) {
+        foreach (FactorioObject obj in Database.objects.all.Where(o => accessibility[noObject][(int)o.id])) {
             Bits bits = new(true);
 
             for (int i = 0; i < currentMilestones.Length; i++) {
                 FactorioObject milestone = currentMilestones[i];
-                if (!accessibility[milestone.id].Contains(obj)) {
+                if (!accessibility[milestone.id][(int)obj.id]) {
                     bits[i + 1] = true;
                 }
             }
@@ -187,7 +159,7 @@ public class Milestones : Analysis {
         }
 
         // Predict the milestone mask for inaccessible items by OR-ing the masks for their parents.
-        Queue<FactorioObject> inaccessibleQueue = new(Database.objects.all.Except(accessibility[noObject]));
+        Queue<FactorioObject> inaccessibleQueue = new(Database.objects.all.Where(o => !accessibility[noObject][(int)o.id]));
         while (inaccessibleQueue.TryDequeue(out FactorioObject? inaccessible)) {
             Bits milestoneBits = Dependencies.dependencyList[inaccessible].AggregateBits(id => result[id]);
 
@@ -212,7 +184,7 @@ public class Milestones : Analysis {
         }
         GetLockedMaskFromProject();
 
-        int accessibleObjects = accessibility[noObject].Count;
+        int accessibleObjects = accessibility[noObject].Count(x => x);
         bool hasAutomatableRocketLaunch = result[Database.objectsByTypeName["Special.launch"]] != 0;
         List<FactorioObject> milestonesNotReachable = [.. milestones.Except(sortedMilestones)];
         if (accessibleObjects < Database.objects.count / 2) {
@@ -230,6 +202,62 @@ public class Milestones : Analysis {
 
         logger.Information("Milestones calculation finished in {ElapsedTime}ms.", time.ElapsedMilliseconds);
         milestoneResult = result;
+    }
+
+    /// <summary>
+    /// Walks the accessibility graph, refusing to traverse the specified nodes, and determines what objects are accessible. If requested, also
+    /// adds objects from <paramref name="milestones"/> to <paramref name="sortedMilestones"/>, based on the order they were encountered.
+    /// </summary>
+    /// <param name="project">The project to be analyzed, for reading <see cref="ProjectPerItemFlags.MarkedAccessible"/>.</param>
+    /// <param name="pruneAt">The nodes that should be ignored when walking the graph.</param>
+    /// <param name="milestones">The milestones to sort, or an empty array if milestone sorting is not desired.</param>
+    /// <param name="sortedMilestones">A list that will receive the milestones in the order they were encountered. Must not be
+    /// <see langword="null"/> if <paramref name="milestones"/> is not empty.
+    /// </param>
+    /// <returns>An array of bools, where the true values correspond to the <see cref="FactorioId"/>s of objects that can be accessed without
+    /// any of the nodes in <paramref name="pruneAt"/>.</returns>
+    private static bool[] WalkAccessibilityGraph(Project project, HashSet<FactorioObject> pruneAt, FactorioObject[] milestones,
+        List<FactorioObject>? sortedMilestones) {
+
+        if (milestones.Length != 0) {
+            ArgumentNullException.ThrowIfNull(sortedMilestones);
+        }
+
+        // Queue the known-accessible items for graph walking.
+        Queue<FactorioId> accessibleQueue = new(Database.rootAccessible.Except(pruneAt).Select(o => o.id));
+        foreach ((FactorioObject obj, ProjectPerItemFlags flag) in project.settings.itemFlags) {
+            if (flag.HasFlags(ProjectPerItemFlags.MarkedAccessible)) {
+                accessibleQueue.Enqueue(obj.id);
+            }
+        }
+        bool[] accessibleWithoutPruning = new bool[Database.objects.count];
+        foreach (FactorioId item in accessibleQueue) {
+            accessibleWithoutPruning[(int)item] = true;
+        }
+        bool[] prune = new bool[Database.objects.count];
+        foreach (FactorioObject item in pruneAt) {
+            prune[(int)item.id] = true;
+        }
+
+        while (accessibleQueue.TryDequeue(out FactorioId node)) {
+            // null-forgiving: sortedMilestones is not null when milestones is not empty.
+            if (milestones.Contains(Database.objects[node]) && !sortedMilestones!.Contains(Database.objects[node])) {
+                // Sort milestones in the order we unlock them in the accessibility walk.
+                sortedMilestones.Add(Database.objects[node]);
+            }
+
+            // Mark and queue this object's newly-accessible children.
+            foreach (FactorioId child in Dependencies.reverseDependencies[node]) {
+                if (!accessibleWithoutPruning[(int)child] && !prune[(int)child]
+                    && Dependencies.dependencyList[child].IsAccessible(x => accessibleWithoutPruning[(int)x])) {
+
+                    accessibleWithoutPruning[(int)child] = true;
+                    accessibleQueue.Enqueue(child);
+                }
+            }
+        }
+
+        return accessibleWithoutPruning;
     }
 
     private const string MaybeBug = " or it might be due to a bug inside a mod or YAFC.";

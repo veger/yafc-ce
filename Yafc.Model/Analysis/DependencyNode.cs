@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 using System.Numerics;
 using Yafc.UI;
@@ -14,43 +15,51 @@ namespace Yafc.Model;
 /// This represents one node in a dependency tree, which may be the root node of the tree or the child of another node.
 /// </summary>
 public abstract class DependencyNode {
+    [Flags]
+    public enum Flags {
+        RequireEverything = 0x100,
+        OneTimeInvestment = 0x200,
+
+        Ingredient = 1 | RequireEverything,
+        CraftingEntity = 2 | OneTimeInvestment,
+        SourceEntity = 3 | OneTimeInvestment,
+        TechnologyUnlock = 4 | OneTimeInvestment,
+        Source = 5,
+        Fuel = 6,
+        ItemToPlace = 7,
+        TechnologyPrerequisites = 8 | RequireEverything | OneTimeInvestment,
+        IngredientVariant = 9,
+        Hidden = 10,
+        Location = 11 | OneTimeInvestment,
+    }
+
     private DependencyNode() { } // All derived classes should be nested classes
 
     /// <summary>
-    /// Creates a <see cref="DependencyNode"/> from a <see cref="DependencyList"/>. <paramref name="dependencies"/> contains the require-any/-all
+    /// Creates a <see cref="DependencyNode"/> from a list of dependencies. <paramref name="flags"/> contains the require-any/-all
     /// behavior and information about how the dependencies should be described. (e.g. "Crafter", "Ingredient", etc.)
     /// </summary>
-    public static DependencyNode Create(DependencyList dependencies) => new ListNode(dependencies);
+    public static DependencyNode Create(IEnumerable<FactorioObject> elements, Flags flags) => new ListNode(elements, flags);
 
     /// <summary>
     /// Creates a <see cref="DependencyNode"/> that is satisfied if all of its child nodes are satisfied.
-    /// This matches the old behavior for <see cref="DependencyList"/>[].
-    /// </summary>
-    public static DependencyNode RequireAll(IEnumerable<DependencyList> dependencies) => AndNode.Create(dependencies.Select(Create));
-    /// <summary>
-    /// Creates a <see cref="DependencyNode"/> that is satisfied if all of its child nodes are satisfied.
-    /// This matches the old behavior for <see cref="DependencyList"/>[].
+    /// This matches the old behavior for a legacy DependencyList[].
     /// </summary>
     public static DependencyNode RequireAll(IEnumerable<DependencyNode> dependencies) => AndNode.Create(dependencies);
     /// <summary>
     /// Creates a <see cref="DependencyNode"/> that is satisfied if all of its child nodes are satisfied.
-    /// This matches the old behavior for <see cref="DependencyList"/>[].
+    /// This matches the old behavior for a legacy DependencyList[].
     /// </summary>
     public static DependencyNode RequireAll(params DependencyNode[] dependencies) => AndNode.Create(dependencies);
 
     /// <summary>
     /// Creates a <see cref="DependencyNode"/> that is satisfied if any of its child nodes are satisfied. This behavior was only accessible
-    /// within a single <see cref="DependencyList"/>, by not setting <see cref="DependencyList.Flags.RequireEverything"/>.
-    /// </summary>
-    public static DependencyNode RequireAny(IEnumerable<DependencyList> dependencies) => OrNode.Create(dependencies.Select(Create));
-    /// <summary>
-    /// Creates a <see cref="DependencyNode"/> that is satisfied if any of its child nodes are satisfied. This behavior was only accessible
-    /// within a single <see cref="DependencyList"/>, by not setting <see cref="DependencyList.Flags.RequireEverything"/>.
+    /// within a single legacy DependencyList, by not setting <see cref="Flags.RequireEverything"/>.
     /// </summary>
     public static DependencyNode RequireAny(params DependencyNode[] dependencies) => OrNode.Create(dependencies);
     /// <summary>
     /// Creates a <see cref="DependencyNode"/> that is satisfied if any of its child nodes are satisfied. This behavior was only accessible
-    /// within a single <see cref="DependencyList"/>, by not setting <see cref="DependencyList.Flags.RequireEverything"/>.
+    /// within a single legacy DependencyList, by not setting <see cref="Flags.RequireEverything"/>.
     /// </summary>
     public static DependencyNode RequireAny(IEnumerable<DependencyNode> dependencies) => OrNode.Create(dependencies);
 
@@ -92,8 +101,8 @@ public abstract class DependencyNode {
     /// Instructs this dependency tree to draw itself on the specified <see cref="ImGui"/>.
     /// </summary>
     /// <param name="gui">The drawing destination.</param>
-    /// <param name="builder">A delegate that will draw the passed <see cref="DependencyList"/> onto the passed <see cref="ImGui"/>.</param>
-    public abstract void Draw(ImGui gui, Action<ImGui, DependencyList> builder);
+    /// <param name="builder">A delegate that will draw the passed dependency information onto the passed <see cref="ImGui"/>.</param>
+    public abstract void Draw(ImGui gui, Action<ImGui, IReadOnlyList<FactorioId>, Flags> builder);
 
     /// <summary>
     /// A <see cref="DependencyNode"/> that requires all of its children.
@@ -132,7 +141,17 @@ public abstract class DependencyNode {
 
         internal override IEnumerable<FactorioId> Flatten() => dependencies.SelectMany(d => d.Flatten());
 
-        internal override bool IsAccessible(Func<FactorioId, bool> isAccessible) => dependencies.All(d => d.IsAccessible(isAccessible));
+        internal override bool IsAccessible(Func<FactorioId, bool> isAccessible) {
+            // Use foreach instead of dependencies.All(d => d.IsAccessible(isAccessible)) to reduce allocations and increase speed.
+            // Unlike ListNode, switching to for here did not significantly improve speed.
+            foreach (DependencyNode item in dependencies) {
+                if (!item.IsAccessible(isAccessible)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
         internal override Bits AggregateBits(Func<FactorioId, Bits> getBits) {
             Bits result = default;
             foreach (DependencyNode item in dependencies) {
@@ -143,7 +162,7 @@ public abstract class DependencyNode {
         internal override AutomationStatus IsAutomatable(Func<FactorioId, AutomationStatus> isAutomatable, AutomationStatus automationState)
             => dependencies.Min(d => d.IsAutomatable(isAutomatable, automationState));
 
-        public override void Draw(ImGui gui, Action<ImGui, DependencyList> builder) {
+        public override void Draw(ImGui gui, Action<ImGui, IReadOnlyList<FactorioId>, Flags> builder) {
             bool previousChildWasOr = false;
             foreach (DependencyNode dependency in dependencies) {
                 if (dependency is OrNode && previousChildWasOr) {
@@ -198,7 +217,7 @@ public abstract class DependencyNode {
         internal override AutomationStatus IsAutomatable(Func<FactorioId, AutomationStatus> isAutomatable, AutomationStatus automationState)
             => dependencies.Max(d => d.IsAutomatable(isAutomatable, automationState));
 
-        public override void Draw(ImGui gui, Action<ImGui, DependencyList> builder) {
+        public override void Draw(ImGui gui, Action<ImGui, IReadOnlyList<FactorioId>, Flags> builder) {
             Vector2 offset = new(.4f, 0);
             using (gui.EnterGroup(new(1f, 0, 0, 0))) {
                 bool isFirst = true;
@@ -221,37 +240,49 @@ public abstract class DependencyNode {
     /// A <see cref="DependencyNode"/> that matches the behavior of a legacy <see cref="DependencyList"/>.
     /// </summary>
     /// <param name="dependencies">The <see cref="DependencyList"/> whose behavior should be matched by this <see cref="ListNode"/>.</param>
-    private sealed class ListNode(DependencyList dependencies) : DependencyNode {
-        private readonly DependencyList dependencies = dependencies;
+    private sealed class ListNode(IEnumerable<FactorioObject> elements, Flags flags) : DependencyNode {
+        private readonly ReadOnlyCollection<FactorioId> elements = elements.Select(e => e.id).ToList().AsReadOnly();
 
-        internal override IEnumerable<FactorioId> Flatten() => dependencies.elements;
+        internal override IEnumerable<FactorioId> Flatten() => elements;
 
         internal override bool IsAccessible(Func<FactorioId, bool> isAccessible) {
-            if (dependencies.flags.HasFlag(DependencyList.Flags.RequireEverything)) {
-                return dependencies.elements.All(isAccessible);
+            // Use for instead of foreach or elements.All(isAccessible) to reduce allocations and increase speed.
+            if (flags.HasFlags(Flags.RequireEverything)) {
+                for (int i = 0; i < elements.Count; i++) {
+                    if (!isAccessible(elements[i])) {
+                        return false;
+                    }
+                }
+                return true;
             }
-            return dependencies.elements.Any(isAccessible);
+
+            for (int i = 0; i < elements.Count; i++) {
+                if (isAccessible(elements[i])) {
+                    return true;
+                }
+            }
+            return false;
         }
 
         internal override Bits AggregateBits(Func<FactorioId, Bits> getBits) {
             Bits bits = new();
-            if (dependencies.flags.HasFlag(DependencyList.Flags.RequireEverything)) {
-                foreach (FactorioId item in dependencies.elements) {
+            if (flags.HasFlags(Flags.RequireEverything)) {
+                foreach (FactorioId item in elements) {
                     bits |= getBits(item);
                 }
                 return bits;
             }
-            else if (dependencies.elements.Length > 0) {
-                return bits | dependencies.elements.Min(getBits);
+            else if (elements.Count > 0) {
+                return bits | elements.Min(getBits);
             }
             return bits;
         }
 
         internal override AutomationStatus IsAutomatable(Func<FactorioId, AutomationStatus> getAutomation, AutomationStatus automationState) {
             // Copied from AutomationAnalysis.cs.
-            if (!dependencies.flags.HasFlags(DependencyList.Flags.OneTimeInvestment)) {
-                if (dependencies.flags.HasFlags(DependencyList.Flags.RequireEverything)) {
-                    foreach (FactorioId element in dependencies.elements) {
+            if (!flags.HasFlags(Flags.OneTimeInvestment)) {
+                if (flags.HasFlags(Flags.RequireEverything)) {
+                    foreach (FactorioId element in elements) {
                         if (getAutomation(element) < automationState) {
                             automationState = getAutomation(element);
                         }
@@ -260,7 +291,7 @@ public abstract class DependencyNode {
                 else {
                     AutomationStatus localHighest = AutomationStatus.NotAutomatable;
 
-                    foreach (FactorioId element in dependencies.elements) {
+                    foreach (FactorioId element in elements) {
                         if (getAutomation(element) > localHighest) {
                             localHighest = getAutomation(element);
                         }
@@ -271,11 +302,11 @@ public abstract class DependencyNode {
                     }
                 }
             }
-            else if (automationState == AutomationStatus.AutomatableNow && dependencies.flags == DependencyList.Flags.CraftingEntity) {
+            else if (automationState == AutomationStatus.AutomatableNow && flags == Flags.CraftingEntity) {
                 // If only character is accessible at current milestones as a crafting entity, don't count the object as currently automatable
                 bool hasMachine = false;
 
-                foreach (FactorioId element in dependencies.elements) {
+                foreach (FactorioId element in elements) {
                     if (element != Database.character?.id && Milestones.Instance.IsAccessibleWithCurrentMilestones(element)) {
                         hasMachine = true;
                         break;
@@ -289,8 +320,9 @@ public abstract class DependencyNode {
             return automationState;
         }
 
-        public override void Draw(ImGui gui, Action<ImGui, DependencyList> builder) => builder(gui, dependencies);
+        public override void Draw(ImGui gui, Action<ImGui, IReadOnlyList<FactorioId>, Flags> builder) => builder(gui, elements, flags);
     }
 
-    public static implicit operator DependencyNode(DependencyList list) => Create(list);
+    public static implicit operator DependencyNode((IEnumerable<FactorioObject> elements, Flags flags) value)
+        => Create(value.elements, value.flags);
 }

@@ -1,33 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿using System.Collections.Generic;
 
 namespace Yafc.Model;
-
-public struct DependencyList(FactorioId[] elements, DependencyList.Flags flags) {
-    [Flags]
-    public enum Flags {
-        RequireEverything = 0x100,
-        OneTimeInvestment = 0x200,
-
-        Ingredient = 1 | RequireEverything,
-        CraftingEntity = 2 | OneTimeInvestment,
-        SourceEntity = 3 | OneTimeInvestment,
-        TechnologyUnlock = 4 | OneTimeInvestment,
-        Source = 5,
-        Fuel = 6,
-        ItemToPlace = 7,
-        TechnologyPrerequisites = 8 | RequireEverything | OneTimeInvestment,
-        IngredientVariant = 9,
-        Hidden = 10,
-        Location = 11 | OneTimeInvestment,
-    }
-
-    public Flags flags = flags;
-    public FactorioId[] elements = elements;
-
-    public DependencyList(IEnumerable<FactorioObject> elements, Flags flags) : this(elements.Select(o => o.id).ToArray(), flags) { }
-}
 
 public static class Dependencies {
     /// <summary>
