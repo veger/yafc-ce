@@ -9,6 +9,11 @@ internal partial class FactorioDataDeserializer {
         var recipe = DeserializeCommon<Recipe>(table, "recipe");
         LoadRecipeData(recipe, table, errorCollector);
         _ = table.Get("category", out string recipeCategory, "crafting");
+        // "recycling-or-hand-crafting" is Scrap recycling. It's special so it isn't considered a potential source recipe when ctrl+clicking.
+        // It'll still be used as a ctrl+click consumption recipe for scrap.
+        if (recipeCategory is "recycling" or "recycling-or-hand-crafting") {
+            recipe.specialType = FactorioObjectSpecialType.Recycling;
+        }
         recipeCategories.Add(recipeCategory, recipe);
         AllowedEffects allowedEffects = AllowedEffects.None;
         if (table.Get("allow_consumption", true)) {

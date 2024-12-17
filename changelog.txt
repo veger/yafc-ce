@@ -26,6 +26,7 @@ Date:
         - Recipes that are referenced without being defined do not prevent YAFC from loading.
         - (SA) Tree seeds used by the agricultural tower no longer appear twice in the Dependency Explorer.
         - Milestone analysis got slower in 2.4.0; increase its speed.
+        - (SA) Recycling recipes are now considered special, like barrelling/voiding.
 ----------------------------------------------------------------------------------------------------------------------
 Version: 2.4.0
 Date: November 21st 2024
