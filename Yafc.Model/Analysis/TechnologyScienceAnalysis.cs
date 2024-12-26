@@ -74,9 +74,11 @@ public class TechnologyScienceAnalysis : Analysis {
             while (prerequisiteQueue.Count > 0) {
                 var prerequisite = prerequisiteQueue.Dequeue();
 
-                foreach (var ingredient in prerequisite.ingredients) {
-                    int science = sciencePackIndex[ingredient.goods];
-                    sciencePackCount[science][current] += ingredient.amount * prerequisite.count;
+                if (!prerequisite.flags.HasFlagAny(RecipeFlags.HasResearchTriggerMask)) {
+                    foreach (var ingredient in prerequisite.ingredients) {
+                        int science = sciencePackIndex[ingredient.goods];
+                        sciencePackCount[science][current] += ingredient.amount * prerequisite.count;
+                    }
                 }
 
                 foreach (var prerequisitePrerequisite in prerequisite.prerequisites) {
