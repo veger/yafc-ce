@@ -27,6 +27,7 @@ Date:
         - (SA) Tree seeds used by the agricultural tower no longer appear twice in the Dependency Explorer.
         - Milestone analysis got slower in 2.4.0; increase its speed.
         - (SA) Recycling recipes are now considered special, like barrelling/voiding.
+        - Fixed recipe parsing for the ResearchProgressProduct output type.
 ----------------------------------------------------------------------------------------------------------------------
 Version: 2.4.0
 Date: November 21st 2024

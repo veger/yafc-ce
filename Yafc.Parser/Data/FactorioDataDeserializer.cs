@@ -566,7 +566,7 @@ internal partial class FactorioDataDeserializer {
                 }
             }
             else if (type == "research-progress" && table.Get("research_item", out string? researchItem)) {
-                return GetObject<Item, Item>(researchItem);
+                return GetObject<Item>(researchItem);
             }
         }
         return null;
