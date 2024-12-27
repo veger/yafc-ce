@@ -553,18 +553,22 @@ internal partial class FactorioDataDeserializer {
     }
 
     private Goods? LoadItemOrFluid(LuaTable table, bool useTemperature) {
-        if (table.Get("type", out string? type) && table.Get("name", out string? name)) {
-            if (type == "item") {
-                return GetObject<Item>(table);
-            }
-            else if (type == "fluid") {
-                if (useTemperature && table.Get("temperature", out int temperature)) {
-                    return GetFluidFixedTemp(name, temperature);
+        if (table.Get("type", out string? type)) {
+            if (table.Get("name", out string? name)) {
+                if (type == "item") {
+                    return GetObject<Item>(table);
                 }
-                return GetObject<Fluid>(table);
+                else if (type == "fluid") {
+                    if (useTemperature && table.Get("temperature", out int temperature)) {
+                        return GetFluidFixedTemp(name, temperature);
+                    }
+                    return GetObject<Fluid>(table);
+                }
+            }
+            else if (type == "research-progress" && table.Get("research_item", out string? researchItem)) {
+                return GetObject<Item, Item>(researchItem);
             }
         }
-
         return null;
     }
 
