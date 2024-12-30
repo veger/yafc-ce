@@ -15,8 +15,8 @@
 //     Internal changes:
 //         Changes to the code that do not affect the behavior of the program.
 ----------------------------------------------------------------------------------------------------------------------
-Version:
-Date:
+Version: 2.5.0
+Date: December 30th 2024
     Features:
         - Added Ctrl+Shift+F to search all pages.
         - In the Link Summary panel tooltip, add information on where (in the table) each recipe can be found.
