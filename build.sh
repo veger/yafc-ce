@@ -1,6 +1,5 @@
 # Things to do before each release:
-# * Update Yafc version in Yafc.csproj
-# * Update changelog with the version and date
+# * Update Yafc version in Yafc.csproj. Update the changelog with the version and date.
 # * Update the latest version in the Discord sticky-message.
 
 rm -rf Build
