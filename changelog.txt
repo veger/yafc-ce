@@ -15,6 +15,11 @@
 //     Internal changes:
 //         Changes to the code that do not affect the behavior of the program.
 ----------------------------------------------------------------------------------------------------------------------
+Version:
+Date:
+    Fixes:
+        - Building emission/absorption (pollution and spores) are displayed in tooltips again.
+----------------------------------------------------------------------------------------------------------------------
 Version: 2.5.0
 Date: December 30th 2024
     Features:

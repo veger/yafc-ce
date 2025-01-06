@@ -931,7 +931,7 @@ public class EntityEnergy {
     public EntityEnergyType type { get; internal set; }
     public TemperatureRange workingTemperature { get; internal set; }
     public TemperatureRange acceptedTemperature { get; internal set; } = TemperatureRange.Any;
-    public float emissions { get; internal set; }
+    public IReadOnlyList<(string, float)> emissions { get; internal set; } = [];
     public float drain { get; internal set; }
     public float baseFuelConsumptionLimit { get; internal set; } = float.PositiveInfinity;
     public float FuelConsumptionLimit(Quality quality) => quality.ApplyStandardBonus(baseFuelConsumptionLimit);

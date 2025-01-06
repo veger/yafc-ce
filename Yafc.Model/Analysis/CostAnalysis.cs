@@ -125,7 +125,9 @@ public class CostAnalysis(bool onlyCurrentMilestones) : Analysis {
             float minPower = 1000f;
 
             foreach (var crafter in recipe.crafters) {
-                minEmissions = MathF.Min(crafter.energy.emissions, minEmissions);
+                foreach ((_, float e) in crafter.energy.emissions) {
+                    minEmissions = MathF.Min(e, minEmissions);
+                }
 
                 if (crafter.energy.type == EntityEnergyType.Heat) {
                     break;

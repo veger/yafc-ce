@@ -291,17 +291,22 @@ doneDrawing:;
                     BuildIconRow(gui, entity.energy.fuels, 2);
                 }
 
-                if (entity.energy.emissions != 0f) {
-                    TextBlockDisplayStyle emissionStyle = TextBlockDisplayStyle.Default(SchemeColor.BackgroundText);
-                    if (entity.energy.emissions < 0f) {
-                        emissionStyle = TextBlockDisplayStyle.Default(SchemeColor.Green);
-                        gui.BuildText("This building absorbs pollution", emissionStyle);
+                foreach ((string name, float amount) in entity.energy.emissions) {
+                    if (amount != 0f) {
+                        TextBlockDisplayStyle emissionStyle = TextBlockDisplayStyle.Default(SchemeColor.BackgroundText);
+                        if (amount < 0f) {
+                            emissionStyle = TextBlockDisplayStyle.Default(SchemeColor.Green);
+                            gui.BuildText("This building absorbs " + name, emissionStyle);
+                            gui.BuildText($"Absorption: {DataUtils.FormatAmount(-amount, UnitOfMeasure.None)} {name} per minute", emissionStyle);
+                        }
+                        else {
+                            if (amount >= 20f) {
+                                emissionStyle = TextBlockDisplayStyle.Default(SchemeColor.Error);
+                                gui.BuildText("This building contributes to global warning!", emissionStyle);
+                            }
+                            gui.BuildText($"Emission: {DataUtils.FormatAmount(amount, UnitOfMeasure.None)} {name} per minute", emissionStyle);
+                        }
                     }
-                    else if (entity.energy.emissions >= 20f) {
-                        emissionStyle = TextBlockDisplayStyle.Default(SchemeColor.Error);
-                        gui.BuildText("This building contributes to global warning!", emissionStyle);
-                    }
-                    gui.BuildText("Emissions: " + DataUtils.FormatAmount(entity.energy.emissions, UnitOfMeasure.None), emissionStyle);
                 }
             }
         }
