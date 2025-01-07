@@ -35,15 +35,7 @@ function data:extend(t)
 	end
 end
 
-function data.extend(self, otherdata)
-	if self ~= data and otherdata == nil then
-		otherdata = self
-	end
-	for i=1,#otherdata do
-		local prototype = otherdata[i];
-		dataAdd(prototype.type, prototype.name, prototype);
-	end
-end
+require("__core__/lualib/dataloader.lua")
 
 local raw_log = _G.raw_log;
 _G.raw_log = nil;
