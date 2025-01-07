@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using Yafc.Model;
@@ -78,7 +79,14 @@ internal partial class FactorioDataDeserializer {
 
         EntityEnergy energy = new EntityEnergy();
         entity.energy = energy;
-        energy.emissions = energySource.Get("emissions_per_minute", 0f);
+        LuaTable? table = energySource.Get<LuaTable>("emissions_per_minute");
+        List<(string, float)> emissions = [];
+        foreach (var (key, value) in table?.ObjectElements ?? []) {
+            if (key is string k && value is double v) {
+                emissions.Add((k, (float)v));
+            }
+        }
+        energy.emissions = emissions.AsReadOnly();
         energy.effectivity = energySource.Get("effectivity", 1f);
 
         switch (type) {
