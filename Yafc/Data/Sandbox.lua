@@ -19,22 +19,6 @@ for defineType,typeTable in pairs(defines.prototypes) do
 	end
 end	
 
-local function dataAdd(type, name, obj)
-	if not data.raw[type] then data.raw[type] = {} end;
-	data.raw[type][name] = obj;
-	--[[if parentTypes[type] then
-		dataAdd(parentTypes[type], name, obj);
-	end]]
-end
-
-data = {raw = {}, is_demo=false}
-function data:extend(t)
-	for i=1,#t do
-		local prototype = t[i];
-		dataAdd(prototype.type, prototype.name, prototype);
-	end
-end
-
 require("__core__/lualib/dataloader.lua")
 
 local raw_log = _G.raw_log;
@@ -53,9 +37,11 @@ table_size = function(t)
 	end
 	return count
 end
-			
-data.data_crawler = "yafc "..yafc_version;
 
-log(data.data_crawler);
+if data then
+	-- If data isn't set, we couldn't load __core__/lualib/dataloader, which means we're running tests. They replace the entire data table.
+	data.data_crawler = "yafc "..yafc_version;
+	log(data.data_crawler);
+end
 
 size=32;
