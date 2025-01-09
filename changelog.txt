@@ -21,6 +21,7 @@ Date:
         - Apply productivity, speed, and consumption effects to recipes, and show them in tooltips.
     Fixes:
         - Building emission/absorption (pollution and spores) are displayed in tooltips again.
+        - Fix a parsing error when using the deprecated data.extend API.
 ----------------------------------------------------------------------------------------------------------------------
 Version: 2.5.0
 Date: December 30th 2024

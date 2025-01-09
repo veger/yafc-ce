@@ -80,7 +80,13 @@ public static partial class FactorioDataSource {
     }
 
     public static byte[] ReadModFile(string modName, string path) {
-        var info = allMods[modName];
+        if (!allMods.TryGetValue(modName, out var info)) {
+            // Treat nonexistent files as empty.
+            // This allows sandbox.lua to load __core__'s definition of data.extend, without breaking the tests (which completely replace data)
+            // Also, this may allow us to tolerate mods that `pcall(require("__other_mod__/something"))` without checking if an appropriate
+            // version of other_mod is loaded. (see https://github.com/ShadowTheAge/yafc/issues/199)
+            return [];
+        }
 
         if (info.zipArchive != null) {
             var entry = info.zipArchive.GetEntry(info.folder + path);
