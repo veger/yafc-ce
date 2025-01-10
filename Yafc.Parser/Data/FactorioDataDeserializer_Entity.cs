@@ -400,6 +400,8 @@ internal partial class FactorioDataDeserializer {
                                 }
                             }
                         }
+
+                        crafter.rocketInventorySize = rocketInventorySize;
                     }
                 }
                 break;

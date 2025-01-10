@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Text;
 using System.Threading.Tasks;
 using SDL2;
 using Serilog;
@@ -558,10 +557,27 @@ internal partial class FactorioDataDeserializer {
 nextWeightCalculation:;
         }
 
-        // If it doesn't otherwise have a weight, it gets the default weight.
+        List<EntityCrafter> rocketSilos = registeredObjects.Values.OfType<EntityCrafter>().Where(e => e.factorioType == "rocket-silo").ToList();
+        int maxStacks = 1;// if we have no rocket silos, default to one stack.
+        if (rocketSilos.Count > 0) {
+            maxStacks = rocketSilos.Max(r => r.rocketInventorySize);
+        }
+
         foreach (Item item in allObjects.OfType<Item>()) {
+            // If it doesn't otherwise have a weight, it gets the default weight.
             if (item.weight == 0) {
                 item.weight = defaultItemWeight;
+            }
+
+            if (registeredObjects.TryGetValue((typeof(Mechanics), SpecialNames.RocketLaunch + "." + item.name), out FactorioObject? r)
+                && r is Mechanics recipe) {
+
+                // The item count is initialized to 1, but it should be the rocket capacity. Scale up the ingredient and product(s).
+                int factor = Math.Min(rocketCapacity / item.weight, maxStacks * item.stackSize);
+                recipe.ingredients[0] = new(item, factor);
+                for (int i = 0; i < recipe.products.Length; i++) {
+                    recipe.products[i] *= factor;
+                }
             }
         }
     }
@@ -576,7 +592,9 @@ nextWeightCalculation:;
         Recipe recipe = CreateSpecialRecipe(item, SpecialNames.RocketLaunch, "launched");
         recipe.ingredients =
         [
-            new Ingredient(item, item.stackSize),
+            // When this is called, we don't know the item weight or the rocket capacity.
+            // CalculateItemWeights will scale this ingredient and the products appropriately (but not the launch slot)
+            new Ingredient(item, 1),
             new Ingredient(rocketLaunch, 1),
         ];
         recipe.products = launchProducts ?? recipe.products ?? [];
