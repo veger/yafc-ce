@@ -15,8 +15,11 @@
 //     Internal changes:
 //         Changes to the code that do not affect the behavior of the program.
 ----------------------------------------------------------------------------------------------------------------------
-Version:
-Date:
+Version: 
+Date: 
+----------------------------------------------------------------------------------------------------------------------
+Version: 2.6.0
+Date: January 20th 2025
     Features:
         - Apply productivity, speed, and consumption effects to recipes, and show them in tooltips.
     Fixes:
