@@ -1,4 +1,5 @@
 # Things to do before each release:
+# * Check that all intended PRs are merged.
 # * Update Yafc version in Yafc.csproj. Update the changelog with the version and date.
 # * Update the latest version in the Discord sticky-message.
 
