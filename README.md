@@ -66,14 +66,13 @@ You can run `build.sh` with [Git Bash](https://git-scm.com/downloads) to build f
 
 ## Possible incompatibilities
 
-- For Py Hard Mode, please manually mark copper-ore-mining as accessible in Dependency Explorer.
 - For Seablock, please check [this](https://github.com/ShadowTheAge/yafc/issues/31) issue that has a list of things to enable at first.
 - For other mods with scripted progression, YAFC might also think that items are inaccessible. There is no silver bullet against that, but you can open Dependency Explorer and manually mark a bunch of items or technologies as accessible.
 
 For mod authors: You can detect YAFC by checking the `data.data_crawler` variable during the data stage. It will be equal to `yafc a.b.c.d` where `a.b.c.d` is yafc version. For instance, `yafc 0.5.4.0`.
 
 YAFC loads mods in environment that is not completely compatible with Factorio. If you notice any bugs, please report them in the [issues](https://github.com/have-fun-was-taken/yafc-ce/issues).
-	
+
 
 ## Contributing
 
