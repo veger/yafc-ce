@@ -11,6 +11,7 @@ public enum WarningFlags {
     ReactorsNeighborsFromPrefs = 1 << 1,
     FuelUsageInputLimited = 1 << 2,
     AsteroidCollectionNotModelled = 1 << 3,
+    AssumesFulgoraAndModel = 1 << 4,
 
     // Static errors
     EntityNotSpecified = 1 << 8,
@@ -149,6 +150,9 @@ internal class RecipeParameters(float recipeTime, float fuelUsagePerSecondPerBui
 
             if (entity.target.factorioType == "solar-panel") {
                 warningFlags |= WarningFlags.AssumesNauvisSolarRatio;
+            }
+            else if (entity.target.factorioType == "lightning-attractor") {
+                warningFlags |= WarningFlags.AssumesFulgoraAndModel;
             }
             else if (entity.target.factorioType == "asteroid-collector") {
                 warningFlags |= WarningFlags.AsteroidCollectionNotModelled;

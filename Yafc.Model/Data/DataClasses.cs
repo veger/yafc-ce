@@ -671,13 +671,37 @@ public class EntityCrafter : EntityWithModules {
     public Goods[]? inputs { get; internal set; }
     public RecipeOrTechnology[] recipes { get; internal set; } = null!; // null-forgiving: Set in the first step of CalculateMaps
     private float _craftingSpeed = 1;
-    public float baseCraftingSpeed {
+    public virtual float baseCraftingSpeed {
         // The speed of a lab is baseSpeed * (1 + researchSpeedBonus) * Math.Min(0.2, 1 + moduleAndBeaconSpeedBonus)
         get => _craftingSpeed * (1 + (factorioType == "lab" ? Project.current.settings.researchSpeedBonus : 0));
         internal set => _craftingSpeed = value;
     }
-    public float CraftingSpeed(Quality quality) => factorioType is "agricultural-tower" or "electric-energy-interface" ? baseCraftingSpeed : quality.ApplyStandardBonus(baseCraftingSpeed);
+    public virtual float CraftingSpeed(Quality quality) => factorioType is "agricultural-tower" or "electric-energy-interface" ? baseCraftingSpeed : quality.ApplyStandardBonus(baseCraftingSpeed);
     public EffectReceiver effectReceiver { get; internal set; } = null!;
+}
+
+public class EntityAttractor : EntityCrafter {
+    // TODO(multi-planet): Read PlanetPrototype::lightning_properties.search_radius
+    private const int LightningSearchRange = 10;
+    // TODO(multi-planet): Read PlanetPrototype::lightning_properties.lightning_types and
+    // LightningPrototype::lightnings_per_chunk_per_tick * 60 * LightningPrototype::energy / 1024 * 0.3
+    private const float MwPerTile = 0.0293f;
+    public override float baseCraftingSpeed {
+        get => CraftingSpeed(Quality.Normal);
+        internal set => throw new NotSupportedException("To set lightning attractor crafting speed, set the range and efficiency fields.");
+    }
+    internal float range;
+    internal float efficiency;
+
+    public override float CraftingSpeed(Quality quality) {
+        // Maximum distance between attractors for full protection, in a square grid:
+        float distance = MathF.Floor((quality.ApplyStandardBonus(range) + LightningSearchRange) * MathF.Sqrt(2));
+        float efficiency = quality.ApplyStandardBonus(this.efficiency);
+        // Production is coverage area times efficiency times lightning power density
+        // Peak coverage area is (π*range²), but (distance²) allows full protection with a simple square grid.
+        float area = distance * distance;
+        return area * efficiency * MwPerTile;
+    }
 }
 
 internal class EntityProjectile : Entity {

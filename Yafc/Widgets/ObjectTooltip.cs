@@ -333,7 +333,7 @@ doneDrawing:;
                 miscText = "Accumulator charge: " + DataUtils.FormatAmount(accumulator.AccumulatorCapacity(quality), UnitOfMeasure.Megajoule);
                 break;
             case EntityCrafter solarPanel:
-                if (solarPanel.baseCraftingSpeed > 0f && entity.factorioType == "solar-panel") {
+                if (solarPanel.baseCraftingSpeed > 0f && entity.factorioType is "solar-panel" or "lightning-attractor") {
                     miscText = "Power production (average): " + DataUtils.FormatAmount(solarPanel.CraftingSpeed(quality), UnitOfMeasure.Megawatt);
                 }
 
@@ -671,6 +671,7 @@ doneDrawing:;
             ("Module effects:", '+' + DataUtils.FormatAmount(quality.StandardBonus, UnitOfMeasure.Percent) + '*'),
             ("Beacon transmission efficiency:", '+' + DataUtils.FormatAmount(quality.BeaconTransmissionBonus, UnitOfMeasure.None)),
             ("Time before spoiling:", '+' + DataUtils.FormatAmount(quality.StandardBonus, UnitOfMeasure.Percent)),
+            ("Lightning attractor range & efficiency:", '+' + DataUtils.FormatAmount(quality.StandardBonus, UnitOfMeasure.Percent)),
         ];
 
         float rightWidth = text.Max(t => gui.GetTextDimensions(out _, t.right).X);

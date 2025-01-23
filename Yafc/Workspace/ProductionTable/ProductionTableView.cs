@@ -1467,6 +1467,7 @@ goodsHaveNoProduction:;
         {WarningFlags.ExceedsBuiltCount, "This recipe requires more buildings than are currently built."},
         {WarningFlags.AsteroidCollectionNotModelled, "The speed of asteroid collectors depends heavily on location and travel speed. " +
             "It also depends on the distance between adjacent collectors. These dependencies are not modeled. Expect widely varied performance."},
+        {WarningFlags.AssumesFulgoraAndModel, "Energy production values assume Fulgoran storms and attractors in a square grid." },
     };
 
     private static readonly (Icon icon, SchemeColor color)[] tagIcons = [
