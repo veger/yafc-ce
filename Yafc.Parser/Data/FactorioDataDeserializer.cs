@@ -511,9 +511,13 @@ internal partial class FactorioDataDeserializer {
             if (item.weight != 0) {
                 continue;
             }
+            if (item.stackSize == 0) {
+                continue; // Py's synthetic items sometimes have a stack size of 0.
+            }
+
             Recipe? recipe = allObjects.OfType<Recipe>().FirstOrDefault(r => r.name == item.name);
             // Hidden recipes appear to be ignored by Factorio; a pistol weighs 100g, not the 200kg that would be expected from its stack size.
-            if (recipe?.products.Length > 0 && !recipe.hidden) {
+            if (recipe?.products.Length > 0 && recipe.ingredients.Length > 0 && !recipe.hidden) {
                 float weight = 0;
                 foreach (Ingredient ingredient in recipe.ingredients) {
                     if (ingredient.goods is Item i) {
@@ -543,9 +547,11 @@ internal partial class FactorioDataDeserializer {
                     item.weight = rocketCapacity / (rocketCapacity / item.weight / item.stackSize) / item.stackSize;
                 }
 
-                foreach (Item product in dependencies[item]) {
-                    if (product.weight == 0) {
-                        queue.Enqueue(product);
+                if (dependencies.TryGetValue(item, out List<Item>? products)) {
+                    foreach (Item product in dependencies[item]) {
+                        if (product.weight == 0) {
+                            queue.Enqueue(product);
+                        }
                     }
                 }
             }
