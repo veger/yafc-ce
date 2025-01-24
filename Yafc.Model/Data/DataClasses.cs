@@ -512,7 +512,7 @@ public class Entity : FactorioObject {
     public float mapGenDensity { get; internal set; }
     public float basePower { get; internal set; }
     public float Power(Quality quality)
-        => factorioType is "boiler" or "reactor" or "generator" or "burner-generator" ? quality.ApplyStandardBonus(basePower)
+        => factorioType is "boiler" or "reactor" or "generator" or "burner-generator" or "accumulator" ? quality.ApplyStandardBonus(basePower)
         : factorioType is "beacon" ? basePower * quality.BeaconConsumptionFactor
         : basePower;
     public EntityEnergy energy { get; internal set; } = null!; // TODO: Prove that this is always properly initialized. (Do we need an EntityWithEnergy type?)
@@ -690,17 +690,36 @@ public class EntityAttractor : EntityCrafter {
         get => CraftingSpeed(Quality.Normal);
         internal set => throw new NotSupportedException("To set lightning attractor crafting speed, set the range and efficiency fields.");
     }
+    public float drain { get; internal set; }
+
     internal float range;
     internal float efficiency;
+    /// <summary>
+    /// Gets the size of the (square) grid for this lightning attractor. The grid is sized to be as large as possible while protecting the
+    /// entire areas within the grid: the collection areas of diagonally-adjacent attractors should overlap as little as possible.
+    /// </summary>
+    public int ConstructionGrid(Quality quality) => (int)MathF.Floor((Range(quality) + LightningSearchRange) * MathF.Sqrt(2));
+    public float Range(Quality quality) => quality.ApplyStandardBonus(range);
+    public float Efficiency(Quality quality) => quality.ApplyStandardBonus(efficiency);
 
     public override float CraftingSpeed(Quality quality) {
         // Maximum distance between attractors for full protection, in a square grid:
-        float distance = MathF.Floor((quality.ApplyStandardBonus(range) + LightningSearchRange) * MathF.Sqrt(2));
-        float efficiency = quality.ApplyStandardBonus(this.efficiency);
+        float distance = ConstructionGrid(quality);
+        float efficiency = Efficiency(quality);
         // Production is coverage area times efficiency times lightning power density
         // Peak coverage area is (π*range²), but (distance²) allows full protection with a simple square grid.
         float area = distance * distance;
-        return area * efficiency * MwPerTile;
+        // Assume 90% of the captured energy is lost to the attractor's internal drain.
+        return area * efficiency * MwPerTile / 10;
+    }
+
+    public float StormPotentialPerTick(Quality quality) {
+        // Maximum distance between attractors for full protection, in a square grid:
+        float distance = ConstructionGrid(quality);
+        // Storm potential is coverage area times lightning power density / .3
+        // Peak coverage area is (π*range²), but (distance²) allows full protection with a simple square grid.
+        float area = distance * distance;
+        return area * MwPerTile / 60 / 0.3f;
     }
 }
 
@@ -863,7 +882,8 @@ public class EntityInserter : Entity {
 }
 
 public class EntityAccumulator : Entity {
-    public float baseAccumulatorCapacity { get; internal set; }
+    internal float baseAccumulatorCapacity { get; set; }
+    internal float baseAccumulatorCurrent;
     public float AccumulatorCapacity(Quality quality) => quality.ApplyAccumulatorCapacityBonus(baseAccumulatorCapacity);
 }
 

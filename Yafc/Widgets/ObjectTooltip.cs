@@ -332,17 +332,25 @@ doneDrawing:;
             case EntityAccumulator accumulator:
                 miscText = "Accumulator charge: " + DataUtils.FormatAmount(accumulator.AccumulatorCapacity(quality), UnitOfMeasure.Megajoule);
                 break;
-            case EntityCrafter solarPanel:
-                if (solarPanel.baseCraftingSpeed > 0f && entity.factorioType is "solar-panel" or "lightning-attractor") {
-                    miscText = "Power production (average): " + DataUtils.FormatAmount(solarPanel.CraftingSpeed(quality), UnitOfMeasure.Megawatt);
+            case EntityAttractor attractor:
+                if (attractor.baseCraftingSpeed > 0f) {
+                    miscText = "Power production (average usable): " + DataUtils.FormatAmount(attractor.CraftingSpeed(quality), UnitOfMeasure.Megawatt);
+                    miscText += $"\n    Build in a {attractor.ConstructionGrid(quality)}-tile square grid";
+                    miscText += "\nProtection range: " + DataUtils.FormatAmount(attractor.Range(quality), UnitOfMeasure.None);
+                    miscText += "\nCollection efficiency: " + DataUtils.FormatAmount(attractor.Efficiency(quality), UnitOfMeasure.Percent);
                 }
 
+                break;
+            case EntityCrafter solarPanel:
+                if (solarPanel.baseCraftingSpeed > 0f && entity.factorioType == "solar-panel") {
+                    miscText = "Power production (average): " + DataUtils.FormatAmount(solarPanel.CraftingSpeed(quality), UnitOfMeasure.Megawatt);
+                }
                 break;
         }
 
         if (miscText != null) {
             using (gui.EnterGroup(contentPadding)) {
-                gui.BuildText(miscText);
+                gui.BuildText(miscText, TextBlockDisplayStyle.WrappedText);
             }
         }
     }

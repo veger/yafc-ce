@@ -9,7 +9,7 @@ namespace Yafc.Parser;
 
 internal partial class FactorioDataDeserializer {
     private const float EstimationDistanceFromCenter = 3000f;
-    private bool GetFluidBoxFilter(LuaTable table, string fluidBoxName, int temperature, [NotNullWhen(true)] out Fluid? fluid, out TemperatureRange range) {
+    private bool GetFluidBoxFilter(LuaTable? table, string fluidBoxName, int temperature, [NotNullWhen(true)] out Fluid? fluid, out TemperatureRange range) {
         fluid = null;
         range = default;
 
@@ -40,7 +40,7 @@ internal partial class FactorioDataDeserializer {
         return count;
     }
 
-    private void ReadFluidEnergySource(LuaTable energySource, Entity entity) {
+    private void ReadFluidEnergySource(LuaTable? energySource, Entity entity) {
         var energy = entity.energy;
         _ = energySource.Get("burns_fluid", out bool burns, false);
         energy.type = burns ? EntityEnergyType.FluidFuel : EntityEnergyType.FluidHeat;
@@ -69,7 +69,7 @@ internal partial class FactorioDataDeserializer {
         }
     }
 
-    private void ReadEnergySource(LuaTable energySource, Entity entity, float defaultDrain = 0f) {
+    private void ReadEnergySource(LuaTable? energySource, Entity entity, float defaultDrain = 0f) {
         _ = energySource.Get("type", out string type, "burner");
 
         if (type == "void") {
@@ -199,8 +199,13 @@ internal partial class FactorioDataDeserializer {
             case "accumulator":
                 var accumulator = GetObject<Entity, EntityAccumulator>(table);
 
-                if (table.Get("energy_source", out LuaTable? accumulatorEnergy) && accumulatorEnergy.Get("buffer_capacity", out string? capacity)) {
-                    accumulator.baseAccumulatorCapacity = ParseEnergy(capacity);
+                if (table.Get("energy_source", out LuaTable? accumulatorEnergy)) {
+                    if (accumulatorEnergy.Get("buffer_capacity", out string? capacity)) {
+                        accumulator.baseAccumulatorCapacity = ParseEnergy(capacity);
+                    }
+                    if (accumulatorEnergy.Get("input_flow_limit", out string? inputPower)) {
+                        accumulator.basePower = ParseEnergy(inputPower);
+                    }
                 }
                 break;
             case "agricultural-tower":
@@ -425,6 +430,9 @@ internal partial class FactorioDataDeserializer {
                     attractor.energy = voidEntityEnergy;
                     attractor.range = range;
                     attractor.efficiency = efficiency;
+                    if (table.Get("energy_source", out LuaTable? energy) && energy.Get("drain", out string? drain)) {
+                        attractor.drain = ParseEnergy(drain) * 60; // Drain is listed as MJ/tick, not MW
+                    }
                     recipeCrafters.Add(attractor, SpecialNames.GeneratorRecipe);
                 }
                 break;
