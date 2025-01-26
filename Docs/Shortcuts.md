@@ -4,6 +4,7 @@
 
 * **Ctrl+S** — Save changes in project.
 * **Ctrl+F** — Find on page.
+* **Ctrl+Shift+F** — Find in the page list.
 * **Ctrl+Z** — Undo last change
 * **Ctrl+Y** or **Ctrl+Shift+Z** — Redo last undo.
 
