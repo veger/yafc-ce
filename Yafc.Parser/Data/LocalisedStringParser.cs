@@ -140,7 +140,12 @@ internal static class LocalisedStringParser {
                     break;
                 default:
                     if (int.TryParse(type, out int idx) && idx >= 1 && idx <= parameters.Length) {
-                        result.Append(parameters[idx - 1]);
+                        string? referencedParameter = parameters[idx - 1];
+                        if (referencedParameter == null) {
+                            return null;
+                        }
+
+                        result.Append(referencedParameter);
                     }
                     else {
                         result.Append(format[start..(end + 2)]);

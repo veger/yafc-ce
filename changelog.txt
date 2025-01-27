@@ -15,18 +15,24 @@
 //     Internal changes:
 //         Changes to the code that do not affect the behavior of the program.
 ----------------------------------------------------------------------------------------------------------------------
-Version: 
-Date: 
+Version: to be announced
+Date: to be announced
+    Features:
+        - Display rocket capacity in item tooltips.
+    Fixes:
+        - Support PyHM without extra user interaction.
+        - Fix missing icons of special recipes.
+        - Propagate error state (null) through format expressions.
+
 ----------------------------------------------------------------------------------------------------------------------
 Version: 2.6.0
 Date: January 20th 2025
     Features:
         - Apply productivity, speed, and consumption effects to recipes, and show them in tooltips.
-        - Display rocket capacity in item tooltips.
     Fixes:
         - Building emission/absorption (pollution and spores) are displayed in tooltips again.
         - Fix a parsing error when using the deprecated data.extend API.
-        - Support PyHM without extra user interaction.
+        - Fix text being too small on some Linux/X screens.
 ----------------------------------------------------------------------------------------------------------------------
 Version: 2.5.0
 Date: December 30th 2024
