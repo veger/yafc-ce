@@ -164,11 +164,11 @@ internal partial class FactorioDataDeserializer {
         rocketCapacity = raw.Get<LuaTable>("utility-constants").Get<LuaTable>("default").Get("rocket_lift_weight", 1000000);
         defaultItemWeight = raw.Get<LuaTable>("utility-constants").Get<LuaTable>("default").Get("default_item_weight", 100);
         UpdateSplitFluids();
-        var iconRenderTask = renderIcons ? Task.Run(RenderIcons) : Task.CompletedTask;
         UpdateRecipeIngredientFluids(errorCollector);
+        CalculateMaps(netProduction);
+        var iconRenderTask = renderIcons ? Task.Run(RenderIcons) : Task.CompletedTask;
         UpdateRecipeCatalysts();
         CalculateItemWeights();
-        CalculateMaps(netProduction);
         ExportBuiltData();
         progress.Report(("Post-processing", "Calculating dependencies"));
         Dependencies.Calculate();
