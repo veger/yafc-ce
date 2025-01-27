@@ -26,6 +26,7 @@ Date: January 20th 2025
     Fixes:
         - Building emission/absorption (pollution and spores) are displayed in tooltips again.
         - Fix a parsing error when using the deprecated data.extend API.
+        - Support PyHM without extra user interaction.
 ----------------------------------------------------------------------------------------------------------------------
 Version: 2.5.0
 Date: December 30th 2024

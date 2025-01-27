@@ -308,8 +308,8 @@ internal partial class LuaContext : IDisposable {
         ObjectDisposedException.ThrowIf(L == IntPtr.Zero, this);
         GetReg(refId); // 1
         _ = lua_pushstring(L, idx); // 2
-        lua_rawget(L, -2); // 3
-        return PopManagedValue(3);
+        lua_rawget(L, -2); // 2 (pop & push)
+        return PopManagedValue(2);
     }
 
     private object? PopManagedValue(int popc) {
