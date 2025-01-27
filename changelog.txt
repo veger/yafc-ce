@@ -15,8 +15,8 @@
 //     Internal changes:
 //         Changes to the code that do not affect the behavior of the program.
 ----------------------------------------------------------------------------------------------------------------------
-Version: to be announced
-Date: to be announced
+Version: 2.7.0
+Date: January 27th 2025
     Features:
         - Display rocket capacity in item tooltips.
     Fixes:
