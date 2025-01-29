@@ -521,6 +521,7 @@ public class Entity : FactorioObject {
     internal List<Ammo> captureAmmo { get; } = [];
     internal List<Entity> sourceEntities { get; set; } = null!;
     internal string? autoplaceControl { get; set; }
+    public float heatingPower { get; internal set; }
     public int size { get; internal set; }
     internal override FactorioObjectSortOrder sortingOrder => FactorioObjectSortOrder.Entities;
     public override string type => "Entity";
