@@ -198,7 +198,9 @@ public static class ImmediateWidgets {
     }
 
     internal static bool BuildInlineObjectList<T>(this ImGui gui, IEnumerable<T> list, [NotNullWhen(true)] out T? selected, ObjectSelectOptions<T> options) where T : class, IFactorioObjectWrapper {
-        gui.BuildText(options.Header, Font.productionTableHeader);
+        if (options.Header != null) {
+            gui.BuildText(options.Header, Font.productionTableHeader);
+        }
         IEnumerable<T> sortedList = list;
 
         if (options.Ordering != DataUtils.AlreadySortedRecipe) {
@@ -460,7 +462,7 @@ public record DisplayAmount(float Value, UnitOfMeasure Unit = UnitOfMeasure.None
 /// <param name="Checkmark">If not <see langword="null"/>, this will be called to determine if a checkmark should be drawn on the item.
 /// Not used when selecting with a 'None' item or when <paramref name="Multiple"/> is <see langword="false"/>.</param>
 /// <param name="ExtraText">If not <see langword="null"/>, this will be called to get extra text to be displayed right-justified after the item's name.</param>
-public sealed record ObjectSelectOptions<T>(string Header, [AllowNull] IComparer<T> Ordering = null, int MaxCount = 6, bool Multiple = false, Predicate<T>? Checkmark = null,
+public sealed record ObjectSelectOptions<T>(string? Header, [AllowNull] IComparer<T> Ordering = null, int MaxCount = 6, bool Multiple = false, Predicate<T>? Checkmark = null,
     Func<T, string>? ExtraText = null) where T : IFactorioObjectWrapper {
 
     public IComparer<T> Ordering { get; init; } = Ordering ?? (IComparer<T>)DataUtils.DefaultOrdering;
