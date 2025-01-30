@@ -9,7 +9,7 @@ namespace Yafc.Parser;
 
 internal partial class FactorioDataDeserializer {
     private const float EstimationDistanceFromCenter = 3000f;
-    private bool GetFluidBoxFilter(LuaTable table, string fluidBoxName, int temperature, [NotNullWhen(true)] out Fluid? fluid, out TemperatureRange range) {
+    private bool GetFluidBoxFilter(LuaTable? table, string fluidBoxName, int temperature, [NotNullWhen(true)] out Fluid? fluid, out TemperatureRange range) {
         fluid = null;
         range = default;
 
@@ -40,7 +40,7 @@ internal partial class FactorioDataDeserializer {
         return count;
     }
 
-    private void ReadFluidEnergySource(LuaTable energySource, Entity entity) {
+    private void ReadFluidEnergySource(LuaTable? energySource, Entity entity) {
         var energy = entity.energy;
         _ = energySource.Get("burns_fluid", out bool burns, false);
         energy.type = burns ? EntityEnergyType.FluidFuel : EntityEnergyType.FluidHeat;
@@ -69,7 +69,7 @@ internal partial class FactorioDataDeserializer {
         }
     }
 
-    private void ReadEnergySource(LuaTable energySource, Entity entity, float defaultDrain = 0f) {
+    private void ReadEnergySource(LuaTable? energySource, Entity entity, float defaultDrain = 0f) {
         _ = energySource.Get("type", out string type, "burner");
 
         if (type == "void") {
@@ -162,6 +162,19 @@ internal partial class FactorioDataDeserializer {
         return launchRecipe;
     }
 
+    // TODO: Work with AAI-I to support offshore pumps that consume energy.
+    private static readonly HashSet<string> noDefaultEnergyParsing = [
+        // Has custom parsing:
+        "generator",
+        "burner-generator",
+        // Doesn't consume energy:
+        "offshore-pump",
+        "solar-panel",
+        "accumulator",
+        "electric-energy-interface",
+        "lightning-attractor",
+    ];
+
     private void DeserializeEntity(LuaTable table, ErrorCollector errorCollector) {
         string factorioType = table.Get("type", "");
         string name = table.Get("name", "");
@@ -186,8 +199,13 @@ internal partial class FactorioDataDeserializer {
             case "accumulator":
                 var accumulator = GetObject<Entity, EntityAccumulator>(table);
 
-                if (table.Get("energy_source", out LuaTable? accumulatorEnergy) && accumulatorEnergy.Get("buffer_capacity", out string? capacity)) {
-                    accumulator.baseAccumulatorCapacity = ParseEnergy(capacity);
+                if (table.Get("energy_source", out LuaTable? accumulatorEnergy)) {
+                    if (accumulatorEnergy.Get("buffer_capacity", out string? capacity)) {
+                        accumulator.baseAccumulatorCapacity = ParseEnergy(capacity);
+                    }
+                    if (accumulatorEnergy.Get("input_flow_limit", out string? inputPower)) {
+                        accumulator.basePower = ParseEnergy(inputPower);
+                    }
                 }
                 break;
             case "agricultural-tower":
@@ -406,6 +424,18 @@ internal partial class FactorioDataDeserializer {
                 break;
             case "logistic-container":
                 goto case "container";
+            case "lightning-attractor":
+                if (table.Get("range_elongation", out int range) && table.Get("efficiency", out float efficiency) && efficiency > 0) {
+                    EntityAttractor attractor = GetObject<Entity, EntityAttractor>(table);
+                    attractor.energy = voidEntityEnergy;
+                    attractor.range = range;
+                    attractor.efficiency = efficiency;
+                    if (table.Get("energy_source", out LuaTable? energy) && energy.Get("drain", out string? drain)) {
+                        attractor.drain = ParseEnergy(drain) * 60; // Drain is listed as MJ/tick, not MW
+                    }
+                    recipeCrafters.Add(attractor, SpecialNames.GeneratorRecipe);
+                }
+                break;
             case "mining-drill":
                 var drill = GetObject<Entity, EntityCrafter>(table);
                 _ = table.Get("energy_usage", out usesPower);
@@ -555,11 +585,7 @@ internal partial class FactorioDataDeserializer {
 
         _ = table.Get("energy_source", out LuaTable? energySource);
 
-        // These types have already called ReadEnergySource/ReadFluidEnergySource (generator, burner generator) or don't consume energy from YAFC's point of view (pump to EII).
-        // TODO: Work with AAI-I to support offshore pumps that consume energy.
-        if (factorioType is not "generator" and not "burner-generator" and not "offshore-pump" and not "solar-panel" and not "accumulator" and not "electric-energy-interface"
-            && energySource != null) {
-
+        if (energySource != null && !noDefaultEnergyParsing.Contains(factorioType)) {
             ReadEnergySource(energySource, entity, defaultDrain);
         }
 

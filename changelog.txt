@@ -15,6 +15,11 @@
 //     Internal changes:
 //         Changes to the code that do not affect the behavior of the program.
 ----------------------------------------------------------------------------------------------------------------------
+Version:
+Date:
+    Features:
+        - Detect lightning rods/collectors as electricity sources, and estimate the required accumulator count.
+----------------------------------------------------------------------------------------------------------------------
 Version: 2.7.0
 Date: January 27th 2025
     Features:

@@ -365,17 +365,63 @@ goodsHaveNoProduction:;
                 view.BuildGoodsIcon(gui, fuel, fuelLink, fuelAmount, ProductDropdownType.Fuel, recipe, recipe.linkRoot, HintLocations.OnProducingRecipes);
             }
             else {
-                if (recipe.recipe == Database.electricityGeneration && recipe.entity.target.factorioType == "solar-panel") {
-                    BuildSolarPanelAccumulatorView(gui, recipe);
+                if (recipe.recipe == Database.electricityGeneration && recipe.entity.target.factorioType is "solar-panel" or "lightning-attractor") {
+                    BuildAccumulatorView(gui, recipe);
                 }
             }
         }
 
-        private static void BuildSolarPanelAccumulatorView(ImGui gui, RecipeRow recipe) {
+        private static void BuildAccumulatorView(ImGui gui, RecipeRow recipe) {
             var accumulator = recipe.GetVariant(Database.allAccumulators);
             Quality accumulatorQuality = recipe.GetVariant(Database.qualities.all.OrderBy(q => q.level).ToArray());
-            float requiredMj = recipe.entity?.GetCraftingSpeed() * recipe.buildingCount * (70 / 0.7f) ?? 0; // 70 seconds of charge time to last through the night
-            float requiredAccumulators = requiredMj / accumulator.AccumulatorCapacity(accumulatorQuality);
+            float requiredAccumulators = 0;
+            if (recipe.entity?.target.factorioType == "solar-panel") {
+                float requiredMj = recipe.entity?.GetCraftingSpeed() * recipe.buildingCount * (70 / 0.7f) ?? 0; // 70 seconds of charge time to last through the night
+                requiredAccumulators = requiredMj / accumulator.AccumulatorCapacity(accumulatorQuality);
+            }
+            else if (recipe.entity.Is(out IObjectWithQuality<EntityAttractor>? attractor)) {
+                // Model the storm as rising from 0% to 100% over 30 seconds, staying at 100% for 24 seconds, and decaying over 30 seconds.
+                // I adjusted these until the right answers came out of my Excel model.
+                // TODO(multi-planet): Adjust these numbers based on day length.
+                const int stormRiseTicks = 30 * 60, stormPlateauTicks = 24 * 60, stormFallTicks = 30 * 60;
+                const int stormTotalTicks = stormRiseTicks + stormPlateauTicks + stormFallTicks;
+
+                // Don't try to model the storm with less than 1 attractor (6 lightning strikes for a normal rod)
+                float stormMjPerTick = attractor.StormPotentialPerTick() * (recipe.buildingCount < 1 ? 1 : recipe.buildingCount);
+                // TODO(multi-planet): Use the appropriate LightningPrototype::energy instead of hardcoding the 1000 of Fulgoran lightning.
+                // Tick numbers will be wrong if the first and last strike don't happen in the rise and fall periods. This is okay because
+                // a single normal rod has the first strike at 23 seconds, and the _second_ at 32.
+                float totalStormEnergy = stormMjPerTick * 3 * 60 * 60 /*TODO(multi-planet): ticks per day*/ * 0.3f;
+                float lostStormEnergy = totalStormEnergy % 1000;
+                float firstStrikeTick = (MathF.Sqrt(1 + 8 * 1000 * stormRiseTicks / stormMjPerTick) + 1) / 2;
+                float lastStrikeTick = stormTotalTicks - (MathF.Sqrt(1 + 8 * lostStormEnergy * stormFallTicks / stormMjPerTick) + 1) / 2;
+                int strikeCount = (int)(totalStormEnergy / 1000);
+
+                float requiredPower = attractor.GetCraftingSpeed() * recipe.buildingCount;
+
+                // Two different conditions need to be tested here. The first test is for capacity when discharging: the accumulators must have
+                // a capacity of requiredPower * timeBetween(lastStrikeDischarged, firstStrike + 1 day)
+                // As simplifying assumptions for this calculation, (1) the accumulators are fully charged when the last strike hits, and
+                // (2) the attractor's internal buffer is empty when the last strike hits.
+                // If incorrect, these cause errors in opposite directions.
+                float lastStrikeDrainedTick = lastStrikeTick + 1000 * attractor.GetAttractorEfficiency() / (requiredPower + attractor.target.drain) * 60;
+                float requiredTicks = 3 * 60 * 60 /*TODO(multi-planet): ticks per day*/ - lastStrikeDrainedTick + firstStrikeTick;
+                float requiredMj = requiredPower * requiredTicks / 60;
+
+                // The second test is for capacity when charging: The accumulators must draw at least requiredMj out of the attractors.
+                // Solve: chargeTimePerStrike = 1000MJ * effectiveness / (150MW + chargePower + requiredPower)
+                // And: chargePower * chargeTimePerStrike * #strikes - requiredPower * nonStrikeStormTime = requiredMj
+                // Not fun (see Fulgora lightning model.md), but the result is:
+                float stormLengthSeconds = (lastStrikeDrainedTick - firstStrikeTick) / 60;
+                float stormEnergy = 1000 * attractor.GetAttractorEfficiency() * strikeCount;
+                float numerator = requiredMj * attractor.target.drain + requiredPower * (requiredMj + stormLengthSeconds * (attractor.target.drain + requiredPower) - stormEnergy);
+                float denominator = stormEnergy - requiredPower * stormLengthSeconds - requiredMj;
+                float requiredChargeMw = numerator / denominator;
+
+                requiredAccumulators = Math.Max(requiredMj / accumulator.AccumulatorCapacity(accumulatorQuality),
+                    requiredChargeMw / accumulator.Power(accumulatorQuality));
+            }
+
             ObjectWithQuality<Entity> accumulatorWithQuality = new(accumulator, accumulatorQuality);
             if (gui.BuildFactorioObjectWithAmount(accumulatorWithQuality, requiredAccumulators, ButtonDisplayStyle.ProductionTableUnscaled) == Click.Left) {
                 ShowAccumulatorDropdown(gui, recipe, accumulator, accumulatorQuality);
@@ -1467,6 +1513,8 @@ goodsHaveNoProduction:;
         {WarningFlags.ExceedsBuiltCount, "This recipe requires more buildings than are currently built."},
         {WarningFlags.AsteroidCollectionNotModelled, "The speed of asteroid collectors depends heavily on location and travel speed. " +
             "It also depends on the distance between adjacent collectors. These dependencies are not modeled. Expect widely varied performance."},
+        {WarningFlags.AssumesFulgoraAndModel, "Energy production values assume Fulgoran storms and attractors in a square grid.\n" +
+            "The accumulator estimate tries to store 10% of the energy captured by the attractors."},
     };
 
     private static readonly (Icon icon, SchemeColor color)[] tagIcons = [
