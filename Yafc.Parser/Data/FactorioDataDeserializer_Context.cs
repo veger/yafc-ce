@@ -28,7 +28,7 @@ internal partial class FactorioDataDeserializer {
     private readonly Special heat;
     private readonly Special electricity;
     private readonly Special rocketLaunch;
-    private readonly Special researchUnit;
+    private readonly Item science;
     private readonly Item totalItemOutput;
     private readonly Item totalItemInput;
     private readonly EntityEnergy voidEntityEnergy;
@@ -86,12 +86,12 @@ internal partial class FactorioDataDeserializer {
         rootAccessible.Add(voidEnergy);
 
         rocketLaunch = createSpecialObject(false, SpecialNames.RocketLaunch, "Rocket launch slot",
-            "This is a slot in a rocket ready to be launched", "__base__/graphics/entity/rocket-silo/02-rocket.png", "signal-R");
-        researchUnit = createSpecialObject(false, SpecialNames.ResearchUnit, "Research",
-            "This represents one unit of a research task.", "__base__/graphics/icons/compilatron.png", "signal-L");
-        researchUnit.isResearch = true;
-        researchUnit.showInExplorers = false;
-        Analysis.ExcludeFromAnalysis<CostAnalysis>(researchUnit);
+            "This is a slot in a rocket ready to be launched", "__base__/graphics/entity/rocket-silo/rocket-static-pod.png", "signal-R");
+
+        science = GetObject<Item>("science");
+        science.showInExplorers = false;
+        Analysis.ExcludeFromAnalysis<CostAnalysis>(science);
+        formerAliases["Special.research-unit"] = science;
 
         generatorProduction = CreateSpecialRecipe(electricity, SpecialNames.GeneratorRecipe, "generating");
         generatorProduction.products = [new Product(electricity, 1f)];
@@ -189,7 +189,7 @@ internal partial class FactorioDataDeserializer {
 
         Database.allSciencePacks = [.. sciencePacks];
         Database.voidEnergy = voidEnergy;
-        Database.researchUnit = researchUnit;
+        Database.science = science;
         Database.itemInput = totalItemInput;
         Database.itemOutput = totalItemOutput;
         Database.electricity = electricity;

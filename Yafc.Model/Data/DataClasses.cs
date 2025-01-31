@@ -419,6 +419,13 @@ public class Item : Goods {
         spent = fuelResult;
         return spent != null;
     }
+
+    public override DependencyNode GetDependencies() {
+        if (this == Database.science) {
+            return (Database.technologies.all, DependencyNode.Flags.Source);
+        }
+        return base.GetDependencies();
+    }
 }
 
 public class Module : Item {
@@ -464,20 +471,11 @@ public class Location : FactorioObject {
 public class Special : Goods {
     internal string? virtualSignal { get; set; }
     internal bool power;
-    internal bool isResearch;
     internal bool isVoid;
     public override bool isPower => power;
     public override string type => isPower ? "Power" : "Special";
     public override UnitOfMeasure flowUnitOfMeasure => isVoid ? UnitOfMeasure.None : isPower ? UnitOfMeasure.Megawatt : UnitOfMeasure.PerSecond;
     internal override FactorioObjectSortOrder sortingOrder => FactorioObjectSortOrder.SpecialGoods;
-    public override DependencyNode GetDependencies() {
-        if (isResearch) {
-            return (Database.technologies.all, DependencyNode.Flags.Source);
-        }
-        else {
-            return base.GetDependencies();
-        }
-    }
 }
 
 [Flags]
