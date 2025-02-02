@@ -969,7 +969,7 @@ goodsHaveNoProduction:;
             #region Recipe selection
             int numberOfShownRecipes = 0;
 
-            if (goods.name == SpecialNames.ResearchUnit) {
+            if (goods == Database.science) {
                 if (gui.BuildButton("Add technology") && gui.CloseDropdown()) {
                     SelectMultiObjectPanel.Select(Database.technologies.all, "Select technology",
                         r => context.AddRecipe(r, DefaultVariantOrdering), checkMark: r => context.recipes.Any(rr => rr.recipe == r));

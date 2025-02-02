@@ -46,7 +46,7 @@ internal partial class FactorioDataDeserializer {
     private void DeserializeTechnology(LuaTable table, ErrorCollector errorCollector) {
         var technology = DeserializeCommon<Technology>(table, "technology");
         LoadTechnologyData(technology, table, errorCollector);
-        technology.products = [new(researchUnit, 1)];
+        technology.products = [new(science, 1)];
     }
 
     private void DeserializeQuality(LuaTable table, ErrorCollector errorCollector) {
