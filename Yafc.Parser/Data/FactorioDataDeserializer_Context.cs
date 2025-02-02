@@ -478,7 +478,7 @@ internal partial class FactorioDataDeserializer {
                     break;
                 case Goods goods:
                     goods.usages = itemUsages.GetArray(goods);
-                    goods.production = itemProduction.GetArray(goods);
+                    goods.production = itemProduction.GetArray(goods).Distinct().ToArray();
                     goods.miscSources = miscSources.GetArray(goods);
 
                     if (o is Item item) {

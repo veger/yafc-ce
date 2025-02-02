@@ -241,7 +241,7 @@ public abstract class DependencyNode {
     /// </summary>
     /// <param name="dependencies">The <see cref="DependencyList"/> whose behavior should be matched by this <see cref="ListNode"/>.</param>
     private sealed class ListNode(IEnumerable<FactorioObject> elements, Flags flags) : DependencyNode {
-        private readonly ReadOnlyCollection<FactorioId> elements = elements.Select(e => e.id).ToList().AsReadOnly();
+        private readonly ReadOnlyCollection<FactorioId> elements = elements.Select(e => e.id).Distinct().ToList().AsReadOnly();
 
         internal override IEnumerable<FactorioId> Flatten() => elements;
 
