@@ -19,6 +19,8 @@ Version:
 Date:
     Features:
         - Detect lightning rods/collectors as electricity sources, and estimate the required accumulator count.
+    Fixes:
+        - When creating launch recipes, obey the rocket capacity, not the item stack size.
 ----------------------------------------------------------------------------------------------------------------------
 Version: 2.7.0
 Date: January 27th 2025

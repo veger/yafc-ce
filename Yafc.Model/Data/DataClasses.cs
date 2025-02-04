@@ -340,6 +340,9 @@ public class Product : IFactorioObjectWrapper {
         }
     }
     float IFactorioObjectWrapper.amount => amount;
+
+    public static Product operator *(Product product, int factor) =>
+        new(product.goods, product.amountMin * factor, product.amountMax * factor, product.probability);
 }
 
 // Abstract base for anything that can be produced or consumed by recipes (etc)
@@ -669,6 +672,9 @@ public class EntityCrafter : EntityWithModules {
     public Goods[]? inputs { get; internal set; }
     public RecipeOrTechnology[] recipes { get; internal set; } = null!; // null-forgiving: Set in the first step of CalculateMaps
     private float _craftingSpeed = 1;
+    // For rocket silos, the number of inventory slots. Launch recipes are limited by both weight and available slots.
+    internal int rocketInventorySize;
+
     public virtual float baseCraftingSpeed {
         // The speed of a lab is baseSpeed * (1 + researchSpeedBonus) * Math.Min(0.2, 1 + moduleAndBeaconSpeedBonus)
         get => _craftingSpeed * (1 + (factorioType == "lab" ? Project.current.settings.researchSpeedBonus : 0));
