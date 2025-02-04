@@ -25,7 +25,7 @@ public class DependencyExplorer : PseudoScreen {
         {DependencyNode.Flags.TechnologyPrerequisites, ("Research", "There are no technology prerequisites")},
         {DependencyNode.Flags.ItemToPlace, ("Item", "This entity cannot be placed")},
         {DependencyNode.Flags.SourceEntity, ("Source", "This recipe requires another entity")},
-        {DependencyNode.Flags.Hidden, ("", "This technology is hidden")},
+        {DependencyNode.Flags.Disabled, ("", "This technology is disabled")},
         {DependencyNode.Flags.Location, ("Location", "There are no locations that spawn this entity")},
     };
 
@@ -77,10 +77,10 @@ public class DependencyExplorer : PseudoScreen {
             else {
                 string text = dependencyType.missingText;
                 if (Database.rootAccessible.Contains(current)) {
-                    text += ", but it is inherently accessible";
+                    text += ", but it is inherently accessible.";
                 }
                 else {
-                    text += ", and it is inaccessible";
+                    text += ", and it is inaccessible.";
                 }
 
                 gui.BuildText(text, TextBlockDisplayStyle.WrappedText);

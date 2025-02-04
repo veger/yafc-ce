@@ -29,7 +29,7 @@ public abstract class DependencyNode {
         ItemToPlace = 7,
         TechnologyPrerequisites = 8 | RequireEverything | OneTimeInvestment,
         IngredientVariant = 9,
-        Hidden = 10,
+        Disabled = 10,
         Location = 11 | OneTimeInvestment,
     }
 

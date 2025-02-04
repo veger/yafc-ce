@@ -112,7 +112,6 @@ public abstract class RecipeOrTechnology : FactorioObject {
     public Goods? mainProduct { get; internal set; }
     public float time { get; internal set; }
     public bool enabled { get; internal set; }
-    public bool hidden { get; internal set; }
     public RecipeFlags flags { get; internal set; }
     public override string type => "Recipe";
 
@@ -184,6 +183,7 @@ public class Recipe : RecipeOrTechnology {
     public Technology[] technologyUnlock { get; internal set; } = [];
     public Dictionary<Technology, float> technologyProductivity { get; internal set; } = [];
     public bool preserveProducts { get; internal set; }
+    public bool hidden { get; internal set; }
 
     public bool HasIngredientVariants() {
         foreach (var ingredient in ingredients) {
@@ -962,8 +962,8 @@ public class Technology : RecipeOrTechnology { // Technology is very similar to 
             nodes.Add(([Database.objectsByTypeName["Mechanics.launch." + triggerItem]], DependencyNode.Flags.Source));
         }
 
-        if (hidden && !enabled) {
-            nodes.Add(([], DependencyNode.Flags.Hidden));
+        if (!enabled) {
+            nodes.Add(([], DependencyNode.Flags.Disabled));
         }
         return nodes;
     }

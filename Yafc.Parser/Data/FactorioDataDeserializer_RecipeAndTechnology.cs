@@ -38,11 +38,6 @@ internal partial class FactorioDataDeserializer {
         }
     }
 
-    private static void DeserializeFlags(LuaTable table, RecipeOrTechnology recipe) {
-        recipe.hidden = table.Get("hidden", false);
-        recipe.enabled = table.Get("enabled", true);
-    }
-
     private void DeserializeTechnology(LuaTable table, ErrorCollector errorCollector) {
         var technology = DeserializeCommon<Technology>(table, "technology");
         LoadTechnologyData(technology, table, errorCollector);
@@ -130,7 +125,7 @@ internal partial class FactorioDataDeserializer {
             errorCollector.Error($"Could not get requirement(s) to unlock {technology.name}.", ErrorSeverity.AnalysisWarning);
         }
 
-        DeserializeFlags(table, technology);
+        technology.enabled = table.Get("enabled", true);
         technology.time = unit.Get("time", 1f);
         technology.count = unit.Get("count", 1000f);
 
@@ -374,6 +369,7 @@ internal partial class FactorioDataDeserializer {
             recipe.mainProduct = recipe.products[0]?.goods;
         }
 
-        DeserializeFlags(table, recipe);
+        recipe.hidden = table.Get("hidden", false);
+        recipe.enabled = table.Get("enabled", true);
     }
 }
