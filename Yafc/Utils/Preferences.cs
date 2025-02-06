@@ -12,8 +12,6 @@ public class Preferences {
     public static readonly string appDataFolder;
     private static readonly string fileName;
 
-    public static readonly string autosaveFilename;
-
     static Preferences() {
         appDataFolder = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
         if (!RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) {
@@ -24,7 +22,6 @@ public class Preferences {
             _ = Directory.CreateDirectory(appDataFolder);
         }
 
-        autosaveFilename = Path.Combine(appDataFolder, "autosave2.yafc");
         fileName = Path.Combine(appDataFolder, "yafc2.config");
         if (File.Exists(fileName)) {
             try {
@@ -73,6 +70,16 @@ public class Preferences {
     /// An opaque integer that the shopping list uses to store its display options. See the ShoppingListScreen properties that read and write this value.
     /// </summary>
     public int shoppingDisplayState { get; set; } = 3;
+
+    /// <summary>
+    /// When enabled autosave every time the window loses focus.
+    /// </summary>
+    public bool autosaveEnabled { get; set; } = true;
+
+    /// <summary>
+    /// When enabled a newer autosave will always get priority above the manual saved file when loading the project.
+    /// </summary>
+    public bool useMostRecentSave { get; set; } = true;
 
     public void AddProject(string dataPath, string modsPath, string projectPath, bool netProduction) {
         recentProjects = [.. recentProjects.Where(x => string.Compare(projectPath, x.path, StringComparison.InvariantCultureIgnoreCase) != 0)
