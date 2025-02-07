@@ -564,14 +564,17 @@ internal partial class FactorioDataDeserializer {
             mechanic.iconSpec = mechanic.source.iconSpec;
         }
 
-        // step 3 - detect packing/unpacking (e.g. barreling/unbarreling, stacking/unstacking, etc.) and voiding recipes
+        // step 3a - detect voiding recipes
+        // Do this first so voiding recipes don't re-normalize packed items/fluids.
         foreach (var recipe in allRecipes) {
-            if (recipe.specialType != FactorioObjectSpecialType.Normal) {
-                continue;
-            }
-
             if (recipe.products.Length == 0) {
                 recipe.specialType = FactorioObjectSpecialType.Voiding;
+            }
+        }
+
+        // step 3b - detect packing/unpacking (e.g. barreling/unbarreling, stacking/unstacking, etc.) recipes
+        foreach (var recipe in allRecipes) {
+            if (recipe.specialType != FactorioObjectSpecialType.Normal) {
                 continue;
             }
 
@@ -642,8 +645,12 @@ internal partial class FactorioDataDeserializer {
                 fluid.locName += " " + fluid.temperature + "°";
             }
         }
+
         // The recipes added by deadlock_stacked_recipes (with CompressedFluids, if present) need to be filtered out to get decent results.
-        static int countNonDsrRecipes(IEnumerable<Recipe> recipes) => recipes.Count(r => !r.name.Contains("StackedRecipe-") && !r.name.Contains("DSR_HighPressure-"));
+        // Also exclude recycling and voiding recipes: "I can recycle water barrels" does not count as "used in other recipes". (up ~25 lines)
+        static int countNonDsrRecipes(IEnumerable<Recipe> recipes)
+            => recipes.Count(r => !r.name.Contains("StackedRecipe-") && !r.name.Contains("DSR_HighPressure-")
+                && r.specialType is not FactorioObjectSpecialType.Recycling and not FactorioObjectSpecialType.Voiding);
     }
 
     private Recipe CreateSpecialRecipe(FactorioObject production, string category, string hint) {
