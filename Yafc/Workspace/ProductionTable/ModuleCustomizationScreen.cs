@@ -135,6 +135,7 @@ public class ModuleCustomizationScreen : PseudoScreenWithResult<ModuleTemplateBu
                 gui.BuildText("Productivity bonus: " + DataUtils.FormatAmount(effects.productivity, UnitOfMeasure.Percent));
                 gui.BuildText("Speed bonus: " + DataUtils.FormatAmount(effects.speedMod - 1, UnitOfMeasure.Percent) + " (Crafting speed: " +
                     DataUtils.FormatAmount(craftingSpeed, UnitOfMeasure.None) + ")");
+                gui.BuildText("Quality bonus: " + DataUtils.FormatAmount(effects.qualityMod, UnitOfMeasure.Percent) + " (multiplied by quality upgrade chance)");
 
                 string energyUsageLine = "Energy usage: " + DataUtils.FormatAmount(effects.energyUsageMod, UnitOfMeasure.Percent);
 

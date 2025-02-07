@@ -11,8 +11,11 @@ public struct ModuleEffects {
     public float speed;
     public float productivity;
     public float consumption;
+    public float quality;
+
     public readonly float speedMod => MathF.Max(1f + speed, 0.2f);
     public readonly float energyUsageMod => MathF.Max(1f + consumption, 0.2f);
+    public readonly float qualityMod => MathF.Max(quality, 0);
     public void AddModules(ObjectWithQuality<Module> module, float count, AllowedEffects allowedEffects) {
         ModuleSpecification spec = module.target.moduleSpecification;
         Quality quality = module.quality;
@@ -27,6 +30,10 @@ public struct ModuleEffects {
         if (allowedEffects.HasFlags(AllowedEffects.Consumption)) {
             consumption += spec.Consumption(quality) * count;
         }
+
+        if (allowedEffects.HasFlags(AllowedEffects.Quality)) {
+            this.quality += spec.Consumption(quality) * count;
+        }
     }
 
     public void AddModules(ObjectWithQuality<Module> module, float count) {
@@ -39,6 +46,7 @@ public struct ModuleEffects {
         }
 
         consumption += spec.Consumption(quality) * count;
+        this.quality += spec.Quality(quality) * count;
     }
 
     public readonly int GetModuleSoftLimit(ObjectWithQuality<Module> module, int hardLimit) {

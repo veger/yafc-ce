@@ -785,6 +785,7 @@ public sealed class Quality : FactorioObject {
     public float AccumulatorCapacityBonus => level;
     public float BeaconTransmissionBonus => .2f * level;
     public float BeaconConsumptionFactor { get; internal set; }
+    public float UpgradeChance { get; internal set; }
 }
 
 /// <summary>
