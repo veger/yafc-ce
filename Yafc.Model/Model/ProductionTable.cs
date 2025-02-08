@@ -11,15 +11,15 @@ using Yafc.UI;
 
 namespace Yafc.Model;
 
-public struct ProductionTableFlow(Goods goods, float amount, ProductionLink? link) {
-    public Goods goods = goods;
+public struct ProductionTableFlow(IObjectWithQuality<Goods> goods, float amount, ProductionLink? link) {
+    public IObjectWithQuality<Goods> goods = goods;
     public float amount = amount;
     public ProductionLink? link = link;
 }
 
 public class ProductionTable : ProjectPageContents, IComparer<ProductionTableFlow>, IElementGroup<RecipeRow> {
     private static readonly ILogger logger = Logging.GetLogger<ProductionTable>();
-    [SkipSerialization] public Dictionary<Goods, ProductionLink> linkMap { get; } = [];
+    [SkipSerialization] public Dictionary<IObjectWithQuality<Goods>, ProductionLink> linkMap { get; } = [];
     List<RecipeRow> IElementGroup<RecipeRow>.elements => recipes;
     [NoUndo]
     public bool expanded { get; set; } = true;
@@ -109,14 +109,14 @@ public class ProductionTable : ProjectPageContents, IComparer<ProductionTableFlo
                 goto match;
             }
 
-            foreach (var ingr in recipe.recipe.ingredients) {
-                if (ingr.goods.Match(query)) {
+            foreach (var ingr in recipe.Ingredients) {
+                if (ingr.Goods.Match(query)) {
                     goto match;
                 }
             }
 
-            foreach (var product in recipe.recipe.products) {
-                if (product.goods.Match(query)) {
+            foreach (var product in recipe.Products) {
+                if (product.Goods.Match(query)) {
                     goto match;
                 }
             }
@@ -148,54 +148,57 @@ match:
     /// <param name="selectedFuel">If not <see langword="null"/>, this method will select a crafter or lab that can use this fuel, assuming such an entity exists.
     /// For example, if the selected fuel is coal, the recipe will be configured with a burner assembler/lab if any are available.</param>
     /// <param name="spentFuel"></param>
-    public void AddRecipe(RecipeOrTechnology recipe, IComparer<Goods> ingredientVariantComparer, Goods? selectedFuel = null, Goods? spentFuel = null) {
+    public void AddRecipe(ObjectWithQuality<RecipeOrTechnology> recipe, IComparer<Goods> ingredientVariantComparer,
+        ObjectWithQuality<Goods>? selectedFuel = null, IObjectWithQuality<Goods>? spentFuel = null) {
+
         RecipeRow recipeRow = new RecipeRow(this, recipe);
         this.RecordUndo().recipes.Add(recipeRow);
-        EntityCrafter? selectedFuelCrafter = GetSelectedFuelCrafter(recipe, selectedFuel);
-        EntityCrafter? spentFuelRecipeCrafter = GetSpentFuelCrafter(recipe, spentFuel);
+        EntityCrafter? selectedFuelCrafter = GetSelectedFuelCrafter(recipe.target, selectedFuel);
+        EntityCrafter? spentFuelRecipeCrafter = GetSpentFuelCrafter(recipe.target, spentFuel);
 
-        recipeRow.entity = (selectedFuelCrafter ?? spentFuelRecipeCrafter ?? recipe.crafters.AutoSelect(DataUtils.FavoriteCrafter), Quality.Normal);
+        recipeRow.entity = (selectedFuelCrafter ?? spentFuelRecipeCrafter ?? recipe.target.crafters.AutoSelect(DataUtils.FavoriteCrafter), Quality.Normal);
 
         if (recipeRow.entity != null) {
             recipeRow.fuel = GetSelectedFuel(selectedFuel, recipeRow)
                 ?? GetFuelForSpentFuel(spentFuel, recipeRow)
-                ?? recipeRow.entity.target.energy?.fuels.AutoSelect(DataUtils.FavoriteFuel);
+                ?? recipeRow.entity.target.energy?.fuels.AutoSelect(DataUtils.FavoriteFuel).With(Quality.Normal);
         }
 
-        foreach (Ingredient ingredient in recipeRow.recipe.ingredients) {
-            if (ingredient.variants != null) {
-                _ = recipeRow.variants.Add(ingredient.variants.AutoSelect(ingredientVariantComparer)!); // null-forgiving: variants is never empty, and AutoSelect never returns null from a non-empty collection (of non-null items).
+        foreach (RecipeRowIngredient ingredient in recipeRow.Ingredients) {
+            List<Fluid>? variants = ingredient.Goods?.target.fluid?.variants;
+            if (variants != null) {
+                _ = recipeRow.variants.Add(variants.AutoSelect(ingredientVariantComparer)!); // null-forgiving: variants is never empty, and AutoSelect never returns null from a non-empty collection (of non-null items).
             }
         }
     }
 
-    private static EntityCrafter? GetSelectedFuelCrafter(RecipeOrTechnology recipe, Goods? selectedFuel) =>
-        selectedFuel?.fuelFor.OfType<EntityCrafter>()
+    private static EntityCrafter? GetSelectedFuelCrafter(RecipeOrTechnology recipe, ObjectWithQuality<Goods>? selectedFuel) =>
+        selectedFuel?.target.fuelFor.OfType<EntityCrafter>()
             .Where(e => e.recipes.Contains(recipe))
             .AutoSelect(DataUtils.FavoriteCrafter);
 
-    private static EntityCrafter? GetSpentFuelCrafter(RecipeOrTechnology recipe, Goods? spentFuel) {
+    private static EntityCrafter? GetSpentFuelCrafter(RecipeOrTechnology recipe, IObjectWithQuality<Goods>? spentFuel) {
         if (spentFuel is null) {
             return null;
         }
 
         return recipe.crafters
-            .Where(c => c.energy.fuels.OfType<Item>().Any(e => e.fuelResult == spentFuel))
+            .Where(c => c.energy.fuels.OfType<Item>().Any(e => e.fuelResult == spentFuel.target))
             .AutoSelect(DataUtils.FavoriteCrafter);
     }
 
-    private static Goods? GetFuelForSpentFuel(Goods? spentFuel, [NotNull] RecipeRow recipeRow) {
+    private static ObjectWithQuality<Goods>? GetFuelForSpentFuel(IObjectWithQuality<Goods>? spentFuel, [NotNull] RecipeRow recipeRow) {
         if (spentFuel is null) {
             return null;
         }
 
-        return recipeRow.entity?.target.energy.fuels.Where(e => spentFuel.miscSources.Contains(e))
-            .AutoSelect(DataUtils.FavoriteFuel);
+        return recipeRow.entity?.target.energy.fuels.Where(e => spentFuel.target.miscSources.Contains(e))
+            .AutoSelect(DataUtils.FavoriteFuel).With(spentFuel.quality);
     }
 
-    private static Goods? GetSelectedFuel(Goods? selectedFuel, [NotNull] RecipeRow recipeRow) =>
+    private static ObjectWithQuality<Goods>? GetSelectedFuel(ObjectWithQuality<Goods>? selectedFuel, [NotNull] RecipeRow recipeRow) =>
         // Skipping AutoSelect since there will only be one result at most.
-        recipeRow.entity?.target.energy?.fuels.FirstOrDefault(e => e == selectedFuel);
+        recipeRow.entity?.target.energy?.fuels.FirstOrDefault(e => e == selectedFuel?.target)?.With(selectedFuel!.quality);
 
     /// <summary>
     /// Get all <see cref="RecipeRow"/>s contained in this <see cref="ProductionTable"/>, in a depth-first ordering. (The same as in the UI when all nested tables are expanded.)
@@ -216,21 +219,21 @@ match:
         }
     }
 
-    private static void AddFlow(RecipeRow recipe, Dictionary<Goods, (double prod, double cons)> summer) {
-        foreach (var product in recipe.recipe.products) {
-            _ = summer.TryGetValue(product.goods, out var prev);
-            double amount = recipe.recipesPerSecond * product.GetAmountPerRecipe(recipe.parameters.productivity);
+    private static void AddFlow(RecipeRow recipe, Dictionary<IObjectWithQuality<Goods>, (double prod, double cons)> summer) {
+        foreach (var product in recipe.Products) {
+            _ = summer.TryGetValue(product.Goods!, out var prev); // Null-forgiving: recipe is always enabled, so products are never blank.
+            double amount = product.Amount;
             prev.prod += amount;
-            summer[product.goods] = prev;
+            summer[product.Goods!] = prev;
         }
 
-        for (int i = 0; i < recipe.recipe.ingredients.Length; i++) {
-            var ingredient = recipe.recipe.ingredients[i];
-            var linkedGoods = recipe.links.ingredientGoods[i];
+        int i = 0;
+        foreach (var ingredient in recipe.Ingredients) {
+            var linkedGoods = recipe.links.ingredientGoods[i++];
 
             if (linkedGoods is not null) {
                 _ = summer.TryGetValue(linkedGoods, out var prev);
-                prev.cons += recipe.recipesPerSecond * ingredient.amount;
+                prev.cons += ingredient.Amount;
                 summer[linkedGoods] = prev;
             }
             else {
@@ -243,17 +246,11 @@ match:
             double fuelUsage = recipe.fuelUsagePerSecond;
             prev.cons += fuelUsage;
             summer[recipe.fuel] = prev;
-
-            if (recipe.fuel.HasSpentFuel(out var spentFuel)) {
-                _ = summer.TryGetValue(spentFuel, out prev);
-                prev.prod += fuelUsage;
-                summer[spentFuel] = prev;
-            }
         }
     }
 
     private void CalculateFlow(RecipeRow? include) {
-        Dictionary<Goods, (double prod, double cons)> flowDict = [];
+        Dictionary<IObjectWithQuality<Goods>, (double prod, double cons)> flowDict = [];
 
         if (include != null) {
             AddFlow(include, flowDict);
@@ -336,7 +333,7 @@ match:
         for (int i = 0; i < allRecipes.Count; i++) {
             var recipe = allRecipes[i];
             recipe.parameters = RecipeParameters.CalculateParameters(recipe);
-            var variable = productionTableSolver.MakeNumVar(0f, double.PositiveInfinity, recipe.recipe.name);
+            var variable = productionTableSolver.MakeNumVar(0f, double.PositiveInfinity, recipe.recipe.QualityName());
 
             if (recipe.fixedBuildings > 0f) {
                 double fixedRps = (double)recipe.fixedBuildings / recipe.parameters.recipeTime;
@@ -351,7 +348,7 @@ match:
             var link = allLinks[i];
             float min = link.algorithm == LinkAlgorithm.AllowOverConsumption ? float.NegativeInfinity : link.amount;
             float max = link.algorithm == LinkAlgorithm.AllowOverProduction ? float.PositiveInfinity : link.amount;
-            var constraint = productionTableSolver.MakeConstraint(min, max, link.goods.name + "_recipe");
+            var constraint = productionTableSolver.MakeConstraint(min, max, link.goods.QualityName() + "_recipe");
             constraints[i] = constraint;
             link.solverIndex = i;
             link.flags = link.amount > 0 ? ProductionLink.Flags.HasConsumption : link.amount < 0 ? ProductionLink.Flags.HasProduction : 0;
@@ -362,14 +359,14 @@ match:
             var recipeVar = vars[i];
             var links = recipe.links;
 
-            for (int j = 0; j < recipe.recipe.products.Length; j++) {
-                var product = recipe.recipe.products[j];
+            for (int j = 0; j < recipe.recipe.target.products.Length; j++) {
+                var product = recipe.recipe.target.products[j];
 
                 if (product.amount <= 0f) {
                     continue;
                 }
 
-                if (recipe.FindLink(product.goods, out var link)) {
+                if (recipe.FindLink(new ObjectWithQuality<Goods>(product.goods, recipe.recipe.quality), out var link)) {
                     link.flags |= ProductionLink.Flags.HasProduction;
                     float added = product.GetAmountPerRecipe(recipe.parameters.productivity);
                     AddLinkCoefficient(constraints[link.solverIndex], recipeVar, link, recipe, added);
@@ -383,9 +380,9 @@ match:
                 links.products[j] = link;
             }
 
-            for (int j = 0; j < recipe.recipe.ingredients.Length; j++) {
-                var ingredient = recipe.recipe.ingredients[j];
-                var option = ingredient.variants == null ? ingredient.goods : recipe.GetVariant(ingredient.variants);
+            for (int j = 0; j < recipe.recipe.target.ingredients.Length; j++) {
+                var ingredient = recipe.recipe.target.ingredients[j];
+                var option = (ingredient.variants == null ? ingredient.goods : recipe.GetVariant(ingredient.variants)).With(recipe.recipe.quality);
 
                 if (recipe.FindLink(option, out var link)) {
                     link.flags |= ProductionLink.Flags.HasConsumption;
@@ -407,13 +404,13 @@ match:
                     AddLinkCoefficient(constraints[link.solverIndex], recipeVar, link, recipe, -fuelAmount);
                 }
 
-                if (recipe.fuel.HasSpentFuel(out var spentFuel) && recipe.FindLink(spentFuel, out link)) {
+                if (recipe.fuel.FuelResult() is IObjectWithQuality<Item> spentFuel && recipe.FindLink(spentFuel, out link)) {
                     links.spentFuel = link;
                     link.flags |= ProductionLink.Flags.HasProduction;
                     AddLinkCoefficient(constraints[link.solverIndex], recipeVar, link, recipe, fuelAmount);
 
-                    if (spentFuel.Cost() > 0f) {
-                        objCoefficients[i] += fuelAmount * spentFuel.Cost();
+                    if (spentFuel.target.Cost() > 0f) {
+                        objCoefficients[i] += fuelAmount * spentFuel.target.Cost();
                     }
                 }
             }
@@ -437,7 +434,7 @@ match:
         await Ui.ExitMainThread();
 
         for (int i = 0; i < allRecipes.Count; i++) {
-            objective.SetCoefficient(vars[i], (allRecipes[i].recipe as Recipe)?.RecipeBaseCost() ?? 0);
+            objective.SetCoefficient(vars[i], (allRecipes[i].recipe.target as Recipe)?.RecipeBaseCost() ?? 0);
         }
 
         var result = productionTableSolver.Solve();
@@ -451,8 +448,8 @@ match:
             foreach (var link in deadlocks) {
                 // Adding negative slack to possible deadlocks (loops)
                 var constraint = constraints[link.solverIndex];
-                float cost = MathF.Abs(link.goods.Cost());
-                var negativeSlack = productionTableSolver.MakeNumVar(0d, double.PositiveInfinity, "negative-slack." + link.goods.name);
+                float cost = MathF.Abs(link.goods.target.Cost());
+                var negativeSlack = productionTableSolver.MakeNumVar(0d, double.PositiveInfinity, "negative-slack." + link.goods.QualityName());
                 constraint.SetCoefficient(negativeSlack, cost);
                 objective.SetCoefficient(negativeSlack, 1f);
                 slackVars[link.solverIndex].negative = negativeSlack;
@@ -460,9 +457,9 @@ match:
 
             foreach (var link in splits) {
                 // Adding positive slack to splits
-                float cost = MathF.Abs(link.goods.Cost());
+                float cost = MathF.Abs(link.goods.target.Cost());
                 var constraint = constraints[link.solverIndex];
-                var positiveSlack = productionTableSolver.MakeNumVar(0d, double.PositiveInfinity, "positive-slack." + link.goods.name);
+                var positiveSlack = productionTableSolver.MakeNumVar(0d, double.PositiveInfinity, "positive-slack." + link.goods.QualityName());
                 constraint.SetCoefficient(positiveSlack, -cost);
                 objective.SetCoefficient(positiveSlack, 1f);
                 slackVars[link.solverIndex].positive = positiveSlack;
@@ -572,9 +569,9 @@ match:
     /// </summary>
     /// <param name="goods">The <see cref="Goods"/> that might have its link removed.</param>
     /// <returns><see langword="true"/> if the link should be preserved, or <see langword="false"/> if it is ok to delete the link.</returns>
-    private bool HasDisabledRecipeReferencing(Goods goods)
+    private bool HasDisabledRecipeReferencing(IObjectWithQuality<Goods> goods)
         => GetAllRecipes().Any(row => !row.hierarchyEnabled
-        && (row.fuel == goods || row.recipe.ingredients.Any(i => i.goods == goods) || row.recipe.products.Any(p => p.goods == goods)));
+        && (row.fuel == goods || row.recipe.target.ingredients.Any(i => i.goods == goods) || row.recipe.target.products.Any(p => p.goods == goods)));
 
     private bool CheckBuiltCountExceeded() {
         bool builtCountExceeded = false;
@@ -665,7 +662,7 @@ match:
         return (sources, splits);
     }
 
-    public bool FindLink(Goods goods, [MaybeNullWhen(false)] out ProductionLink link) {
+    public bool FindLink(IObjectWithQuality<Goods> goods, [MaybeNullWhen(false)] out ProductionLink link) {
         if (goods == null) {
             link = null;
             return false;
@@ -688,8 +685,8 @@ match:
     }
 
     public int Compare(ProductionTableFlow x, ProductionTableFlow y) {
-        float amt1 = x.goods.fluid != null ? x.amount / 50f : x.amount;
-        float amt2 = y.goods.fluid != null ? y.amount / 50f : y.amount;
+        float amt1 = x.goods.target.fluid != null ? x.amount / 50f : x.amount;
+        float amt2 = y.goods.target.fluid != null ? y.amount / 50f : y.amount;
 
         return amt1.CompareTo(amt2);
     }

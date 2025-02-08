@@ -77,19 +77,21 @@ public class BlueprintIcon {
 public class BlueprintSignal {
     public string? name { get; set; }
     public string? type { get; set; }
+    public string? quality { get; set; }
 
-    public void Set(Goods goods) {
-        if (goods is Special sp) {
+    public void Set(IObjectWithQuality<Goods> goods) {
+        if (goods.target is Special sp) {
             type = "virtual";
             name = sp.virtualSignal;
         }
-        else if (goods is Fluid fluid) {
+        else if (goods.target is Fluid fluid) {
             type = "fluid";
             name = fluid.originalName;
         }
         else {
             type = "item";
-            name = goods.name;
+            name = goods.target.name;
+            quality = goods.quality.name;
         }
     }
 }
@@ -102,6 +104,7 @@ public class BlueprintEntity {
     public BlueprintPosition position { get; set; } = new BlueprintPosition();
     public int direction { get; set; }
     public string? recipe { get; set; }
+    public string? recipe_quality { get; set; }
     [JsonPropertyName("control_behavior")] public BlueprintControlBehavior? controlBehavior { get; set; }
     public BlueprintConnection? connections { get; set; }
     [JsonPropertyName("request_filters")] public List<BlueprintRequestFilter> requestFilters { get; } = [];
@@ -130,6 +133,7 @@ public class BlueprintEntity {
 [Serializable]
 public class BlueprintRequestFilter {
     public string? name { get; set; }
+    public string? quality { get; set; }
     public int index { get; set; }
     public int count { get; set; }
 }

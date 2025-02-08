@@ -127,9 +127,9 @@ public class ModuleFillerParameters : ModelObject<ModelObject> {
 
         Quality quality = Quality.MaxAccessible;
 
-        RecipeOrTechnology recipe = row.recipe;
+        ObjectWithQuality<RecipeOrTechnology> recipe = row.recipe;
 
-        if (autoFillPayback > 0 && (fillMiners || !recipe.flags.HasFlags(RecipeFlags.UsesMiningProductivity))) {
+        if (autoFillPayback > 0 && (fillMiners || !recipe.target.flags.HasFlags(RecipeFlags.UsesMiningProductivity))) {
             /*
                 Auto Fill Calculation
                 The goal is to find the best module to fill the building with, based on the economy (cost per second) of the configuration.
@@ -152,9 +152,9 @@ public class ModuleFillerParameters : ModelObject<ModelObject> {
             */
 
 
-            float productivityEconomy = recipe.Cost() / partialParams.recipeTime;
+            float productivityEconomy = recipe.target.Cost() / partialParams.recipeTime;
             float speedEconomy = Math.Max(0.0001f, entity.Cost()) / autoFillPayback;
-            float effectivityEconomy = partialParams.fuelUsagePerSecondPerBuilding * row.fuel?.Cost() ?? 0f;
+            float effectivityEconomy = partialParams.fuelUsagePerSecondPerBuilding * row.fuel?.target.Cost() ?? 0f;
 
             if (effectivityEconomy < 0f) {
                 effectivityEconomy = 0f;
@@ -164,7 +164,7 @@ public class ModuleFillerParameters : ModelObject<ModelObject> {
             ObjectWithQuality<Module>? usedModule = null;
 
             foreach (var module in Database.allModules) {
-                if (module.IsAccessibleWithCurrentMilestones() && entity.CanAcceptModule(module.moduleSpecification) && recipe.CanAcceptModule(module)) {
+                if (module.IsAccessibleWithCurrentMilestones() && entity.CanAcceptModule(module.moduleSpecification) && recipe.target.CanAcceptModule(module)) {
                     float economy = module.moduleSpecification.Productivity(quality) * productivityEconomy
                                   + module.moduleSpecification.Speed(quality) * speedEconomy
                                   - module.moduleSpecification.Consumption(quality) * effectivityEconomy;
@@ -194,7 +194,7 @@ public class ModuleFillerParameters : ModelObject<ModelObject> {
     }
 
     internal void GetModulesInfo((float recipeTime, float fuelUsagePerSecondPerBuilding) partialParams, RecipeRow row, EntityCrafter entity, ref ModuleEffects effects, ref UsedModule used) {
-        AutoFillBeacons(row.recipe, entity, ref effects, ref used);
+        AutoFillBeacons(row.recipe.target, entity, ref effects, ref used);
         AutoFillModules(partialParams, row, entity, ref effects, ref used);
     }
 

@@ -163,7 +163,6 @@ public abstract class RecipeOrTechnology : FactorioObject {
         return true;
     }
 
-    public bool CanAcceptModule(ObjectWithQuality<Module> module) => CanAcceptModule(module.target);
     public virtual bool CanAcceptModule(Module _) => true;
 }
 
@@ -424,7 +423,7 @@ public class Item : Goods {
     }
 
     public override DependencyNode GetDependencies() {
-        if (this == Database.science) {
+        if (this == Database.science.target) {
             return (Database.technologies.all, DependencyNode.Flags.Source);
         }
         return base.GetDependencies();
@@ -803,14 +802,6 @@ public interface IObjectWithQuality<out T> : IFactorioObjectWrapper where T : Fa
     Quality quality { get; }
 }
 
-public static class ObjectWithQualityExtensions {
-    // This method cannot be declared on the interface.
-    public static void Deconstruct<T>(this IObjectWithQuality<T> value, out T obj, out Quality quality) where T : FactorioObject {
-        obj = value.target;
-        quality = value.quality;
-    }
-}
-
 /// <summary>
 /// Represents a <see cref="FactorioObject"/> with an attached <see cref="Quality"/> modifier.
 /// </summary>
@@ -830,7 +821,8 @@ public sealed class ObjectWithQuality<T>(T target, Quality quality) : IObjectWit
         Fluid or Location or Mechanics { source: Entity } or Quality or Special or Technology or Tile => Quality.Normal,
         Recipe r when r.ingredients.All(i => i.goods is Fluid) => Quality.Normal,
         // Everything else supports quality (except science):
-        _ => target == Database.science ? Quality.Normal : quality
+        // null-checking: Database.science is null when constructing the object that is stored in Database.science.
+        _ => target == Database.science?.target ? Quality.Normal : quality
     };
 
     /// <summary>

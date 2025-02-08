@@ -161,7 +161,7 @@ public class ModuleTemplate : ModelObject<ModelObject> {
             }
         }
         else {
-            filler?.AutoFillBeacons(row.recipe, entity, ref effects, ref used);
+            filler?.AutoFillBeacons(row.recipe.target, entity, ref effects, ref used);
         }
 
         used.modules = [.. buffer];
@@ -230,7 +230,7 @@ public class ModuleTemplateBuilder {
 
 // Stores collection on ProductionLink recipe was linked to the previous computation
 internal struct RecipeLinks {
-    public Goods[] ingredientGoods;
+    public ObjectWithQuality<Goods>[] ingredientGoods;
     public ProductionLink?[] ingredients;
     public ProductionLink?[] products;
     public ProductionLink? fuel;
@@ -250,12 +250,12 @@ public interface IGroupedElement<TGroup> {
 
 public class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<ProductionTable> {
     private ObjectWithQuality<EntityCrafter>? _entity;
-    private Goods? _fuel;
+    private ObjectWithQuality<Goods>? _fuel;
     private float _fixedBuildings;
-    private Goods? _fixedProduct;
+    private ObjectWithQuality<Goods>? _fixedProduct;
     private ModuleTemplate? _modules;
 
-    public RecipeOrTechnology recipe { get; }
+    public ObjectWithQuality<RecipeOrTechnology> recipe { get; }
     // Variable parameters
     public ObjectWithQuality<EntityCrafter>? entity {
         get => _entity;
@@ -273,9 +273,9 @@ public class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Productio
 
             // By default show the total item consumption and production signals for unloading crafters (miners, recyclers, etc) when they output multiple products.
             // Don't turn the setting on when just changing the quality, though.
-            showTotalIO |= (value?.target != _entity?.target) && value?.target.hasVectorToPlaceResult == true && recipe.products.Length > 1;
+            showTotalIO |= (value?.target != _entity?.target) && value?.target.hasVectorToPlaceResult == true && recipe.target.products.Length > 1;
 
-            if (fixedBuildings == 0 || (fixedFuel && !(value?.target.energy.fuels ?? []).Contains(_fuel))) {
+            if (fixedBuildings == 0 || (fixedFuel && !(value?.target.energy.fuels ?? []).Contains(_fuel?.target))) {
                 // We're either changing both the entity and the fuel (changing between electric, fluid-burning, item-burning, heat-powered, and steam-powered crafter categories),
                 // or fixedBuilding is zero.
                 // Don't try to preserve fuel consumption in these cases.
@@ -289,42 +289,34 @@ public class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Productio
             }
         }
     }
-    public Goods? fuel {
+    public ObjectWithQuality<Goods>? fuel {
         get => _fuel;
         set {
             if (SerializationMap.IsDeserializing || fixedBuildings == 0 || _fuel == value) {
                 _fuel = value;
             }
-            else if (fixedProduct != null && ((fuel as Item)?.fuelResult == fixedProduct || (value as Item)?.fuelResult == fixedProduct)) {
-                if (recipe.products.SingleOrDefault(p => p.goods == fixedProduct, false) is not Product product) {
+            else if (fixedProduct != null && (fuel.FuelResult() == fixedProduct || value.FuelResult() == fixedProduct)) {
+                if (Products.SingleOrDefault(p => p.Goods == fixedProduct, false) is not RecipeRowProduct product) {
                     fixedBuildings = 0; // We couldn't find the Product corresponding to fixedProduct. Just clear the fixed amount.
                     _fuel = value;
                 }
                 else {
                     // We're changing the fuel and at least one of the current or new fuel burns to the fixed product
-                    double oldAmount = product.GetAmountForRow(this);
-
-                    if ((fuel as Item)?.fuelResult == fixedProduct) {
-                        oldAmount += fuelUsagePerSecond;
-                    }
+                    float oldAmount = product.Amount;
 
                     _fuel = value;
                     parameters = RecipeParameters.CalculateParameters(this);
-                    double newAmount = product.GetAmountForRow(this);
+                    float newAmount = Products.First(p => p.Goods == fixedProduct).Amount;
 
-                    if ((fuel as Item)?.fuelResult == fixedProduct) {
-                        newAmount += fuelUsagePerSecond;
-                    }
-
-                    fixedBuildings *= (float)(oldAmount / newAmount);
+                    fixedBuildings *= oldAmount / newAmount;
                 }
             }
             else if (fixedFuel) {
-                if (value == null || _fuel == null || _fuel.fuelValue == 0) {
+                if (value == null || _fuel == null || _fuel.target.fuelValue == 0) {
                     fixedBuildings = 0;
                 }
                 else {
-                    fixedBuildings *= value.fuelValue / _fuel.fuelValue;
+                    fixedBuildings *= value.target.fuelValue / _fuel.target.fuelValue;
                 }
                 _fuel = value;
             }
@@ -357,23 +349,27 @@ public class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Productio
     /// <summary>
     /// If not <see langword="null"/>, <see cref="fixedBuildings"/> is set to control the consumption of this ingredient.
     /// </summary>
-    public Goods? fixedIngredient { get; set; }
+    public ObjectWithQuality<Goods>? fixedIngredient { get; set; }
     /// <summary>
     /// If not <see langword="null"/>, <see cref="fixedBuildings"/> is set to control the production of this product.
     /// </summary>
-    public Goods? fixedProduct {
+    public ObjectWithQuality<Goods>? fixedProduct {
         get => _fixedProduct;
         set {
             if (value == null) {
                 _fixedProduct = null;
             }
-            else if (value != Database.itemOutput && recipe.products.All(p => p.goods != value)) {
-                // The UI doesn't know the difference between a product and a spent fuel, but we care about the difference
-                _fixedProduct = null;
-                fixedFuel = true;
-            }
             else {
-                _fixedProduct = value;
+                // This takes advantage of the fact that ObjectWithQuality automatically downgrades high-quality fluids (etc.) to normal.
+                var products = recipe.target.products.AsEnumerable().Select(p => new ObjectWithQuality<Goods>(p.goods, recipe.quality));
+                if (value != Database.itemOutput && products.All(p => p != value)) {
+                    // The UI doesn't know the difference between a product and a spent fuel, but we care about the difference
+                    _fixedProduct = null;
+                    fixedFuel = true;
+                }
+                else {
+                    _fixedProduct = value;
+                }
             }
         }
     }
@@ -429,14 +425,14 @@ public class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Productio
     public HashSet<FactorioObject> variants { get; } = [];
     [SkipSerialization] public ProductionTable linkRoot => subgroup ?? owner;
 
-    public RecipeRowIngredient FuelInformation => new(fuel, fuelUsagePerSecond, links.fuel, (fuel as Fluid)?.variants?.ToArray());
+    public RecipeRowIngredient FuelInformation => new(fuel, fuelUsagePerSecond, links.fuel, (fuel?.target as Fluid)?.variants?.ToArray());
     public IEnumerable<RecipeRowIngredient> Ingredients {
         get {
-            return hierarchyEnabled ? @internal() : Enumerable.Repeat<RecipeRowIngredient>((null, 0, null, null), recipe.ingredients.Length);
+            return hierarchyEnabled ? @internal() : Enumerable.Repeat<RecipeRowIngredient>((null, 0, null, null), recipe.target.ingredients.Length);
 
             IEnumerable<RecipeRowIngredient> @internal() {
-                for (int i = 0; i < recipe.ingredients.Length; i++) {
-                    Ingredient ingredient = recipe.ingredients[i];
+                for (int i = 0; i < recipe.target.ingredients.Length; i++) {
+                    Ingredient ingredient = recipe.target.ingredients[i];
                     yield return (links.ingredientGoods[i], ingredient.amount * (float)recipesPerSecond, links.ingredients[i], ingredient.variants);
                 }
             }
@@ -445,19 +441,19 @@ public class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Productio
     public IEnumerable<RecipeRowProduct> Products {
         get {
             int i = 0;
-            Item? spentFuel = (fuel as Item)?.fuelResult;
+            IObjectWithQuality<Item>? spentFuel = fuel.FuelResult();
             bool handledFuel = spentFuel == null; // If there's no spent fuel, it's already handled
 
-            foreach (Product product in recipe.products) {
+            foreach (Product product in recipe.target.products) {
                 if (hierarchyEnabled) {
                     float amount = product.GetAmountForRow(this);
 
-                    if (product.goods == spentFuel) {
+                    if (product.goods.With(recipe.quality) == spentFuel) {
                         amount += fuelUsagePerSecond;
                         handledFuel = true;
                     }
 
-                    yield return (product.goods, amount, links.products[i++], product.percentSpoiled);
+                    yield return (product.goods.With(recipe.quality), amount, links.products[i++], product.percentSpoiled);
                 }
                 else {
                     yield return (null, 0, null, null);
@@ -465,7 +461,7 @@ public class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Productio
             }
 
             if (!handledFuel) {
-                yield return hierarchyEnabled ? (spentFuel, fuelUsagePerSecond, links.spentFuel, null) : (null, 0, null, null);
+                yield return hierarchyEnabled ? ((spentFuel?.target, spentFuel?.quality!), fuelUsagePerSecond, links.spentFuel, null) : (null, 0, null, null);
             }
         }
     }
@@ -505,7 +501,7 @@ public class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Productio
     internal float fuelUsagePerSecond => (float)(parameters.fuelUsagePerSecondPerRecipe * recipesPerSecond);
     public UsedModule usedModules => parameters.modules;
     public WarningFlags warningFlags => parameters.warningFlags;
-    public bool FindLink(Goods goods, [MaybeNullWhen(false)] out ProductionLink link) => linkRoot.FindLink(goods, out link);
+    public bool FindLink(IObjectWithQuality<Goods> goods, [MaybeNullWhen(false)] out ProductionLink link) => linkRoot.FindLink(goods, out link);
 
     public T GetVariant<T>(T[] options) where T : FactorioObject {
         foreach (var option in options) {
@@ -527,13 +523,13 @@ public class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Productio
     public float buildingCount => (float)recipesPerSecond * parameters.recipeTime;
     public bool visible { get; internal set; } = true;
 
-    public RecipeRow(ProductionTable owner, RecipeOrTechnology recipe) : base(owner) {
+    public RecipeRow(ProductionTable owner, ObjectWithQuality<RecipeOrTechnology> recipe) : base(owner) {
         this.recipe = recipe ?? throw new ArgumentNullException(nameof(recipe), "Recipe does not exist");
 
         links = new RecipeLinks {
-            ingredients = new ProductionLink[recipe.ingredients.Length],
-            ingredientGoods = new Goods[recipe.ingredients.Length],
-            products = new ProductionLink[recipe.products.Length]
+            ingredients = new ProductionLink[recipe.target.ingredients.Length],
+            ingredientGoods = new ObjectWithQuality<Goods>[recipe.target.ingredients.Length],
+            products = new ProductionLink[recipe.target.products.Length]
         };
     }
 
@@ -600,7 +596,7 @@ public class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Productio
     /// </summary>
     private class ChangeModulesOrEntity : IDisposable {
         private readonly RecipeRow row;
-        private readonly Goods? oldFuel;
+        private readonly ObjectWithQuality<Goods>? oldFuel;
         private readonly RecipeParameters oldParameters;
 
         public ChangeModulesOrEntity(RecipeRow row) {
@@ -616,7 +612,7 @@ public class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Productio
             // Step 4 is only performed after step 1 and when the possibly-changed entity accepts the old fuel.
             //      If the entity does not accept the old fuel, a caller must set an appropriate fuel.
 
-            if (row.fixedProduct != null && row.fixedProduct == (row.fuel as Item)?.fuelResult) {
+            if (row.fixedProduct != null && row.fixedProduct == row.fuel.FuelResult()) {
                 oldFuel = row.fuel;
                 row.fuel = Database.voidEnergy; // step 1
             }
@@ -635,11 +631,11 @@ public class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Productio
             }
             else if (row.fixedProduct != null) {
                 if (row.fixedProduct == Database.itemOutput) {
-                    float oldAmount = row.recipe.products.Where(p => p.goods is Item).Sum(p => p.GetAmountPerRecipe(oldParameters.productivity)) / oldParameters.recipeTime;
-                    float newAmount = row.recipe.products.Where(p => p.goods is Item).Sum(p => p.GetAmountPerRecipe(row.parameters.productivity)) / row.parameters.recipeTime;
+                    float oldAmount = row.recipe.target.products.Where(p => p.goods is Item).Sum(p => p.GetAmountPerRecipe(oldParameters.productivity)) / oldParameters.recipeTime;
+                    float newAmount = row.recipe.target.products.Where(p => p.goods is Item).Sum(p => p.GetAmountPerRecipe(row.parameters.productivity)) / row.parameters.recipeTime;
                     row.fixedBuildings *= oldAmount / newAmount; // step 3, for fixed combined production amount
                 }
-                else if (row.recipe.products.SingleOrDefault(p => p.goods == row.fixedProduct, false) is not Product product) {
+                else if (row.recipe.target.products.SingleOrDefault(p => p.goods == row.fixedProduct.target, false) is not Product product) {
                     row.fixedBuildings = 0; // We couldn't find the Product corresponding to fixedProduct. Just clear the fixed amount.
                 }
                 else {
@@ -649,7 +645,7 @@ public class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Productio
                 }
             }
 
-            if (oldFuel != null && (row._entity?.target.energy.fuels ?? []).Contains(oldFuel)) {
+            if (oldFuel != null && (row._entity?.target.energy.fuels ?? []).Contains(oldFuel.target)) {
                 row.fuel = oldFuel; // step 4
             }
         }
@@ -673,7 +669,7 @@ public enum LinkAlgorithm {
 /// <summary>
 /// A Link is goods whose production and consumption is attempted to be balanced by YAFC across the sheet.
 /// </summary>
-public class ProductionLink(ProductionTable group, Goods goods) : ModelObject<ProductionTable>(group) {
+public class ProductionLink(ProductionTable group, ObjectWithQuality<Goods> goods) : ModelObject<ProductionTable>(group) {
     [Flags]
     public enum Flags {
         // This enum uses powers of two to represent its state.
@@ -698,9 +694,10 @@ public class ProductionLink(ProductionTable group, Goods goods) : ModelObject<Pr
         HasProductionAndConsumption = HasProduction | HasConsumption,
     }
 
-    public Goods goods { get; } = goods ?? throw new ArgumentNullException(nameof(goods), "Linked product does not exist");
+    public ObjectWithQuality<Goods> goods { get; } = goods ?? throw new ArgumentNullException(nameof(goods), "Linked product does not exist");
     public float amount { get; set; }
     public LinkAlgorithm algorithm { get; set; }
+    public UnitOfMeasure flowUnitOfMeasure => goods.target.flowUnitOfMeasure;
 
     // computed variables
     public Flags flags { get; internal set; }
@@ -746,16 +743,16 @@ public class ProductionLink(ProductionTable group, Goods goods) : ModelObject<Pr
     }
 }
 
-public record RecipeRowIngredient(Goods? Goods, float Amount, ProductionLink? Link, Goods[]? Variants) {
-    public static implicit operator (Goods? Goods, float Amount, ProductionLink? Link, Goods[]? Variants)(RecipeRowIngredient value)
+public record RecipeRowIngredient(ObjectWithQuality<Goods>? Goods, float Amount, ProductionLink? Link, Goods[]? Variants) {
+    public static implicit operator (ObjectWithQuality<Goods>? Goods, float Amount, ProductionLink? Link, Goods[]? Variants)(RecipeRowIngredient value)
         => (value.Goods, value.Amount, value.Link, value.Variants);
-    public static implicit operator RecipeRowIngredient((Goods? Goods, float Amount, ProductionLink? Link, Goods[]? Variants) value)
+    public static implicit operator RecipeRowIngredient((ObjectWithQuality<Goods>? Goods, float Amount, ProductionLink? Link, Goods[]? Variants) value)
         => new(value.Goods, value.Amount, value.Link, value.Variants);
 }
 
-public record RecipeRowProduct(Goods? Goods, float Amount, ProductionLink? Link, float? PercentSpoiled) {
-    public static implicit operator (Goods? Goods, float Amount, ProductionLink? Link, float? PercentSpoiled)(RecipeRowProduct value)
+public record RecipeRowProduct(ObjectWithQuality<Goods>? Goods, float Amount, ProductionLink? Link, float? PercentSpoiled) {
+    public static implicit operator (ObjectWithQuality<Goods>? Goods, float Amount, ProductionLink? Link, float? PercentSpoiled)(RecipeRowProduct value)
         => (value.Goods, value.Amount, value.Link, value.PercentSpoiled);
-    public static implicit operator RecipeRowProduct((Goods? Goods, float Amount, ProductionLink? Link, float? PercentSpoiled) value)
+    public static implicit operator RecipeRowProduct((ObjectWithQuality<Goods>? Goods, float Amount, ProductionLink? Link, float? PercentSpoiled) value)
         => new(value.Goods, value.Amount, value.Link, value.PercentSpoiled);
 }

@@ -20,7 +20,7 @@ public class AutomationAnalysis : Analysis {
     public override void Compute(Project project, ErrorCollector warnings) {
         Stopwatch time = Stopwatch.StartNew();
         var state = Database.objects.CreateMapping<AutomationStatus>();
-        state[Database.voidEnergy] = AutomationStatus.AutomatableNow;
+        state[Database.voidEnergy.target] = AutomationStatus.AutomatableNow;
         Queue<FactorioId> processingQueue = new Queue<FactorioId>(Database.objects.count);
         int unknowns = 0;
 
@@ -77,7 +77,7 @@ public class AutomationAnalysis : Analysis {
                 }
             }
         }
-        state[Database.voidEnergy] = AutomationStatus.NotAutomatable;
+        state[Database.voidEnergy.target] = AutomationStatus.NotAutomatable;
 
         logger.Information("Automation analysis (first pass) finished in {ElapsedTime}ms. Unknowns left: {unknownsRemaining}", time.ElapsedMilliseconds, unknowns);
         if (unknowns > 0) {

@@ -60,7 +60,7 @@ public class SummaryView : ProjectPageView<Summary> {
             ProductionTable table = (ProductionTable)page.content;
             using var grid = gui.EnterInlineGrid(ElementWidth, ElementSpacing);
             foreach ((string name, GoodDetails details, bool enoughProduced) in view.GoodsToDisplay()) {
-                ProductionLink? link = table.links.Find(x => x.goods.name == name);
+                ProductionLink? link = table.links.Find(x => x.goods.QualityName() == name);
                 grid.Next();
                 bool isDrawn = false;
 
@@ -71,8 +71,8 @@ public class SummaryView : ProjectPageView<Summary> {
                     }
                 }
                 else {
-                    if (Array.Exists(table.flow, x => x.goods.name == name)) {
-                        ProductionTableFlow flow = Array.Find(table.flow, x => x.goods.name == name);
+                    if (Array.Exists(table.flow, x => x.goods.QualityName() == name)) {
+                        ProductionTableFlow flow = Array.Find(table.flow, x => x.goods.QualityName() == name);
 
                         if (Math.Abs(flow.amount) > Epsilon) {
 
@@ -107,7 +107,7 @@ public class SummaryView : ProjectPageView<Summary> {
 
             gui.allocator = RectAllocator.Stretch;
             gui.spacing = 0f;
-            DisplayAmount amount = new(element.amount, element.goods.flowUnitOfMeasure);
+            DisplayAmount amount = new(element.amount, element.goods.target.flowUnitOfMeasure);
             GoodsWithAmountEvent evt = gui.BuildFactorioObjectWithEditableAmount(element.goods, amount, ButtonDisplayStyle.ProductionTableScaled(iconColor));
 
             if (evt == GoodsWithAmountEvent.TextEditing && amount.Value != 0) {
@@ -136,7 +136,7 @@ public class SummaryView : ProjectPageView<Summary> {
 
             gui.allocator = RectAllocator.Stretch;
             gui.spacing = 0f;
-            _ = gui.BuildFactorioObjectWithAmount(flow.goods, new(-flow.amount, flow.goods.flowUnitOfMeasure), ButtonDisplayStyle.ProductionTableScaled(iconColor));
+            _ = gui.BuildFactorioObjectWithAmount(flow.goods, new(-flow.amount, flow.goods.target.flowUnitOfMeasure), ButtonDisplayStyle.ProductionTableScaled(iconColor));
         }
 
         internal static Task SetProviderAmount(ProductionLink element, ProjectPage page, float newAmount) {
@@ -297,7 +297,7 @@ public class SummaryView : ProjectPageView<Summary> {
                     // Look for a product that (a) has a mismatch, (b) has exactly one link in the displayed pages, and (c) hasn't been updated yet.
                     (details, excess, link) = GoodsToBalance()
                         // Find the link
-                        .Select(x => (x.details, x.excess, link: DisplayTables.Select(t => t.links.FirstOrDefault(l => l.goods.name == x.name && l.amount != 0)).WhereNotNull().SingleOrDefault(false)))
+                        .Select(x => (x.details, x.excess, link: DisplayTables.Select(t => t.links.FirstOrDefault(l => l.goods.QualityName() == x.name && l.amount != 0)).WhereNotNull().SingleOrDefault(false)))
                         // Find an item with exactly one link that hasn't been updated yet. (Or has been removed to allow it to be updated again.)
                         .FirstOrDefault(x => x.link != null && !previousUpdates.ContainsKey(x.link));
 
@@ -367,26 +367,26 @@ public class SummaryView : ProjectPageView<Summary> {
 
             foreach (ProductionLink link in content.links) {
                 if (link.amount != 0f) {
-                    GoodDetails value = newGoods.GetValueOrDefault(link.goods.name);
+                    GoodDetails value = newGoods.GetValueOrDefault(link.goods.QualityName());
                     value.totalProvided += YafcRounding(link.amount); ;
-                    newGoods[link.goods.name] = value;
+                    newGoods[link.goods.QualityName()] = value;
                 }
             }
 
             foreach (ProductionTableFlow flow in content.flow) {
                 if (flow.amount < -Epsilon) {
-                    GoodDetails value = newGoods.GetValueOrDefault(flow.goods.name);
+                    GoodDetails value = newGoods.GetValueOrDefault(flow.goods.QualityName());
                     value.totalNeeded -= YafcRounding(flow.amount); ;
                     value.sum -= YafcRounding(flow.amount); ;
-                    newGoods[flow.goods.name] = value;
+                    newGoods[flow.goods.QualityName()] = value;
                 }
                 else if (flow.amount > Epsilon) {
                     if (!content.links.Exists(x => x.goods == flow.goods)) {
                         // Only count extras if not linked
-                        GoodDetails value = newGoods.GetValueOrDefault(flow.goods.name);
+                        GoodDetails value = newGoods.GetValueOrDefault(flow.goods.QualityName());
                         value.extraProduced += YafcRounding(flow.amount);
                         value.sum -= YafcRounding(flow.amount);
-                        newGoods[flow.goods.name] = value;
+                        newGoods[flow.goods.QualityName()] = value;
                     }
                 }
             }

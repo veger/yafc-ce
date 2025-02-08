@@ -176,13 +176,13 @@ internal partial class FactorioDataDeserializer {
         }
 
         Database.allSciencePacks = [.. sciencePacks];
-        Database.voidEnergy = voidEnergy;
-        Database.science = science;
-        Database.itemInput = totalItemInput;
-        Database.itemOutput = totalItemOutput;
-        Database.electricity = electricity;
-        Database.electricityGeneration = generatorProduction;
-        Database.heat = heat;
+        Database.voidEnergy = new(voidEnergy, Quality.Normal);
+        Database.science = new(science, Quality.Normal);
+        Database.itemInput = new(totalItemInput, Quality.Normal);
+        Database.itemOutput = new(totalItemOutput, Quality.Normal);
+        Database.electricity = new(electricity, Quality.Normal);
+        Database.electricityGeneration = new(generatorProduction, Quality.Normal);
+        Database.heat = new(heat, Quality.Normal);
         Database.character = character;
         int firstSpecial = 0;
         int firstItem = Skip(firstSpecial, FactorioObjectSortOrder.SpecialGoods);

@@ -23,20 +23,20 @@ public class ProductionLinkSummaryScreen : PseudoScreen, IComparer<(RecipeRow ro
     }
 
     private void BuildScrollArea(ImGui gui) {
-        gui.BuildText("Production: " + DataUtils.FormatAmount(totalInput, link.goods.flowUnitOfMeasure), Font.subheader);
+        gui.BuildText("Production: " + DataUtils.FormatAmount(totalInput, link.flowUnitOfMeasure), Font.subheader);
         BuildFlow(gui, input, totalInput, false);
         gui.spacing = 0.5f;
-        gui.BuildText("Consumption: " + DataUtils.FormatAmount(totalOutput, link.goods.flowUnitOfMeasure), Font.subheader);
+        gui.BuildText("Consumption: " + DataUtils.FormatAmount(totalOutput, link.flowUnitOfMeasure), Font.subheader);
         BuildFlow(gui, output, totalOutput, true);
         if (link.amount != 0) {
             gui.spacing = 0.5f;
             gui.BuildText((link.amount > 0 ? "Requested production: " : "Requested consumption: ") + DataUtils.FormatAmount(MathF.Abs(link.amount),
-                link.goods.flowUnitOfMeasure), new TextBlockDisplayStyle(Font.subheader, Color: SchemeColor.GreenAlt));
+                link.flowUnitOfMeasure), new TextBlockDisplayStyle(Font.subheader, Color: SchemeColor.GreenAlt));
         }
         if (link.flags.HasFlags(ProductionLink.Flags.LinkNotMatched) && totalInput != totalOutput + link.amount) {
             float amount = totalInput - totalOutput - link.amount;
             gui.spacing = 0.5f;
-            gui.BuildText((amount > 0 ? "Overproduction: " : "Overconsumption: ") + DataUtils.FormatAmount(MathF.Abs(amount), link.goods.flowUnitOfMeasure),
+            gui.BuildText((amount > 0 ? "Overproduction: " : "Overconsumption: ") + DataUtils.FormatAmount(MathF.Abs(amount), link.flowUnitOfMeasure),
                 new TextBlockDisplayStyle(Font.subheader, Color: SchemeColor.Error));
         }
     }
@@ -67,11 +67,11 @@ public class ProductionLinkSummaryScreen : PseudoScreen, IComparer<(RecipeRow ro
     private void BuildFlow(ImGui gui, List<(RecipeRow row, float flow)> list, float total, bool isLinkOutput) {
         gui.spacing = 0f;
         foreach (var (row, flow) in list) {
-            string amount = DataUtils.FormatAmount(flow, link.goods.flowUnitOfMeasure);
+            string amount = DataUtils.FormatAmount(flow, link.flowUnitOfMeasure);
             if (gui.BuildFactorioObjectButtonWithText(row.recipe, amount, tooltipOptions: DrawParentRecipes(row.owner, "recipe")) == Click.Left) {
                 // Find the corresponding links associated with the clicked recipe,
-                IEnumerable<Goods> goods = isLinkOutput ? row.recipe.products.Select(p => p.goods) : row.recipe.ingredients.Select(i => i.goods);
-                Dictionary<Goods, ProductionLink> links = goods
+                IEnumerable<IObjectWithQuality<Goods>> goods = (isLinkOutput ? row.Products.Select(p => p.Goods) : row.Ingredients.Select(i => i.Goods))!;
+                Dictionary<IObjectWithQuality<Goods>, ProductionLink> links = goods
                     .Select(goods => { row.FindLink(goods, out ProductionLink? link); return (goods, link: link!); })
                     .Where(x => x.link != null)
                     .ToDictionary(x => x.goods, x => x.link);
@@ -91,14 +91,14 @@ public class ProductionLinkSummaryScreen : PseudoScreen, IComparer<(RecipeRow ro
                         gui.BuildText(text, TextBlockDisplayStyle.ErrorText);
                     }
                     else {
-                        IComparer<Goods> comparer = DataUtils.DefaultOrdering;
-                        if (isLinkOutput && row.recipe.mainProduct is Goods mainProduct) {
+                        IComparer<IObjectWithQuality<Goods>> comparer = DataUtils.DefaultOrdering;
+                        if (isLinkOutput && row.recipe.mainProduct().Is<Goods>(out var mainProduct)) {
                             comparer = DataUtils.CustomFirstItemComparer(mainProduct, comparer);
                         }
 
                         string header = isLinkOutput ? "Select product link to inspect" : "Select ingredient link to inspect";
-                        ObjectSelectOptions<Goods> options = new(header, comparer, int.MaxValue);
-                        if (gui.BuildInlineObjectList(links.Keys, out Goods? selected, options) && gui.CloseDropdown()) {
+                        ObjectSelectOptions<IObjectWithQuality<Goods>> options = new(header, comparer, int.MaxValue);
+                        if (gui.BuildInlineObjectList(links.Keys, out IObjectWithQuality<Goods>? selected, options) && gui.CloseDropdown()) {
                             changeLinkView(links[selected]);
                         }
                     }

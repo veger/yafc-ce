@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
 using Yafc.Model;
 using Yafc.UI;
@@ -141,13 +140,13 @@ public class ModuleCustomizationScreen : PseudoScreenWithResult<ModuleTemplateBu
 
                 if (recipe.entity != null) {
                     float power = effects.energyUsageMod * recipe.entity.GetPower() / recipe.entity.target.energy.effectivity;
-                    if (!recipe.recipe.flags.HasFlagAny(RecipeFlags.UsesFluidTemperature | RecipeFlags.ScaleProductionWithPower) && recipe.entity != null) {
+                    if (!recipe.recipe.target.flags.HasFlagAny(RecipeFlags.UsesFluidTemperature | RecipeFlags.ScaleProductionWithPower) && recipe.entity != null) {
                         energyUsageLine += " (" + DataUtils.FormatAmount(power, UnitOfMeasure.Megawatt) + " per building)";
                     }
 
                     gui.BuildText(energyUsageLine);
 
-                    float pps = craftingSpeed * (1f + MathF.Max(0f, effects.productivity)) / recipe.recipe.time;
+                    float pps = craftingSpeed * (1f + MathF.Max(0f, effects.productivity)) / recipe.recipe.target.time;
                     gui.BuildText("Overall crafting speed (including productivity): " + DataUtils.FormatAmount(pps, UnitOfMeasure.PerSecond));
                     gui.BuildText("Energy cost per recipe output: " + DataUtils.FormatAmount(power / pps, UnitOfMeasure.Megajoule));
                 }
@@ -195,7 +194,9 @@ public class ModuleCustomizationScreen : PseudoScreenWithResult<ModuleTemplateBu
     }
 
     private Module[] GetModules(ObjectWithQuality<EntityBeacon>? beacon) {
-        var modules = (beacon == null && recipe is { recipe: Recipe rec }) ? [.. Database.allModules.Where(rec.CanAcceptModule)] : Database.allModules;
+        var modules = (beacon == null && recipe is { recipe: IObjectWithQuality<RecipeOrTechnology> rec })
+            ? [.. Database.allModules.Where(rec.CanAcceptModule)]
+            : Database.allModules;
         EntityWithModules? filter = (EntityWithModules?)beacon?.target ?? recipe?.entity?.target;
         if (filter == null) {
             return modules;

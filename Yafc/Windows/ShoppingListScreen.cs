@@ -136,19 +136,19 @@ public class ShoppingListScreen : PseudoScreen {
         }
     }
 
-    private List<(T, int)> ExportGoods<T>() where T : Goods {
-        List<(T, int)> items = [];
-        foreach (((FactorioObject element, _), float amount) in list.data) {
+    private List<(IObjectWithQuality<T>, int)> ExportGoods<T>() where T : Goods {
+        List<(IObjectWithQuality<T>, int)> items = [];
+        foreach ((IObjectWithQuality<FactorioObject> element, float amount) in list.data) {
             int rounded = MathUtils.Round(amount);
             if (rounded == 0) {
                 continue;
             }
 
-            if (element is T g) {
+            if (element.Is(out IObjectWithQuality<T>? g)) {
                 items.Add((g, rounded));
             }
-            else if (element is Entity e && e.itemsToPlace.Length > 0) {
-                items.Add(((T)(object)e.itemsToPlace[0], rounded));
+            else if (element.Is(out IObjectWithQuality<Entity>? e) && e.target.itemsToPlace.Length > 0) {
+                items.Add((new ObjectWithQuality<T>((T)(object)e.target.itemsToPlace[0], e.quality), rounded));
             }
         }
 

@@ -85,7 +85,7 @@ public static class ImmediateWidgets {
                 Vector2 size = new Vector2(displayStyle.Size / 2f);
                 var delta = contain ? size : size / 2f;
                 Rect milestoneIcon = new Rect(gui.lastRect.BottomRight - delta, size);
-                var icon = milestone == Database.voidEnergy ? DataUtils.HandIcon : milestone.icon;
+                var icon = milestone == Database.voidEnergy.target ? DataUtils.HandIcon : milestone.icon;
                 gui.DrawIcon(milestoneIcon, icon, color);
             }
         }
@@ -197,7 +197,7 @@ public static class ImmediateWidgets {
         return gui.BuildFactorioObjectButtonBackground(gui.lastRect, obj, tooltipOptions: tooltipOptions);
     }
 
-    internal static bool BuildInlineObjectList<T>(this ImGui gui, IEnumerable<T> list, [NotNullWhen(true)] out T? selected, ObjectSelectOptions<T> options) where T : FactorioObject {
+    internal static bool BuildInlineObjectList<T>(this ImGui gui, IEnumerable<T> list, [NotNullWhen(true)] out T? selected, ObjectSelectOptions<T> options) where T : class, IFactorioObjectWrapper {
         gui.BuildText(options.Header, Font.productionTableHeader);
         IEnumerable<T> sortedList = list;
 
@@ -456,7 +456,7 @@ public record DisplayAmount(float Value, UnitOfMeasure Unit = UnitOfMeasure.None
 /// Not used when selecting with a 'None' item or when <paramref name="Multiple"/> is <see langword="false"/>.</param>
 /// <param name="ExtraText">If not <see langword="null"/>, this will be called to get extra text to be displayed right-justified after the item's name.</param>
 public sealed record ObjectSelectOptions<T>(string Header, [AllowNull] IComparer<T> Ordering = null, int MaxCount = 6, bool Multiple = false, Predicate<T>? Checkmark = null,
-    Func<T, string>? ExtraText = null) where T : FactorioObject {
+    Func<T, string>? ExtraText = null) where T : IFactorioObjectWrapper {
 
-    public IComparer<T> Ordering { get; init; } = Ordering ?? DataUtils.DefaultOrdering;
+    public IComparer<T> Ordering { get; init; } = Ordering ?? (IComparer<T>)DataUtils.DefaultOrdering;
 }
