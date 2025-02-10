@@ -22,6 +22,7 @@ Date:
     Fixes:
         - When creating launch recipes, obey the rocket capacity, not the item stack size.
         - Improve detection of special (e.g. barrelling, caging) recipes, especially with SA's recycling recipes.
+        - (regression) Py TURDs and other disabled techs were considered enabled if they were not also hidden.
 ----------------------------------------------------------------------------------------------------------------------
 Version: 2.7.0
 Date: January 27th 2025

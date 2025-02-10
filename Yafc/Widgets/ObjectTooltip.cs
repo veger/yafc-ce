@@ -584,9 +584,9 @@ doneDrawing:;
             BuildRecipe(technology, gui);
         }
 
-        if (technology.hidden && !technology.enabled) {
+        if (!technology.enabled) {
             using (gui.EnterGroup(contentPadding)) {
-                gui.BuildText("This technology is hidden from the list and cannot be researched.", TextBlockDisplayStyle.WrappedText);
+                gui.BuildText("This technology is disabled and cannot be researched.", TextBlockDisplayStyle.WrappedText);
             }
         }
 
