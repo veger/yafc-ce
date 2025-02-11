@@ -866,12 +866,12 @@ public sealed class ObjectWithQuality<T>(T target, Quality quality) : IObjectWit
     public bool Equals(IObjectWithQuality<FactorioObject>? other) => other is not null && target == other.target && quality == other.quality;
     public override int GetHashCode() => HashCode.Combine(target, quality);
 
-    public static bool operator ==(ObjectWithQuality<T>? left, ObjectWithQuality<T>? right) => left == (IObjectWithQuality<T>?)right;
-    public static bool operator ==(ObjectWithQuality<T>? left, IObjectWithQuality<T>? right) => (left is null && right is null) || (left is not null && left.Equals(right));
-    public static bool operator ==(IObjectWithQuality<T>? left, ObjectWithQuality<T>? right) => right == left;
+    public static bool operator ==(ObjectWithQuality<T>? left, ObjectWithQuality<T>? right) => left == (IObjectWithQuality<FactorioObject>?)right;
+    public static bool operator ==(ObjectWithQuality<T>? left, IObjectWithQuality<FactorioObject>? right) => (left is null && right is null) || (left is not null && left.Equals(right));
+    public static bool operator ==(IObjectWithQuality<FactorioObject>? left, ObjectWithQuality<T>? right) => right == left;
     public static bool operator !=(ObjectWithQuality<T>? left, ObjectWithQuality<T>? right) => !(left == right);
-    public static bool operator !=(ObjectWithQuality<T>? left, IObjectWithQuality<T>? right) => !(left == right);
-    public static bool operator !=(IObjectWithQuality<T>? left, ObjectWithQuality<T>? right) => !(left == right);
+    public static bool operator !=(ObjectWithQuality<T>? left, IObjectWithQuality<FactorioObject>? right) => !(left == right);
+    public static bool operator !=(IObjectWithQuality<FactorioObject>? left, ObjectWithQuality<T>? right) => !(left == right);
 }
 
 public class Effect {
