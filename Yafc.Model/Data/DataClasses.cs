@@ -823,7 +823,15 @@ public sealed class ObjectWithQuality<T>(T target, Quality quality) : IObjectWit
     /// <inheritdoc/>
     public T target { get; } = target ?? throw new ArgumentNullException(nameof(target));
     /// <inheritdoc/>
-    public Quality quality { get; } = quality ?? throw new ArgumentNullException(nameof(quality));
+    public Quality quality { get; } = CheckQuality(target, quality ?? throw new ArgumentNullException(nameof(quality)));
+
+    private static Quality CheckQuality(T target, Quality quality) => target switch {
+        // Things that don't support quality:
+        Fluid or Location or Mechanics { source: Entity } or Quality or Special or Technology or Tile => Quality.Normal,
+        Recipe r when r.ingredients.All(i => i.goods is Fluid) => Quality.Normal,
+        // Everything else supports quality (except science):
+        _ => target == Database.science ? Quality.Normal : quality
+    };
 
     /// <summary>
     /// Creates a new <see cref="ObjectWithQuality{T}"/> with the current <see cref="target"/> and the specified <see cref="Quality"/>.
