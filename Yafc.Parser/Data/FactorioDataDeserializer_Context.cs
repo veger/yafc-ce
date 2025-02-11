@@ -29,8 +29,8 @@ internal partial class FactorioDataDeserializer {
     private readonly Special electricity;
     private readonly Special rocketLaunch;
     private readonly Item science;
-    private readonly Item totalItemOutput;
-    private readonly Item totalItemInput;
+    private readonly Special totalItemOutput;
+    private readonly Special totalItemInput;
     private readonly EntityEnergy voidEntityEnergy;
     private readonly EntityEnergy laborEntityEnergy;
     private Entity? character;
@@ -43,7 +43,7 @@ internal partial class FactorioDataDeserializer {
     public FactorioDataDeserializer(Version factorioVersion) {
         this.factorioVersion = factorioVersion;
 
-        Special createSpecialObject(bool isPower, string name, string locName, string locDescr, string icon, string signal) {
+        Special createSpecialObject(bool isPower, bool isUsable, string name, string locName, string locDescr, string icon, string? signal) {
             var obj = GetObject<Special>(name);
             obj.virtualSignal = signal;
             obj.factorioType = "special";
@@ -53,39 +53,25 @@ internal partial class FactorioDataDeserializer {
             obj.power = isPower;
             if (isPower) {
                 obj.fuelValue = 1f;
+                fuels.Add(name, obj);
             }
-
+            obj.isLinkable = isUsable;
+            obj.showInExplorers = isUsable;
+            if (!isUsable) {
+                rootAccessible.Add(obj);
+            }
             return obj;
         }
 
-        Item createSpecialItem(string name, string locName, string locDescr, string icon) {
-            Item obj = GetObject<Item>(name);
-            obj.factorioType = "special";
-            obj.locName = locName;
-            obj.locDescr = locDescr;
-            obj.iconSpec = [new FactorioIconPart(icon)];
-            obj.isLinkable = false;
-            obj.showInExplorers = false;
-            rootAccessible.Add(obj);
-
-            return obj;
-        }
-
-        electricity = createSpecialObject(true, SpecialNames.Electricity, "Electricity", "This is an object that represents electric energy",
+        electricity = createSpecialObject(true, true, SpecialNames.Electricity, "Electricity", "This is an object that represents electric energy",
             "__core__/graphics/icons/alerts/electricity-icon-unplugged.png", "signal-E");
-        fuels.Add(SpecialNames.Electricity, electricity);
 
-        heat = createSpecialObject(true, SpecialNames.Heat, "Heat", "This is an object that represents heat energy", "__core__/graphics/arrows/heat-exchange-indication.png", "signal-H");
-        fuels.Add(SpecialNames.Heat, heat);
+        heat = createSpecialObject(true, true, SpecialNames.Heat, "Heat", "This is an object that represents heat energy", "__core__/graphics/arrows/heat-exchange-indication.png", "signal-H");
 
-        voidEnergy = createSpecialObject(true, SpecialNames.Void, "Void", "This is an object that represents infinite energy", "__core__/graphics/icons/mip/infinity.png", "signal-V");
+        voidEnergy = createSpecialObject(true, false, SpecialNames.Void, "Void", "This is an object that represents infinite energy", "__core__/graphics/icons/mip/infinity.png", "signal-V");
         voidEnergy.isVoid = true;
-        voidEnergy.isLinkable = false;
-        voidEnergy.showInExplorers = false;
-        fuels.Add(SpecialNames.Void, voidEnergy);
-        rootAccessible.Add(voidEnergy);
 
-        rocketLaunch = createSpecialObject(false, SpecialNames.RocketLaunch, "Rocket launch slot",
+        rocketLaunch = createSpecialObject(false, true, SpecialNames.RocketLaunch, "Rocket launch slot",
             "This is a slot in a rocket ready to be launched", "__base__/graphics/entity/rocket-silo/rocket-static-pod.png", "signal-R");
 
         science = GetObject<Item>("science");
@@ -106,8 +92,10 @@ internal partial class FactorioDataDeserializer {
         voidEntityEnergy = new EntityEnergy { type = EntityEnergyType.Void, effectivity = float.PositiveInfinity };
         laborEntityEnergy = new EntityEnergy { type = EntityEnergyType.Labor, effectivity = float.PositiveInfinity };
 
-        totalItemInput = createSpecialItem("item-total-input", "Total item consumption", "This item represents the combined total item input of a multi-ingredient recipe. It can be used to set or measure the number of sushi belts required to supply this recipe row.", "__base__/graphics/icons/signal/signal_I.png");
-        totalItemOutput = createSpecialItem("item-total-output", "Total item production", "This item represents the combined total item output of a multi-product recipe. It can be used to set or measure the number of sushi belts required to handle the products of this recipe row.", "__base__/graphics/icons/signal/signal_O.png");
+        totalItemInput = createSpecialObject(false, false, "total-item-input", "Total item consumption", "This item represents the combined total item input of a multi-ingredient recipe. It can be used to set or measure the number of sushi belts required to supply this recipe row.", "__base__/graphics/icons/signal/signal_I.png", null);
+        totalItemOutput = createSpecialObject(false, false, "total-item-output", "Total item production", "This item represents the combined total item output of a multi-product recipe. It can be used to set or measure the number of sushi belts required to handle the products of this recipe row.", "__base__/graphics/icons/signal/signal_O.png", null);
+        formerAliases["Item.item-total-input"] = totalItemInput;
+        formerAliases["Item.item-total-output"] = totalItemOutput;
     }
 
     /// <summary>
