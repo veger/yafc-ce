@@ -159,37 +159,6 @@ internal class ReadOnlyReferenceSerializer<TOwner, TPropertyType> :
     public override void DeserializeFromUndoBuilder(TOwner owner, UndoSnapshotReader reader) { }
 }
 
-internal class ReadWriteReferenceSerializer<TOwner, TPropertyType>(PropertyInfo property) :
-    ReadOnlyReferenceSerializer<TOwner, TPropertyType>(property, PropertyType.Normal, true)
-    where TOwner : ModelObject where TPropertyType : ModelObject {
-
-    private void setter(TOwner owner, TPropertyType? value)
-        => _setter(owner ?? throw new ArgumentNullException(nameof(owner)), value);
-    private new TPropertyType? getter(TOwner owner)
-        => _getter(owner ?? throw new ArgumentNullException(nameof(owner)));
-
-    public override void DeserializeFromJson(TOwner owner, ref Utf8JsonReader reader, DeserializationContext context) {
-        if (reader.TokenType == JsonTokenType.Null) {
-            return;
-        }
-
-        var instance = getter(owner);
-
-        if (instance == null) {
-            setter(owner, SerializationMap<TPropertyType>.DeserializeFromJson(owner, ref reader, context));
-            return;
-        }
-
-        base.DeserializeFromJson(owner, ref reader, context);
-    }
-
-    public override void SerializeToUndoBuilder(TOwner owner, UndoSnapshotBuilder builder) =>
-        builder.WriteManagedReference(getter(owner) ?? throw new InvalidOperationException($"Cannot serialize a null value for {property.DeclaringType}.{propertyName} to the undo snapshot."));
-
-    public override void DeserializeFromUndoBuilder(TOwner owner, UndoSnapshotReader reader) =>
-        setter(owner, reader.ReadOwnedReference<TPropertyType>(owner));
-}
-
 internal sealed class CollectionSerializer<TOwner, TCollection, TElement>(PropertyInfo property) :
     PropertySerializer<TOwner, TCollection>(property, PropertyType.Normal, false)
     where TCollection : ICollection<TElement?> where TOwner : class {
@@ -358,7 +327,7 @@ internal class DictionarySerializer<TOwner, TCollection, TKey, TValue>(PropertyI
         for (int i = 0; i < count; i++) {
             TKey key = KeySerializer.ReadFromUndoSnapshot(reader, owner) ??
                 throw new InvalidOperationException($"Serialized a null key for {property}. Cannot deserialize undo entry.");
-            dictionary.Add(key, DictionarySerializer<TOwner, TCollection, TKey, TValue>.ValueSerializer.ReadFromUndoSnapshot(reader, owner));
+            dictionary.Add(key, ValueSerializer.ReadFromUndoSnapshot(reader, owner));
         }
     }
 }

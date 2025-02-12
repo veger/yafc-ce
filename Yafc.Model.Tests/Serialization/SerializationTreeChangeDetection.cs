@@ -148,6 +148,9 @@ public class SerializationTreeChangeDetection {
     // Walk all serialized types (starting with all concrete ModelObjects), and check which types are serialized and the types of their
     // properties. Changes to this list may result in save/load issues, so require an extra step (modifying the above dictionary initializer)
     // to ensure those changes are intentional.
+    // 
+    // If this test fails, and the change is unintentional or the next steps are not obvious, consult Docs/Architecture/Serialization.md,
+    // probably starting in the section 'Guarding Tests' or 'Handling property type changes'.
     public void TreeHasNotChanged() {
         while (queue.TryDequeue(out Type type)) {
             Assert.True(propertyTree.Remove(type, out var expectedProperties), $"Serializing new type {MakeTypeName(type)}. Add `[typeof({MakeTypeName(type)})] = new() {{ /*properties*/ }},` to the propertyTree initializer.");

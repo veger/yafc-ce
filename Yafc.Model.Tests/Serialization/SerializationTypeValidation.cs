@@ -12,6 +12,7 @@ public class SerializationTypeValidation {
     [Theory]
     [MemberData(nameof(ModelObjectTypes))]
     // Ensure that all concrete types derived from ModelObject obey the serialization rules.
+    // For details about the serialization rules and how to approach changes and test failures, see Docs/Architecture/Serialization.md.
     public void ModelObjects_AreSerializable(Type modelObjectType) {
         ConstructorInfo constructor = FindConstructor(modelObjectType);
 
@@ -28,6 +29,8 @@ public class SerializationTypeValidation {
         AssertConstructorParameters(modelObjectType, constructor.GetParameters().Skip(1));
         AssertSettableProperties(modelObjectType);
         AssertDictionaryKeys(modelObjectType);
+        AssertCollectionValues(modelObjectType);
+        AssertNoArraysOfSerializableValues(modelObjectType);
     }
 
     public static TheoryData<Type> ModelObjectTypes => [.. AppDomain.CurrentDomain.GetAssemblies().SelectMany(a => a.GetTypes())
@@ -37,12 +40,15 @@ public class SerializationTypeValidation {
     [MemberData(nameof(SerializableTypes))]
     // Ensure that all [Serializable] types in the Yafc namespace obey the serialization rules,
     // except compiler-generated types and those in Yafc.Blueprints.
+    // For details about the serialization rules and how to approach changes and test failures, see Docs/Architecture/Serialization.md.
     public void Serializables_AreSerializable(Type serializableType) {
         ConstructorInfo constructor = FindConstructor(serializableType);
 
         AssertConstructorParameters(serializableType, constructor.GetParameters());
         AssertSettableProperties(serializableType);
         AssertDictionaryKeys(serializableType);
+        AssertCollectionValues(serializableType);
+        AssertNoArraysOfSerializableValues(serializableType);
     }
 
     public static TheoryData<Type> SerializableTypes => [.. AppDomain.CurrentDomain.GetAssemblies().SelectMany(a => a.GetTypes())
@@ -60,7 +66,7 @@ public class SerializationTypeValidation {
 
         // The constructor (public or non-public, depending on the attribute) must exist
         ConstructorInfo constructor = type.GetConstructors(flags).FirstOrDefault();
-        Assert.True(constructor != null, $"Could not find the constructor for type {MakeTypeName(type)}.");
+        Assert.True(constructor != null, $"Could not find the constructor for type {MakeTypeName(type)}. Consider adding or removing [DeserializeWithNonPublicConstructor].");
         return constructor;
     }
 
@@ -69,7 +75,9 @@ public class SerializationTypeValidation {
         foreach (ParameterInfo parameter in parameters) {
             // Constructor parameters must be IsValueSerializerSupported
             Assert.True(ValueSerializer.IsValueSerializerSupported(parameter.ParameterType),
-                $"Constructor of type {MakeTypeName(type)} parameter '{parameter.Name}' should be a supported value type.");
+                $"In the {MakeTypeName(type)} constructor, parameter '{parameter.Name}' should be a type supported for writable properties.");
+            Assert.True(ValueSerializerExists(parameter.ParameterType, out _),
+                $"For the {MakeTypeName(type)} constructor, parameter '{parameter.Name}', IsValueSerializerSupported claims type {MakeTypeName(parameter.ParameterType)} is supported for writable properties (also collection/dictionary values), but ValueSerializer<>.CreateValueSerializer did not create a serializer.");
 
             // and must have a matching property
             PropertyInfo property = type.GetProperty(parameter.Name);
@@ -80,33 +88,78 @@ public class SerializationTypeValidation {
     }
 
     private static void AssertSettableProperties(Type type) {
-        foreach (PropertyInfo property in type.GetProperties().Where(p => p.GetSetMethod() != null)) {
+        foreach (PropertyInfo property in type.GetProperties(BindingFlags.Public | BindingFlags.Instance).Where(p => p.GetSetMethod() != null)) {
             if (property.GetCustomAttribute<SkipSerializationAttribute>() == null) {
-                // Properties with a public setter must be IsValueSerializerSupported
+                // Properties with a public setter must be IsValueSerializerSupported.
                 Assert.True(ValueSerializer.IsValueSerializerSupported(property.PropertyType),
-                    $"The type of property {MakeTypeName(type)}.{property.Name} should be a supported value type.");
+                    $"The type of property {MakeTypeName(type)}.{property.Name} should be a type supported for writable properties.");
+                Assert.True(ValueSerializerExists(property.PropertyType, out _),
+                    $"For the property {MakeTypeName(type)}.{property.Name}, IsValueSerializerSupported claims the type {MakeTypeName(property.PropertyType)} is supported for writable properties (also collection/dictionary values), but ValueSerializer<>.CreateValueSerializer did not create a serializer.");
             }
         }
     }
 
     private void AssertDictionaryKeys(Type type) {
-        foreach (PropertyInfo property in type.GetProperties().Where(p => p.GetSetMethod() == null)) {
+        foreach (PropertyInfo property in type.GetProperties(BindingFlags.Public | BindingFlags.Instance).Where(p => p.GetSetMethod() == null)) {
             if (property.GetCustomAttribute<SkipSerializationAttribute>() == null) {
                 Type iDictionary = property.PropertyType.GetInterfaces()
                     .FirstOrDefault(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IDictionary<,>));
 
                 if (iDictionary != null) {
-                    if (ValueSerializer.IsValueSerializerSupported(iDictionary.GenericTypeArguments[0])
+                    if (ValueSerializer.IsKeySerializerSupported(iDictionary.GenericTypeArguments[0])
                         && ValueSerializer.IsValueSerializerSupported(iDictionary.GenericTypeArguments[1])) {
 
-                        object serializer = typeof(ValueSerializer<>).MakeGenericType(iDictionary.GenericTypeArguments[0]).GetField("Default").GetValue(null);
+                        Assert.True(ValueSerializerExists(iDictionary.GenericTypeArguments[0], out object serializer),
+                            $"For the property {MakeTypeName(type)}.{property.Name}, IsKeySerializerSupported claims type {MakeTypeName(iDictionary.GenericTypeArguments[0])} is supported for dictionary keys, but ValueSerializer<>.CreateValueSerializer did not create a serializer.");
                         MethodInfo getJsonProperty = serializer.GetType().GetMethod(nameof(ValueSerializer<string>.GetJsonProperty));
                         // Dictionary keys must be serialized by an overridden ValueSerializer<T>.GetJsonProperty() method.
                         Assert.True(getJsonProperty != getJsonProperty.GetBaseDefinition(),
-                            $"In {MakeTypeName(type)}.{property.Name}, the dictionary keys are of an unsupported type.");
+                            $"In {MakeTypeName(type)}.{property.Name}, the dictionary keys claim to be supported, but {MakeTypeName(serializer.GetType())} does not have an overridden {nameof(ValueSerializer<int>.GetJsonProperty)} method.");
+
+                        Assert.True(ValueSerializerExists(iDictionary.GenericTypeArguments[1], out _),
+                            $"For the property {MakeTypeName(type)}.{property.Name}, IsValueSerializerSupported claims the type {MakeTypeName(iDictionary.GenericTypeArguments[1])} is supported for dictionary values (also writable properties), but ValueSerializer<>.CreateValueSerializer did not create a serializer.");
                     }
                 }
             }
+        }
+    }
+
+    private static void AssertCollectionValues(Type type) {
+        foreach (PropertyInfo property in type.GetProperties(BindingFlags.Public | BindingFlags.Instance).Where(p => p.GetSetMethod() == null)) {
+            if (property.GetCustomAttribute<SkipSerializationAttribute>() == null) {
+                Type iDictionary = property.PropertyType.GetInterfaces()
+                    .FirstOrDefault(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IDictionary<,>));
+                Type iCollection = property.PropertyType.GetInterfaces()
+                    .FirstOrDefault(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(ICollection<>));
+
+                if (iDictionary == null && iCollection != null && ValueSerializer.IsKeySerializerSupported(iCollection.GenericTypeArguments[0])) {
+                    Assert.True(ValueSerializerExists(iCollection.GenericTypeArguments[0], out object serializer),
+                        $"For the property {MakeTypeName(type)}.{property.Name}, IsValueSerializerSupported claims the type {MakeTypeName(iCollection.GenericTypeArguments[0])} is supported for collection values (also writable properties), but ValueSerializer<>.CreateValueSerializer did not create a serializer.");
+                }
+            }
+        }
+    }
+
+    private static void AssertNoArraysOfSerializableValues(Type type) {
+        foreach (PropertyInfo property in type.GetProperties(BindingFlags.Public | BindingFlags.Instance).Where(p => p.GetSetMethod() == null)) {
+            if (property.GetCustomAttribute<SkipSerializationAttribute>() == null) {
+                if (property.PropertyType.IsArray && ValueSerializer.IsValueSerializerSupported(property.PropertyType.GetElementType())) {
+                    // Public properties without a public setter must not be arrays of writable-property values.
+                    // (and properties with a public setter typically can't implement ICollection<>, as checked by AssertSettableProperties.)
+                    Assert.Fail($"The non-writable property {MakeTypeName(type)}.{property.Name} is an array of writable-property values, which is not supported.");
+                }
+            }
+        }
+    }
+
+    private static bool ValueSerializerExists(Type type, out object serializer) {
+        try {
+            serializer = typeof(ValueSerializer<>).MakeGenericType(type).GetField("Default").GetValue(null);
+            return serializer != null;
+        }
+        catch {
+            serializer = null;
+            return false;
         }
     }
 
