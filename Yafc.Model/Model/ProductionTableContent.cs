@@ -443,17 +443,45 @@ public class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Productio
             int i = 0;
             IObjectWithQuality<Item>? spentFuel = fuel.FuelResult();
             bool handledFuel = spentFuel == null; // If there's no spent fuel, it's already handled
+            Quality? quality = recipe.quality;
+
+            float runningProbability = 1;
+            List<float> upgradeProbabilities = [1];
+            // Fill upgradeProbabilities with the "this quality or better" probability.
+            while (quality != null && quality < Quality.MaxAccessible) {
+                runningProbability *= quality.UpgradeChance;
+                upgradeProbabilities.Add(runningProbability * parameters.activeEffects.qualityMod);
+                quality = quality.nextQuality;
+            }
+            // Subtract the "next quality or better" values to convert the probabilities to "exactly this quality".
+            for (int j = 0; j < upgradeProbabilities.Count - 1; j++) {
+                upgradeProbabilities[j] -= upgradeProbabilities[j + 1];
+            }
 
             foreach (Product product in recipe.target.products) {
                 if (hierarchyEnabled) {
-                    float amount = product.GetAmountForRow(this);
+                    quality = recipe.quality;
+                    float baseAmount = product.GetAmountForRow(this);
+                    if (product.goods is Fluid) {
+                        // Upgrade chances don't affect fluids
+                        yield return (product.goods.With(Quality.Normal), baseAmount, links.products[i], product.percentSpoiled);
+                    }
+                    else {
+                        for (int j = 0; j < upgradeProbabilities.Count && upgradeProbabilities[j] > 0; j++) {
+                            // The result amount for this quality is the normal output amount times the probability of this quality,
+                            float amount = baseAmount * upgradeProbabilities[j];
+                            if (product.goods.With(quality) == spentFuel) {
+                                // ... plus the spent fuel, if applicable.
+                                amount += fuelUsagePerSecond;
+                                handledFuel = true;
+                            }
 
-                    if (product.goods.With(recipe.quality) == spentFuel) {
-                        amount += fuelUsagePerSecond;
-                        handledFuel = true;
+                            yield return (product.goods.With(quality), amount, links.products[i], product.percentSpoiled);
+                            quality = quality.nextQuality!;
+                        }
                     }
 
-                    yield return (product.goods.With(recipe.quality), amount, links.products[i++], product.percentSpoiled);
+                    i++;
                 }
                 else {
                     yield return (null, 0, null, null);

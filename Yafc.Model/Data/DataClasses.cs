@@ -785,6 +785,11 @@ public sealed class Quality : FactorioObject {
     public float BeaconTransmissionBonus => .2f * level;
     public float BeaconConsumptionFactor { get; internal set; }
     public float UpgradeChance { get; internal set; }
+
+    public static bool operator <(Quality left, Quality right) => left.level < right.level;
+    public static bool operator >(Quality left, Quality right) => left.level > right.level;
+    public static bool operator <=(Quality left, Quality right) => left.level <= right.level;
+    public static bool operator >=(Quality left, Quality right) => left.level >= right.level;
 }
 
 /// <summary>
