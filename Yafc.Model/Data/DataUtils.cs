@@ -383,7 +383,7 @@ public static partial class DataUtils {
         float amount = 0f;
 
         foreach (var i in row.recipe.target.ingredients) {
-            if (i.ContainsVariant(ingredient.target)) {
+            if (i.goods.With(row.recipe.quality) == ingredient || (ingredient.quality == Quality.Normal && i.ContainsVariant(ingredient.target))) {
                 amount += i.amount * (float)row.recipesPerSecond;
             }
         }

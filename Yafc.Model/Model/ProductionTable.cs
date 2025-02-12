@@ -359,25 +359,25 @@ match:
             var recipeVar = vars[i];
             var links = recipe.links;
 
-            for (int j = 0; j < recipe.recipe.target.products.Length; j++) {
-                var product = recipe.recipe.target.products[j];
-
-                if (product.amount <= 0f) {
+            foreach (var product in recipe.ProductsForSolver) {
+                if (product.Amount <= 0f) {
                     continue;
                 }
 
-                if (recipe.FindLink(new ObjectWithQuality<Goods>(product.goods, recipe.recipe.quality), out var link)) {
+                int j = Array.FindIndex(recipe.recipe.target.products, p => p.goods == product.Goods!.target);
+
+                if (recipe.FindLink(product.Goods!, out var link)) {
                     link.flags |= ProductionLink.Flags.HasProduction;
-                    float added = product.GetAmountPerRecipe(recipe.parameters.productivity);
+                    float added = product.Amount;
                     AddLinkCoefficient(constraints[link.solverIndex], recipeVar, link, recipe, added);
-                    float cost = product.goods.Cost();
+                    float cost = product.Goods!.target.Cost();
 
                     if (cost > 0f) {
                         objCoefficients[i] += added * cost;
                     }
                 }
 
-                links.products[j] = link;
+                links.products[j, product.Goods!.quality] = link;
             }
 
             for (int j = 0; j < recipe.recipe.target.ingredients.Length; j++) {
@@ -414,8 +414,6 @@ match:
                     }
                 }
             }
-
-            recipe.links = links;
         }
 
         foreach (var link in allLinks) {
