@@ -48,9 +48,18 @@ public class ProductionLinkSummaryScreen : PseudoScreen, IComparer<(RecipeRow ro
             _ = gui.BuildFactorioObjectButtonWithText(link.goods, tooltipOptions: DrawParentRecipes(link.owner, "link"));
         }
         scrollArea.Build(gui);
+        if (gui.BuildButton("Remove link", link.owner.links.Contains(link) ? SchemeColor.Primary : SchemeColor.Grey)) {
+            DestroyLink(link);
+            Close();
+        }
         if (gui.BuildButton("Done")) {
             Close();
         }
+    }
+
+    private void DestroyLink(ProductionLink link) {
+        _ = link.owner.RecordUndo().links.Remove(link);
+        Rebuild();
     }
 
     protected override void ReturnPressed() => Close();
