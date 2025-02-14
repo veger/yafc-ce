@@ -30,7 +30,7 @@ internal static class FactorioLocalization {
                 }
 
                 string key = line[..idx];
-                string val = line.Substring(idx + 1, line.Length - idx - 1);
+                string val = line[(idx + 1)..];
                 keys[category + "." + key] = CleanupTags(val);
             }
 

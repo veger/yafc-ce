@@ -521,7 +521,7 @@ doneDrawing:;
             BuildIconRow(gui, recipe.crafters, 2);
         }
 
-        List<Module> allowedModules = Database.allModules.Where(recipe.CanAcceptModule).ToList();
+        List<Module> allowedModules = [.. Database.allModules.Where(recipe.CanAcceptModule)];
 
         if (allowedModules.Count > 0) {
             BuildSubHeader(gui, "Allowed modules");
@@ -624,7 +624,7 @@ doneDrawing:;
             }
         }
         else if (isResearchTriggerPlatform) {
-            List<Item> items = Database.items.all.Where(i => i.factorioType == "space-platform-starter-pack").ToList();
+            List<Item> items = [.. Database.items.all.Where(i => i.factorioType == "space-platform-starter-pack")];
             BuildSubHeader(gui, items.Count == 1 ? "Launch this item" : "Launch any item");
             using (gui.EnterGroup(contentPadding)) {
                 BuildIconRow(gui, items, 2);

@@ -139,7 +139,7 @@ public class ModuleTemplate : ModelObject<ModelObject> {
         }
 
         if (beacon != null) {
-            int beaconCount = CalcBeaconCount();
+            int beaconCount = CalculateBeaconCount();
             if (beaconCount > 0) {
                 float beaconEfficiency = beacon.GetBeaconEfficiency() * beacon.target.GetProfile(beaconCount);
                 foreach (var module in beaconList) {
@@ -159,9 +159,9 @@ public class ModuleTemplate : ModelObject<ModelObject> {
         used.modules = [.. buffer];
     }
 
-    public int CalcBeaconCount() {
+    public int CalculateBeaconCount() {
         if (beacon is null) {
-            throw new InvalidOperationException($"Must not call {nameof(CalcBeaconCount)} when {nameof(beacon)} is null.");
+            throw new InvalidOperationException($"Must not call {nameof(CalculateBeaconCount)} when {nameof(beacon)} is null.");
         }
 
         int moduleCount = 0;

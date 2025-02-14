@@ -61,7 +61,7 @@ public class ProductionTableContentTests {
         table.AddRecipe(Database.recipes.all.Single(r => r.name == "recipe"), DataUtils.DeterministicComparer);
         RecipeRow row = table.GetAllRecipes().Single();
 
-        List<Module> modules = Database.allModules.Where(m => !m.name.Contains("productivity")).ToList();
+        List<Module> modules = [.. Database.allModules.Where(m => !m.name.Contains("productivity"))];
         EntityBeacon beacon = Database.allBeacons.Single();
 
         RunTest(row, testCombinations, (3 * 3 + 3 * 1) * 6 * 13 * 32 * 6); // Crafter&fuel * modules * beacon count * payback values * available fixed values

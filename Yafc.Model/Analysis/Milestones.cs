@@ -96,8 +96,8 @@ public class Milestones : Analysis {
 
     public override void Compute(Project project, ErrorCollector warnings) {
         if (project.settings.milestones.Count == 0) {
-            FactorioObject[] milestones = new List<FactorioObject>([.. Database.allSciencePacks, .. Database.locations.all])
-                .Where(m => m is not Location { name: "nauvis" or "space-location-unknown" }).ToArray();
+            FactorioObject[] milestones = [.. new List<FactorioObject>([.. Database.allSciencePacks, .. Database.locations.all])
+                .Where(m => m is not Location { name: "nauvis" or "space-location-unknown" })];
             ComputeWithParameters(project, warnings, milestones, true);
         }
         else {
@@ -131,7 +131,7 @@ public class Milestones : Analysis {
         // Do these in parallel; the only write operation for these is setting the dictionary value at the end.
         Parallel.ForEach(milestones, milestone => {
             logger.Information("Processing milestone {Milestone}", milestone.locName);
-            HashSet<FactorioObject> pruneAt = new(markedInaccessible.Append(milestone));
+            HashSet<FactorioObject> pruneAt = [.. markedInaccessible.Append(milestone)];
             accessibility[milestone.id] = WalkAccessibilityGraph(project, pruneAt, [], null);
         });
 

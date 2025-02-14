@@ -59,9 +59,6 @@ internal class RecipeParameters(float recipeTime, float fuelUsagePerSecondPerBui
         if (entity == null) {
             warningFlags |= WarningFlags.EntityNotSpecified;
             recipeTime = recipe.time;
-            productivity = 0f;
-            speed = 0;
-            consumption = 0f;
         }
         else {
             recipeTime = recipe.time / entity.GetCraftingSpeed();

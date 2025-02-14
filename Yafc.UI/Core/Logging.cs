@@ -41,7 +41,7 @@ public static class Logging {
     /// <summary>
     /// Call to to get the logger, with either the default configuration or the configuration most recently passed to <see cref="SetLoggerConfiguration"/>.
     /// </summary>
-    public static ILogger GetLogger<T>() => logger.Value.ForContext(typeof(T));
+    public static ILogger GetLogger<T>() => logger.Value.ForContext<T>();
     public static ILogger GetLogger(Type type) => logger.Value.ForContext(type);
 
     private static Logger CreateLogger() {

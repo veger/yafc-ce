@@ -736,7 +736,7 @@ goodsHaveNoProduction:;
 
             if (template.beacon != null) {
                 grid.Next();
-                _ = imGui.BuildFactorioObjectWithAmount(template.beacon, template.CalcBeaconCount(), ButtonDisplayStyle.ProductionTableUnscaled);
+                _ = imGui.BuildFactorioObjectWithAmount(template.beacon, template.CalculateBeaconCount(), ButtonDisplayStyle.ProductionTableUnscaled);
                 foreach (var module in template.beaconList) {
                     grid.Next();
                     _ = imGui.BuildFactorioObjectWithAmount(module.module, module.fixedCount, ButtonDisplayStyle.ProductionTableUnscaled);
@@ -745,7 +745,7 @@ goodsHaveNoProduction:;
         });
 
         private void ShowModuleDropDown(ImGui gui, RecipeRow recipe) {
-            Module[] modules = Database.allModules.Where(x => recipe.recipe.CanAcceptModule(x) && (recipe.entity?.target.CanAcceptModule(x.moduleSpecification) ?? false)).ToArray();
+            Module[] modules = [.. Database.allModules.Where(x => recipe.recipe.CanAcceptModule(x) && (recipe.entity?.target.CanAcceptModule(x.moduleSpecification) ?? false))];
             editingRecipeModules = recipe;
             moduleTemplateList.data = [.. Project.current.sharedModuleTemplates
                 // null-forgiving: non-nullable collections are happy to report they don't contain null values.
@@ -863,7 +863,7 @@ goodsHaveNoProduction:;
         }
 
         var comparer = DataUtils.GetRecipeComparerFor(goods);
-        HashSet<RecipeOrTechnology> allRecipes = new HashSet<RecipeOrTechnology>(context.recipes.Select(x => x.recipe));
+        HashSet<RecipeOrTechnology> allRecipes = [.. context.recipes.Select(x => x.recipe)];
 
         bool recipeExists(RecipeOrTechnology rec) => allRecipes.Contains(rec);
 
@@ -905,7 +905,7 @@ goodsHaveNoProduction:;
             }
         }
 
-        Recipe[] allProduction = variants == null ? goods.production : variants.SelectMany(x => x.production).Distinct().ToArray();
+        Recipe[] allProduction = variants == null ? goods.production : [.. variants.SelectMany(x => x.production).Distinct()];
 
         Recipe[] fuelUseList = [.. goods.fuelFor.OfType<EntityCrafter>()
             .SelectMany(e => e.recipes).OfType<Recipe>()

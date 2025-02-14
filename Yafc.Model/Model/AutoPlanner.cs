@@ -199,7 +199,7 @@ public class AutoPlanner(ModelObject page) : ProjectPageContents(page) {
             }
         }
 
-        HashSet<(Recipe, Recipe[])> remainingNodes = new HashSet<(Recipe, Recipe[])>(subgraph.Select(x => x.userData));
+        HashSet<(Recipe, Recipe[])> remainingNodes = [.. subgraph.Select(x => x.userData)];
         List<(Recipe, Recipe[])> nodesToClear = [];
         List<AutoPlannerRecipe[]> tiers = [];
         List<Recipe> currentTier = [];
@@ -246,13 +246,13 @@ nope:;
                 remainingNodes.Clear();
                 logger.Information("Tier creation failure");
             }
-            tiers.Add(currentTier.Select(x => new AutoPlannerRecipe {
+            tiers.Add([.. currentTier.Select(x => new AutoPlannerRecipe {
                 recipe = x,
                 tier = tiers.Count,
                 recipesPerSecond = (float)processedRecipes[x].SolutionValue(),
                 downstream = downstream.TryGetValue(x, out var res) ? res : null,
                 upstream = upstream.TryGetValue(x, out var res2) ? res2 : null
-            }).ToArray());
+            })]);
         }
         bestFlowSolver.Dispose();
         await Ui.EnterMainThread();
