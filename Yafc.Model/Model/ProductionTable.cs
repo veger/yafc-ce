@@ -53,7 +53,7 @@ public class ProductionTable : ProjectPageContents, IComparer<ProductionTableFlo
         }
     }
 
-    private void Setup(List<RecipeRow> allRecipes, List<ProductionLink> allLinks) {
+    private void Setup(List<IRecipeRow> allRecipes, List<IProductionLink> allLinks) {
         containsDesiredProducts = false;
         foreach (var link in links) {
             if (link.amount != 0f) {
@@ -215,9 +215,8 @@ match:
             summer[product.Goods!] = prev;
         }
 
-        int i = 0;
         foreach (var ingredient in recipe.Ingredients) {
-            var linkedGoods = recipe.links.ingredientGoods[i++];
+            var linkedGoods = ingredient.Goods;
 
             if (linkedGoods is not null) {
                 _ = summer.TryGetValue(linkedGoods, out var prev);
@@ -301,7 +300,7 @@ match:
     /// Add/update the variable value for the constraint with the given amount, and store the recipe to the production link.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static void AddLinkCoefficient(Constraint cst, Variable var, ProductionLink link, RecipeRow recipe, float amount) {
+    private static void AddLinkCoefficient(Constraint cst, Variable var, IProductionLink link, IRecipeRow recipe, float amount) {
         // GetCoefficient will return 0 when the variable is not available in the constraint
         amount += (float)cst.GetCoefficient(var);
         _ = link.capturedRecipes.Add(recipe);
@@ -312,8 +311,8 @@ match:
         using var productionTableSolver = DataUtils.CreateSolver();
         var objective = productionTableSolver.Objective();
         objective.SetMinimization();
-        List<RecipeRow> allRecipes = [];
-        List<ProductionLink> allLinks = [];
+        List<IRecipeRow> allRecipes = [];
+        List<IProductionLink> allLinks = [];
         Setup(allRecipes, allLinks);
         Variable[] vars = new Variable[allRecipes.Count];
         float[] objCoefficients = new float[allRecipes.Count];
@@ -321,7 +320,7 @@ match:
         for (int i = 0; i < allRecipes.Count; i++) {
             var recipe = allRecipes[i];
             recipe.parameters = RecipeParameters.CalculateParameters(recipe);
-            var variable = productionTableSolver.MakeNumVar(0f, double.PositiveInfinity, recipe.recipe.QualityName());
+            var variable = productionTableSolver.MakeNumVar(0f, double.PositiveInfinity, recipe.SolverName);
 
             if (recipe.fixedBuildings > 0f) {
                 double fixedRps = (double)recipe.fixedBuildings / recipe.parameters.recipeTime;
@@ -352,33 +351,27 @@ match:
                     continue;
                 }
 
-                int j = Array.FindIndex(recipe.recipe.target.products, p => p.goods == product.Goods!.target);
-
-                if (recipe.FindLink(product.Goods!, out var link)) {
+                if (recipe.FindLink(product.Goods, out var link)) {
                     link.flags |= ProductionLink.Flags.HasProduction;
                     float added = product.Amount;
                     AddLinkCoefficient(constraints[link.solverIndex], recipeVar, link, recipe, added);
-                    float cost = product.Goods!.target.Cost();
+                    float cost = product.Goods.target.Cost();
 
                     if (cost > 0f) {
                         objCoefficients[i] += added * cost;
                     }
                 }
 
-                links.products[j, product.Goods!.quality] = link;
+                links.products[product.LinkIndex, product.Goods.quality] = link as ProductionLink;
             }
 
-            for (int j = 0; j < recipe.recipe.target.ingredients.Length; j++) {
-                var ingredient = recipe.recipe.target.ingredients[j];
-                var option = (ingredient.variants == null ? ingredient.goods : recipe.GetVariant(ingredient.variants)).With(recipe.recipe.quality);
-
-                if (recipe.FindLink(option, out var link)) {
+            foreach (var ingredient in recipe.IngredientsForSolver) {
+                if (recipe.FindLink(ingredient.Goods, out var link)) {
                     link.flags |= ProductionLink.Flags.HasConsumption;
-                    AddLinkCoefficient(constraints[link.solverIndex], recipeVar, link, recipe, -ingredient.amount);
+                    AddLinkCoefficient(constraints[link.solverIndex], recipeVar, link, recipe, -ingredient.Amount);
                 }
 
-                links.ingredients[j] = link;
-                links.ingredientGoods[j] = option;
+                links.ingredients[ingredient.LinkIndex] = link as ProductionLink;
             }
 
             links.fuel = links.spentFuel = null;
@@ -387,13 +380,13 @@ match:
                 float fuelAmount = recipe.parameters.fuelUsagePerSecondPerRecipe;
 
                 if (recipe.FindLink(recipe.fuel, out var link)) {
-                    links.fuel = link;
+                    links.fuel = link as ProductionLink;
                     link.flags |= ProductionLink.Flags.HasConsumption;
                     AddLinkCoefficient(constraints[link.solverIndex], recipeVar, link, recipe, -fuelAmount);
                 }
 
                 if (recipe.fuel.FuelResult() is IObjectWithQuality<Item> spentFuel && recipe.FindLink(spentFuel, out link)) {
-                    links.spentFuel = link;
+                    links.spentFuel = link as ProductionLink;
                     link.flags |= ProductionLink.Flags.HasProduction;
                     AddLinkCoefficient(constraints[link.solverIndex], recipeVar, link, recipe, fuelAmount);
 
@@ -409,7 +402,7 @@ match:
 
             if (!link.flags.HasFlags(ProductionLink.Flags.HasProductionAndConsumption)) {
                 if (!link.flags.HasFlagAny(ProductionLink.Flags.HasProductionAndConsumption) && !link.owner.HasDisabledRecipeReferencing(link.goods)) {
-                    _ = link.owner.RecordUndo(true).links.Remove(link);
+                    _ = link.owner.RecordUndo(true).links.Remove((link as ProductionLink)!); // null-forgiving: removing null from a non-null collection is a no-op.
                 }
 
                 link.flags |= ProductionLink.Flags.LinkNotMatched;
@@ -420,7 +413,7 @@ match:
         await Ui.ExitMainThread();
 
         for (int i = 0; i < allRecipes.Count; i++) {
-            objective.SetCoefficient(vars[i], (allRecipes[i].recipe.target as Recipe)?.RecipeBaseCost() ?? 0);
+            objective.SetCoefficient(vars[i], allRecipes[i].BaseCost);
         }
 
         var result = productionTableSolver.Solve();
@@ -457,7 +450,7 @@ match:
             await Ui.EnterMainThread();
 
             if (result is Solver.ResultStatus.OPTIMAL or Solver.ResultStatus.FEASIBLE) {
-                List<ProductionLink> linkList = [];
+                List<IProductionLink> linkList = [];
 
                 for (int i = 0; i < allLinks.Count; i++) {
                     var (posSlack, negSlack) = slackVars[i];
@@ -524,7 +517,6 @@ match:
         for (int i = 0; i < allLinks.Count; i++) {
             var link = allLinks[i];
             var constraint = constraints[i];
-            link.dualValue = (float)constraint.DualValue();
 
             if (constraint == null) {
                 continue;
@@ -580,7 +572,7 @@ match:
         return builtCountExceeded;
     }
 
-    private static void FindAllRecipeLinks(RecipeRow recipe, List<ProductionLink> sources, List<ProductionLink> targets) {
+    private static void FindAllRecipeLinks(IRecipeRow recipe, List<IProductionLink> sources, List<IProductionLink> targets) {
         sources.Clear();
         targets.Clear();
 
@@ -605,11 +597,11 @@ match:
         }
     }
 
-    private static (List<ProductionLink> merges, List<ProductionLink> splits) GetInfeasibilityCandidates(List<RecipeRow> recipes) {
-        Graph<ProductionLink> graph = new Graph<ProductionLink>();
-        List<ProductionLink> sources = [];
-        List<ProductionLink> targets = [];
-        List<ProductionLink> splits = [];
+    private static (List<IProductionLink> merges, List<IProductionLink> splits) GetInfeasibilityCandidates(List<IRecipeRow> recipes) {
+        Graph<IProductionLink> graph = new Graph<IProductionLink>();
+        List<IProductionLink> sources = [];
+        List<IProductionLink> targets = [];
+        List<IProductionLink> splits = [];
 
         foreach (var recipe in recipes) {
             FindAllRecipeLinks(recipe, sources, targets);

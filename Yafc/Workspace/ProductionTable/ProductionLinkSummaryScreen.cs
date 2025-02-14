@@ -250,7 +250,7 @@ public class ProductionLinkSummaryScreen : PseudoScreen, IComparer<(RecipeRow ro
         // changeLinkView calls this while iterating over one of these lists. We must create new lists rather than editing the existing ones.
         List<(RecipeRow row, float flow)> input = [], output = [];
         totalInput = totalOutput = 0;
-        foreach (var recipe in link.capturedRecipes) {
+        foreach (var recipe in link.capturedRecipes.OfType<RecipeRow>()) {
             float localFlow = DetermineFlow(link.goods, recipe);
             if (localFlow > 0) {
                 input.Add((recipe, localFlow));
