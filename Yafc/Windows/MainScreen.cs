@@ -262,7 +262,7 @@ public partial class MainScreen : WindowMain, IKeyboardFocus, IProgress<(string,
         gui.DrawRectangle(gui.lastRect, SchemeColor.PureBackground);
 
         void updatePageList() {
-            List<ProjectPage> sortedAndFilteredPageList = pageListSearch.Search(project.pages).ToList();
+            List<ProjectPage> sortedAndFilteredPageList = [.. pageListSearch.Search(project.pages)];
             sortedAndFilteredPageList.Sort((a, b) => a.visible == b.visible ? string.Compare(a.name, b.name, StringComparison.InvariantCultureIgnoreCase) : a.visible ? -1 : 1);
             allPages.data = sortedAndFilteredPageList;
         }

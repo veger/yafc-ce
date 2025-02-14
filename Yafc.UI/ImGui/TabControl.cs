@@ -211,7 +211,7 @@ public sealed class TabControl {
             foreach ((int start, int end, _) in rows.Where(r => r.Compression == 1)) {
                 // Do the math as if there's an extra options.HorizontalTabSeparation that has to be allocated after the final tab.
                 float easyMathWidth = layoutWidth + HorizontalTabSeparation;
-                List<(TabPage, float Width)> pages = tabPages[start..end].Select(p => (p, GetTitleWidth(p) + AdditionalTabSpacing)).ToList();
+                List<(TabPage, float Width)> pages = [.. tabPages[start..end].Select(p => (p, GetTitleWidth(p) + AdditionalTabSpacing))];
 
                 float desiredTabWidth = easyMathWidth / pages.Count;
                 (TabPage, float Width) widestTab = pages.MaxBy(p => p.Width);

@@ -75,9 +75,8 @@ public class Preferences {
     public int shoppingDisplayState { get; set; } = 3;
 
     public void AddProject(string dataPath, string modsPath, string projectPath, bool netProduction) {
-        recentProjects = recentProjects.Where(x => string.Compare(projectPath, x.path, StringComparison.InvariantCultureIgnoreCase) != 0)
-            .Prepend(new ProjectDefinition(dataPath, modsPath, projectPath, netProduction))
-            .ToArray();
+        recentProjects = [.. recentProjects.Where(x => string.Compare(projectPath, x.path, StringComparison.InvariantCultureIgnoreCase) != 0)
+            .Prepend(new ProjectDefinition(dataPath, modsPath, projectPath, netProduction))];
         Save();
     }
 }

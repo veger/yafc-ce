@@ -576,7 +576,7 @@ public class Entity : FactorioObject {
             foreach (Ammo ammo in captureAmmo) {
                 List<EntitySpawner> spawners;
                 if (ammo.targetFilter == null) {
-                    spawners = Database.objects.all.OfType<EntitySpawner>().Where(s => s.capturedEntityName == name).ToList();
+                    spawners = [.. Database.objects.all.OfType<EntitySpawner>().Where(s => s.capturedEntityName == name)];
                 }
                 else {
                     spawners = ammo.targetFilter.Select(t => Database.objectsByTypeName["Entity." + t] as EntitySpawner)

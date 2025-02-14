@@ -75,7 +75,7 @@ public class FilesystemScreen : TaskWindow<string?>, IKeyboardFocus {
 
     private void SetLocation(string directory) {
         if (string.IsNullOrEmpty(directory)) {
-            entries.data = Directory.GetLogicalDrives().Select(x => (EntryType.Drive, x)).ToArray();
+            entries.data = [.. Directory.GetLogicalDrives().Select(x => (EntryType.Drive, x))];
         }
         else {
             if (!Directory.Exists(directory)) {

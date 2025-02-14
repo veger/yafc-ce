@@ -60,7 +60,7 @@ internal static class LocalisedStringParser {
             return null;
         }
         else if (FactorioLocalization.Localize(key) is { } localisedString) {
-            string?[] localisedParameters = parameters.Select(ParseStringOrArray).ToArray();
+            string?[] localisedParameters = [.. parameters.Select(ParseStringOrArray)];
             return ReplaceBuiltInParameters(localisedString, localisedParameters);
         }
 
@@ -166,7 +166,7 @@ internal static class LocalisedStringParser {
                 int end2 = format.IndexOf("}__", end + 3);
                 string[] options = format[(end + 3)..end2].Split('|');
                 end = end2 + 1;
-                return options.Select(readPluralOption).ToArray();
+                return [.. options.Select(readPluralOption)];
             }
 
             (Func<string, bool> Pattern, string Result) readPluralOption(string option) {

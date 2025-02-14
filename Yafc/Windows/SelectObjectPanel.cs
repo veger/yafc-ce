@@ -51,7 +51,7 @@ public abstract class SelectObjectPanel<T> : PseudoScreenWithResult<T> {
         this.currentQuality = currentQuality;
         this.noneTooltip = noneTooltip;
         showTypeInHeader = typeof(U) == typeof(FactorioObject);
-        List<U?> data = new List<U?>(list);
+        List<U?> data = [.. list];
         ordering ??= DataUtils.DefaultOrdering;
         data.Sort(ordering!); // null-forgiving: We don't have any nulls in the list yet.
         if (allowNone) {

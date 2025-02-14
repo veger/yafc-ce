@@ -48,7 +48,7 @@ public class ProductionSummaryView : ProjectPageView<ProductionSummary> {
             using (gui.EnterRow()) {
                 if (gui.BuildButton(Icon.Plus, SchemeColor.Primary, SchemeColor.PrimaryAlt, SchemeColor.PrimaryAlt, size)) {
                     SearchableList<ProjectPage> pagesDropdown = new(30f, new Vector2(20f, 2f), PagesDropdownDrawer(group), PagesDropdownFilter) {
-                        data = Project.current.pages.Where(x => x.content is ProductionTable).ToArray(),
+                        data = [.. Project.current.pages.Where(x => x.content is ProductionTable)],
                         filter = productionTableSearchQuery = new SearchQuery()
                     };
                     gui.ShowDropDown(AddProductionTableDropdown(pagesDropdown));

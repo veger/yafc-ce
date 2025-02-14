@@ -34,7 +34,7 @@ internal partial class FactorioDataDeserializer {
 
         recipe.allowedEffects = allowedEffects;
         if (table.Get("allowed_module_categories", out LuaTable? categories)) {
-            recipe.allowedModuleCategories = categories.ArrayElements<string>().ToArray();
+            recipe.allowedModuleCategories = [.. categories.ArrayElements<string>()];
         }
     }
 
@@ -130,7 +130,7 @@ internal partial class FactorioDataDeserializer {
         technology.count = unit.Get("count", 1000f);
 
         if (table.Get("prerequisites", out LuaTable? prerequisitesList)) {
-            technology.prerequisites = prerequisitesList.ArrayElements<string>().Select(GetObject<Technology>).ToArray();
+            technology.prerequisites = [.. prerequisitesList.ArrayElements<string>().Select(GetObject<Technology>)];
         }
 
         if (table.Get("effects", out LuaTable? modifiers)) {
@@ -235,7 +235,7 @@ internal partial class FactorioDataDeserializer {
         float? percentSpoiled = table.Get("result_is_always_fresh", false) ? 0 : null;
 
         if (table.Get("results", out LuaTable? resultList)) {
-            return resultList.ArrayElements<LuaTable>().Select(LoadProduct(typeDotName, percentSpoiled: percentSpoiled)).Where(x => x.amount != 0).ToArray();
+            return [.. resultList.ArrayElements<LuaTable>().Select(LoadProduct(typeDotName, percentSpoiled: percentSpoiled)).Where(x => x.amount != 0)];
         }
 
         if (allowSimpleSyntax && table.Get("result", out string? name)) {

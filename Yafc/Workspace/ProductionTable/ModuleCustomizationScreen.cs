@@ -194,13 +194,13 @@ public class ModuleCustomizationScreen : PseudoScreenWithResult<ModuleTemplateBu
     }
 
     private Module[] GetModules(ObjectWithQuality<EntityBeacon>? beacon) {
-        var modules = (beacon == null && recipe is { recipe: Recipe rec }) ? Database.allModules.Where(rec.CanAcceptModule).ToArray() : Database.allModules;
+        var modules = (beacon == null && recipe is { recipe: Recipe rec }) ? [.. Database.allModules.Where(rec.CanAcceptModule)] : Database.allModules;
         EntityWithModules? filter = (EntityWithModules?)beacon?.target ?? recipe?.entity?.target;
         if (filter == null) {
             return modules;
         }
 
-        return modules.Where(x => filter.CanAcceptModule(x.moduleSpecification)).ToArray();
+        return [.. modules.Where(x => filter.CanAcceptModule(x.moduleSpecification))];
     }
 
     private void DrawRecipeModules(ImGui gui, ObjectWithQuality<EntityBeacon>? beacon, ref ModuleEffects effects) {

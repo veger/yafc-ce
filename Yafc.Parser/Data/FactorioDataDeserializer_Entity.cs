@@ -144,7 +144,7 @@ internal partial class FactorioDataDeserializer {
         }
 
         if (table.Get("allowed_module_categories", out LuaTable? categories)) {
-            entity.allowedModuleCategories = categories.ArrayElements<string>().ToArray();
+            entity.allowedModuleCategories = [.. categories.ArrayElements<string>()];
         }
 
         entity.moduleSlots = table.Get("module_slots", 0);
@@ -154,7 +154,7 @@ internal partial class FactorioDataDeserializer {
         string launchCategory = SpecialNames.RocketCraft + entity.name;
         var launchRecipe = CreateSpecialRecipe(recipe, launchCategory, "launch");
         recipeCrafters.Add(entity, launchCategory);
-        launchRecipe.ingredients = recipe.products.Select(x => new Ingredient(x.goods, x.amount * partsRequired)).ToArray();
+        launchRecipe.ingredients = [.. recipe.products.Select(x => new Ingredient(x.goods, x.amount * partsRequired))];
         launchRecipe.products = [new Product(rocketLaunch, outputCount)];
         launchRecipe.time = 40.33f / outputCount;
         recipeCrafters.Add(entity, SpecialNames.RocketLaunch);
@@ -244,7 +244,7 @@ internal partial class FactorioDataDeserializer {
             case "beacon":
                 var beacon = GetObject<Entity, EntityBeacon>(table);
                 beacon.baseBeaconEfficiency = table.Get("distribution_effectivity", 0f);
-                beacon.profile = table.Get("profile", out LuaTable? profile) ? profile.ArrayElements<double>().Select(x => (float)x).ToArray() : [1f];
+                beacon.profile = table.Get("profile", out LuaTable? profile) ? [.. profile.ArrayElements<double>().Select(x => (float)x)] : [1f];
                 _ = table.Get("energy_usage", out usesPower);
                 ParseModules(table, beacon, AllowedEffects.None);
                 beacon.basePower = ParseEnergy(usesPower);
@@ -420,7 +420,7 @@ internal partial class FactorioDataDeserializer {
                 lab.baseCraftingSpeed = table.Get("researching_speed", 1f);
                 recipeCrafters.Add(lab, SpecialNames.Labs);
                 _ = table.Get("inputs", out LuaTable? inputs);
-                lab.inputs = inputs.ArrayElements<string>().Select(GetObject<Item>).ToArray();
+                lab.inputs = [.. inputs.ArrayElements<string>().Select(GetObject<Item>)];
                 sciencePacks.UnionWith(lab.inputs.Select(x => (Item)x));
                 lab.itemInputs = lab.inputs.Length;
                 break;
@@ -533,10 +533,10 @@ internal partial class FactorioDataDeserializer {
         var entity = DeserializeCommon<Entity>(table, "entity");
 
         if (table.Get("loot", out LuaTable? lootList)) {
-            entity.loot = lootList.ArrayElements<LuaTable>().Select(x => {
+            entity.loot = [.. lootList.ArrayElements<LuaTable>().Select(x => {
                 Product product = new Product(GetObject<Item>(x.Get("item", "")), x.Get("count_min", 1f), x.Get("count_max", 1f), x.Get("probability", 1f));
                 return product;
-            }).ToArray();
+            })];
         }
 
         if (table.Get("minable", out LuaTable? minable)) {

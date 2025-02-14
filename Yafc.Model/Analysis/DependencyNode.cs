@@ -126,7 +126,7 @@ public abstract class DependencyNode {
                     realDependencies.Add(item);
                 }
             }
-            realDependencies = realDependencies.Distinct().ToList();
+            realDependencies = [.. realDependencies.Distinct()];
 
             if (realDependencies.Count == 0) {
                 throw new ArgumentException($"Must not join zero nodes with an 'and'. Instead, create an empty DependencyList to explain what expected dependencies are missing.");
@@ -196,7 +196,7 @@ public abstract class DependencyNode {
                     realDependencies.Add(item);
                 }
             }
-            realDependencies = realDependencies.Distinct().ToList();
+            realDependencies = [.. realDependencies.Distinct()];
 
             if (realDependencies.Count == 0) {
                 throw new ArgumentException($"Must not join zero nodes with an 'or'. Instead, create an empty DependencyList to explain what expected dependencies are missing.");

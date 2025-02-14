@@ -399,7 +399,7 @@ internal partial class FactorioDataDeserializer {
             ammo_type.ReadObjectOrArray(readAmmoType);
 
             if (ammo_type["target_filter"] is LuaTable targets) {
-                ammo.targetFilter = new(targets.ArrayElements.OfType<string>());
+                ammo.targetFilter = [.. targets.ArrayElements.OfType<string>()];
             }
 
             void readAmmoType(LuaTable table) {
@@ -437,7 +437,7 @@ internal partial class FactorioDataDeserializer {
         if (table.Get("send_to_orbit_mode", "not-sendable") != "not-sendable" || item.factorioType == "space-platform-starter-pack") {
             Product[] launchProducts;
             if (table.Get("rocket_launch_products", out LuaTable? products)) {
-                launchProducts = products.ArrayElements<LuaTable>().Select(LoadProduct(item.typeDotName, item.stackSize)).ToArray();
+                launchProducts = [.. products.ArrayElements<LuaTable>().Select(LoadProduct(item.typeDotName, item.stackSize))];
             }
             else {
                 launchProducts = [];
@@ -557,7 +557,7 @@ internal partial class FactorioDataDeserializer {
 nextWeightCalculation:;
         }
 
-        List<EntityCrafter> rocketSilos = registeredObjects.Values.OfType<EntityCrafter>().Where(e => e.factorioType == "rocket-silo").ToList();
+        List<EntityCrafter> rocketSilos = [.. registeredObjects.Values.OfType<EntityCrafter>().Where(e => e.factorioType == "rocket-silo")];
         int maxStacks = 1;// if we have no rocket silos, default to one stack.
         if (rocketSilos.Count > 0) {
             maxStacks = rocketSilos.Max(r => r.rocketInventorySize);
@@ -678,10 +678,10 @@ nextWeightCalculation:;
         Location location = DeserializeCommon<Location>(table, "space-location");
         if (table.Get("map_gen_settings", out LuaTable? mapGen)) {
             if (mapGen.Get("autoplace_controls", out LuaTable? controls)) {
-                location.placementControls = controls.ObjectElements.Keys.OfType<string>().ToList();
+                location.placementControls = [.. controls.ObjectElements.Keys.OfType<string>()];
             }
             if (mapGen.Get<LuaTable>("autoplace_settings").Get<LuaTable>("entity").Get<LuaTable>("settings") is LuaTable entities) {
-                location.entitySpawns = entities.ObjectElements.Keys.OfType<string>().ToList();
+                location.entitySpawns = [.. entities.ObjectElements.Keys.OfType<string>()];
             }
             if (mapGen.Get<LuaTable>("autoplace_settings").Get<LuaTable>("tile").Get<LuaTable>("settings") is LuaTable tiles) {
                 foreach (string tile in tiles.ObjectElements.Keys.Cast<string>()) {
@@ -727,7 +727,7 @@ nextWeightCalculation:;
             target.iconSpec = [new FactorioIconPart(s) { size = defaultIconSize }];
         }
         else if (table.Get("icons", out LuaTable? iconList)) {
-            target.iconSpec = iconList.ArrayElements<LuaTable>().Select(x => {
+            target.iconSpec = [.. iconList.ArrayElements<LuaTable>().Select(x => {
                 if (!x.Get("icon", out string? path)) {
                     throw new NotSupportedException($"One of the icon layers for {name} does not have a path.");
                 }
@@ -749,7 +749,7 @@ nextWeightCalculation:;
                 }
 
                 return part;
-            }).ToArray();
+            })];
         }
 
         return target;

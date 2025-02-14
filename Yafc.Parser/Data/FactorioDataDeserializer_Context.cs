@@ -226,12 +226,12 @@ internal partial class FactorioDataDeserializer {
         Database.fluidVariants = fluidVariants;
 
         Database.allModules = [.. allModules];
-        Database.allBeacons = Database.entities.all.OfType<EntityBeacon>().ToArray();
-        Database.allCrafters = Database.entities.all.OfType<EntityCrafter>().ToArray();
-        Database.allBelts = Database.entities.all.OfType<EntityBelt>().ToArray();
-        Database.allInserters = Database.entities.all.OfType<EntityInserter>().ToArray();
-        Database.allAccumulators = Database.entities.all.OfType<EntityAccumulator>().ToArray();
-        Database.allContainers = Database.entities.all.OfType<EntityContainer>().ToArray();
+        Database.allBeacons = [.. Database.entities.all.OfType<EntityBeacon>()];
+        Database.allCrafters = [.. Database.entities.all.OfType<EntityCrafter>()];
+        Database.allBelts = [.. Database.entities.all.OfType<EntityBelt>()];
+        Database.allInserters = [.. Database.entities.all.OfType<EntityInserter>()];
+        Database.allAccumulators = [.. Database.entities.all.OfType<EntityAccumulator>()];
+        Database.allContainers = [.. Database.entities.all.OfType<EntityContainer>()];
 
         Database.rocketCapacity = rocketCapacity;
     }
@@ -419,8 +419,8 @@ internal partial class FactorioDataDeserializer {
                     }
 
                     if (entity is EntityCrafter crafter) {
-                        crafter.recipes = recipeCrafters.GetRaw(crafter)
-                            .SelectMany(x => recipeCategories.GetRaw(x).Where(y => y.CanFit(crafter.itemInputs, crafter.fluidInputs, crafter.inputs))).ToArray();
+                        crafter.recipes = [.. recipeCrafters.GetRaw(crafter)
+                            .SelectMany(x => recipeCategories.GetRaw(x).Where(y => y.CanFit(crafter.itemInputs, crafter.fluidInputs, crafter.inputs)))];
                         foreach (var recipe in crafter.recipes) {
                             actualRecipeCrafters.Add(recipe, crafter, true);
                         }
@@ -478,7 +478,7 @@ internal partial class FactorioDataDeserializer {
                     break;
                 case Goods goods:
                     goods.usages = itemUsages.GetArray(goods);
-                    goods.production = itemProduction.GetArray(goods).Distinct().ToArray();
+                    goods.production = [.. itemProduction.GetArray(goods).Distinct()];
                     goods.miscSources = miscSources.GetArray(goods);
 
                     if (o is Item item) {
@@ -510,7 +510,7 @@ internal partial class FactorioDataDeserializer {
                         entity.mapGenerated = true;
                     }
 
-                    entity.sourceEntities = asteroids.GetArray(entity.name).ToList();
+                    entity.sourceEntities = [.. asteroids.GetArray(entity.name)];
                     break;
                 case Location location:
                     location.technologyUnlock = locationUnlockers.GetArray(location);
@@ -675,9 +675,9 @@ internal partial class FactorioDataDeserializer {
     }
 
     private void ParseCaptureEffects() {
-        HashSet<string> captureRobots = new(allObjects.Where(e => e.factorioType == "capture-robot").Select(e => e.name));
+        HashSet<string> captureRobots = [.. allObjects.Where(e => e.factorioType == "capture-robot").Select(e => e.name)];
         // Projectiles that create capture robots.
-        HashSet<string> captureProjectiles = new(allObjects.OfType<EntityProjectile>().Where(p => p.placeEntities.Intersect(captureRobots).Any()).Select(p => p.name));
+        HashSet<string> captureProjectiles = [.. allObjects.OfType<EntityProjectile>().Where(p => p.placeEntities.Intersect(captureRobots).Any()).Select(p => p.name)];
         // Ammo that creates projectiles that create capture robots.
         List<Ammo> captureAmmo = [.. allObjects.OfType<Ammo>().Where(a => captureProjectiles.Intersect(a.projectileNames).Any())];
 
@@ -725,7 +725,7 @@ internal partial class FactorioDataDeserializer {
 
                 // Add the extra values to the list when provided before storing the complete array.
                 IEnumerable<TValue> completeList = addExtraItems != null ? list.Concat(addExtraItems(key)) : list;
-                TValue[] completeArray = completeList.ToArray();
+                TValue[] completeArray = [.. completeList];
 
                 storage[key] = completeArray;
             }
@@ -752,7 +752,7 @@ internal partial class FactorioDataDeserializer {
 
         public TValue[] GetArray(TKey key) {
             if (!storage.TryGetValue(key, out var list)) {
-                return defaultList(key).ToArray();
+                return [.. defaultList(key)];
             }
 
             return list is TValue[] value ? value : [.. list];
@@ -760,7 +760,7 @@ internal partial class FactorioDataDeserializer {
 
         public IList<TValue> GetRaw(TKey key) {
             if (!storage.TryGetValue(key, out var list)) {
-                list = defaultList(key).ToList();
+                list = [.. defaultList(key)];
 
                 if (isSealed) {
                     list = [.. list];
