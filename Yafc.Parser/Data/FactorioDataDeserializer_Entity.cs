@@ -130,12 +130,12 @@ internal partial class FactorioDataDeserializer {
     private static void ParseModules(LuaTable table, EntityWithModules entity, AllowedEffects def) {
         if (table.Get("allowed_effects", out object? obj)) {
             if (obj is string s) {
-                entity.allowedEffects = (AllowedEffects)Enum.Parse(typeof(AllowedEffects), s, true);
+                entity.allowedEffects = Enum.Parse<AllowedEffects>(s, true);
             }
             else if (obj is LuaTable t) {
                 entity.allowedEffects = AllowedEffects.None;
                 foreach (string str in t.ArrayElements<string>()) {
-                    entity.allowedEffects |= (AllowedEffects)Enum.Parse(typeof(AllowedEffects), str, true);
+                    entity.allowedEffects |= Enum.Parse<AllowedEffects>(str, true);
                 }
             }
         }
