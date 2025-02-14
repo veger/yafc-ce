@@ -88,7 +88,7 @@ internal partial class FactorioDataDeserializer {
         string iconStr = fluid.temperature + "d";
         fluid.iconSpec =
         [
-            .. fluid.iconSpec,
+            .. fluid.iconSpec ?? [],
             .. iconStr.Take(4).Select((x, n) => new FactorioIconPart("__.__/" + x) { y = -16, x = (n * 7) - 12, scale = 0.28f }),
         ];
     }
