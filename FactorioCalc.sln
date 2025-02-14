@@ -17,6 +17,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Yafc.Model.Tests", "Yafc.Mo
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{D6A715CB-5C17-4DD7-9ADA-5D7F44FADFCF}"
 	ProjectSection(SolutionItems) = preProject
+		.editorconfig = .editorconfig
 		changelog.txt = changelog.txt
 		Directory.Build.props = Directory.Build.props
 		exclusion.dic = exclusion.dic
