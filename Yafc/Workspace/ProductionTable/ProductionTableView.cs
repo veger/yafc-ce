@@ -736,7 +736,7 @@ goodsHaveNoProduction:;
 
             if (template.beacon != null) {
                 grid.Next();
-                _ = imGui.BuildFactorioObjectWithAmount(template.beacon, template.CalcBeaconCount(), ButtonDisplayStyle.ProductionTableUnscaled);
+                _ = imGui.BuildFactorioObjectWithAmount(template.beacon, template.CalculateBeaconCount(), ButtonDisplayStyle.ProductionTableUnscaled);
                 foreach (var module in template.beaconList) {
                     grid.Next();
                     _ = imGui.BuildFactorioObjectWithAmount(module.module, module.fixedCount, ButtonDisplayStyle.ProductionTableUnscaled);

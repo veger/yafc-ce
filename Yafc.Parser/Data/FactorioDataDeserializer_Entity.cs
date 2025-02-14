@@ -605,8 +605,8 @@ internal partial class FactorioDataDeserializer {
             else if (generation.Get("coverage", out float coverage)) {
                 float richBase = generation.Get("richness_base", 0f);
                 float richMultiplier = generation.Get("richness_multiplier", 0f);
-                float richMultiplierDist = generation.Get("richness_multiplier_distance_bonus", 0f);
-                float estimatedAmount = coverage * (richBase + richMultiplier + (richMultiplierDist * EstimationDistanceFromCenter));
+                float richMultiplierDistance = generation.Get("richness_multiplier_distance_bonus", 0f);
+                float estimatedAmount = coverage * (richBase + richMultiplier + (richMultiplierDistance * EstimationDistanceFromCenter));
                 entity.mapGenDensity = estimatedAmount;
             }
             if (generation.Get("control", out string? control)) {

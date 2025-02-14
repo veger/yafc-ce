@@ -94,8 +94,8 @@ public static class RenderingUtils {
             for (int y = 0; y < 32; y++) {
                 float dx = (center - x) / center;
                 float dy = (center - y) / center;
-                float dist = MathF.Sqrt((dx * dx) + (dy * dy));
-                *pixels++ = 0xFFFFFF00 | (dist >= 1f ? 0 : (uint)MathUtils.Round(38 * (1f - dist)));
+                float distance = MathF.Sqrt((dx * dx) + (dy * dy));
+                *pixels++ = 0xFFFFFF00 | (distance >= 1f ? 0 : (uint)MathUtils.Round(38 * (1f - distance)));
             }
         }
 

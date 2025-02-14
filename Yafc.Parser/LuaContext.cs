@@ -408,7 +408,7 @@ internal partial class LuaContext : IDisposable {
         }
 
         file = file.Replace('\\', '/');
-        string origFile = file;
+        string originalFile = file;
         file = file.Replace('.', '/');
         string fileExt = file + ".lua";
         Pop(1);
@@ -430,7 +430,7 @@ internal partial class LuaContext : IDisposable {
         (string mod, string path) requiredFile = (mod, fileExt);
 
         if (file.StartsWith("__")) {
-            requiredFile = FactorioDataSource.ResolveModPath(mod, origFile, true);
+            requiredFile = FactorioDataSource.ResolveModPath(mod, originalFile, true);
         }
         else if (mod == "*") {
             byte[] localFile = File.ReadAllBytes("Data/" + fileExt);
