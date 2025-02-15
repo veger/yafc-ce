@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Yafc.Model;
 
@@ -11,6 +12,7 @@ public enum WarningFlags {
     FuelUsageInputLimited = 1 << 2,
     AsteroidCollectionNotModelled = 1 << 3,
     AssumesFulgoraAndModel = 1 << 4,
+    UselessQuality = 1 << 5,
 
     // Static errors
     EntityNotSpecified = 1 << 8,
@@ -158,6 +160,15 @@ internal class RecipeParameters(float recipeTime, float fuelUsagePerSecondPerBui
 
             if (entity.target.allowedEffects != AllowedEffects.None && entity.target.allowedModuleCategories is not []) {
                 row.GetModulesInfo((recipeTime, fuelUsagePerSecondPerBuilding), entity.target, ref activeEffects, ref modules);
+            }
+
+            if (activeEffects.qualityMod > 0) {
+                if (recipe.target.products.All(i => i.goods is Fluid || i.goods == Database.science.target) || recipe.quality.nextQuality == null
+                    || !Milestones.Instance.IsAccessibleWithCurrentMilestones(recipe.quality.nextQuality)) {
+
+                    // All recipe products are fluids/science, or the next quality is nonexistent/inaccessible. You don't need quality modules
+                    warningFlags |= WarningFlags.UselessQuality;
+                }
             }
 
             activeEffects.productivity += productivity;

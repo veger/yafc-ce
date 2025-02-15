@@ -1520,6 +1520,8 @@ goodsHaveNoProduction:;
             "It also depends on the distance between adjacent collectors. These dependencies are not modeled. Expect widely varied performance."},
         {WarningFlags.AssumesFulgoraAndModel, "Energy production values assume Fulgoran storms and attractors in a square grid.\n" +
             "The accumulator estimate tries to store 10% of the energy captured by the attractors."},
+        {WarningFlags.UselessQuality, "The quality bonus on this recipe has no effect. " +
+            "Make sure the recipe produces items and that all milestones for the next quality are unlocked."},
     };
 
     private static readonly (Icon icon, SchemeColor color)[] tagIcons = [
