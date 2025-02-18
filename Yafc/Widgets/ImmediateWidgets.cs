@@ -396,19 +396,21 @@ public static class ImmediateWidgets {
         }
 
         using ImGui.OverlappingAllocations controller = gui.StartOverlappingAllocations(false);
-        drawGrid(gui, ref newQuality);
+        drawGrid(gui, ref newQuality, out bool addSpacing);
         float width = gui.lastRect.Width;
         controller.StartNextAllocatePass(true);
         using (gui.EnterRow(0)) {
-            if (drawCentered) {
+            if (drawCentered && addSpacing) {
                 gui.AllocateRect((gui.statePosition.Width - width) / 2, 0);
             }
-            return drawGrid(gui, ref newQuality);
+            return drawGrid(gui, ref newQuality, out _);
         }
 
-        static bool drawGrid(ImGui gui, ref Quality? newQuality) {
+        static bool drawGrid(ImGui gui, ref Quality? newQuality, out bool addSpacing) {
+            addSpacing = false;
             using ImGuiUtils.InlineGridBuilder grid = gui.EnterInlineGrid(2, .5f);
             Quality? drawQuality = Quality.Normal;
+            int qualityCount = 0;
             while (drawQuality != null) {
                 grid.Next();
                 if (newQuality == drawQuality) {
@@ -416,10 +418,13 @@ public static class ImmediateWidgets {
                 }
                 else if (gui.BuildFactorioObjectButton(drawQuality, ButtonDisplayStyle.Default) == Click.Left) {
                     newQuality = drawQuality;
+                    addSpacing = false; // This has to be the second call, where the value doesn't matter.
                     return true;
                 }
+                qualityCount++;
                 drawQuality = drawQuality.nextQuality;
             }
+            addSpacing = qualityCount <= grid.elementsPerRow;
             return false;
         }
     }

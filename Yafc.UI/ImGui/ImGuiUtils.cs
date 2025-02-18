@@ -326,7 +326,7 @@ public static class ImGuiUtils {
         private ImGui.Context savedContext;
         private readonly RectAllocator savedAllocator;
         private readonly ImGui gui;
-        private readonly int elementsPerRow;
+        public readonly int elementsPerRow;
         private readonly float elementWidth;
         private readonly float spacing;
         private int currentRowIndex;
