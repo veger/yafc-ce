@@ -180,7 +180,7 @@ public class CostAnalysis(bool onlyCurrentMilestones) : Analysis {
             float sizeUsage = CostPerSecond * recipe.time * size;
             float logisticsCost = (sizeUsage * (1f + (CostPerIngredientPerSize * recipe.ingredients.Length) + (CostPerProductPerSize * recipe.products.Length))) + (CostPerMj * minPower);
 
-            if (singleUsedFuel == Database.electricity || singleUsedFuel == Database.voidEnergy || singleUsedFuel == Database.heat) {
+            if (singleUsedFuel == Database.electricity.target || singleUsedFuel == Database.voidEnergy.target || singleUsedFuel == Database.heat.target) {
                 singleUsedFuel = null;
             }
 

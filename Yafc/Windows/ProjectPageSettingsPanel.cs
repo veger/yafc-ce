@@ -164,12 +164,12 @@ public class ProjectPageSettingsPanel : PseudoScreen {
         public IEnumerable<ExportMaterial> Outputs { get; }
 
         public ExportRecipe(RecipeRow row) {
-            Recipe = row.recipe.name;
+            Recipe = row.recipe.QualityName();
             Building = row.entity;
             BuildingCount = row.buildingCount;
-            Fuel = new ExportMaterial(row.fuel?.name ?? "<No fuel selected>", row.FuelInformation.Amount);
-            Inputs = row.Ingredients.Select(i => new ExportMaterial(i.Goods?.name ?? "Recipe disabled", i.Amount));
-            Outputs = row.Products.Select(p => new ExportMaterial(p.Goods?.name ?? "Recipe disabled", p.Amount));
+            Fuel = new ExportMaterial(row.fuel?.QualityName() ?? "<No fuel selected>", row.FuelInformation.Amount);
+            Inputs = row.Ingredients.Select(i => new ExportMaterial(i.Goods?.QualityName() ?? "Recipe disabled", i.Amount));
+            Outputs = row.Products.Select(p => new ExportMaterial(p.Goods?.QualityName() ?? "Recipe disabled", p.Amount));
             Beacon = row.usedModules.beacon;
             BeaconCount = row.usedModules.beaconCount;
 

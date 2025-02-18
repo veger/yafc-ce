@@ -30,7 +30,7 @@ public class ProductionTableTests {
         ProjectPage page = new(project, typeof(ProductionTable));
         project.pages.Add(page);
         ProductionTable table = (ProductionTable)page.content;
-        table.AddRecipe(Database.recipes.all.Single(r => r.name == "recipe"), DataUtils.DeterministicComparer);
+        table.AddRecipe((Database.recipes.all.Single(r => r.name == "recipe"), Quality.Normal), DataUtils.DeterministicComparer);
 
         ErrorCollector collector = new();
         using MemoryStream stream = new();
@@ -48,7 +48,7 @@ public class ProductionTableTests {
         ProjectPage page = new(project, typeof(ProductionTable));
         project.pages.Add(page);
         ProductionTable table = (ProductionTable)page.content;
-        table.AddRecipe(Database.recipes.all.Single(r => r.name == "recipe"), DataUtils.DeterministicComparer);
+        table.AddRecipe((Database.recipes.all.Single(r => r.name == "recipe"), Quality.Normal), DataUtils.DeterministicComparer);
         RecipeRow row = table.GetAllRecipes().Single();
         row.subgroup = new ProductionTable(row);
 
@@ -68,10 +68,10 @@ public class ProductionTableTests {
         ProjectPage page = new(project, typeof(ProductionTable));
         project.pages.Add(page);
         ProductionTable table = (ProductionTable)page.content;
-        table.AddRecipe(Database.recipes.all.Single(r => r.name == "recipe"), DataUtils.DeterministicComparer);
+        table.AddRecipe((Database.recipes.all.Single(r => r.name == "recipe"), Quality.Normal), DataUtils.DeterministicComparer);
         RecipeRow row = table.GetAllRecipes().Single();
         row.subgroup = new ProductionTable(row);
-        row.subgroup.AddRecipe(Database.recipes.all.Single(r => r.name == "recipe"), DataUtils.DeterministicComparer);
+        row.subgroup.AddRecipe((Database.recipes.all.Single(r => r.name == "recipe"), Quality.Normal), DataUtils.DeterministicComparer);
 
         ErrorCollector collector = new();
         using MemoryStream stream = new();
@@ -121,7 +121,7 @@ public class ProductionTableTests {
         ProjectPage page = new(project, typeof(ProductionTable));
         project.pages.Add(page);
         ProductionTable table = (ProductionTable)page.content;
-        table.AddRecipe(Database.recipes.all.Single(r => r.name == "recipe"), DataUtils.DeterministicComparer);
+        table.AddRecipe((Database.recipes.all.Single(r => r.name == "recipe"), Quality.Normal), DataUtils.DeterministicComparer);
         RecipeRow row = table.GetAllRecipes().Single();
         row.subgroup = new ProductionTable(row);
 

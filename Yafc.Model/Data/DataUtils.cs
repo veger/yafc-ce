@@ -357,12 +357,12 @@ public static partial class DataUtils {
         return amount;
     }
 
-    public static float GetProductionForRow(this RecipeRow row, Goods product) {
+    public static float GetProductionForRow(this RecipeRow row, IObjectWithQuality<Goods> product) {
         float amount = 0f;
 
-        foreach (var p in row.recipe.products) {
-            if (p.goods == product) {
-                amount += p.GetAmountForRow(row);
+        foreach (var p in row.Products) {
+            if (p.Goods == product) {
+                amount += p.Amount;
             }
         }
         return amount;
@@ -379,11 +379,11 @@ public static partial class DataUtils {
         return amount;
     }
 
-    public static float GetConsumptionForRow(this RecipeRow row, Goods ingredient) {
+    public static float GetConsumptionForRow(this RecipeRow row, IObjectWithQuality<Goods> ingredient) {
         float amount = 0f;
 
-        foreach (var i in row.recipe.ingredients) {
-            if (i.ContainsVariant(ingredient)) {
+        foreach (var i in row.recipe.target.ingredients) {
+            if (i.goods.With(row.recipe.quality) == ingredient || (ingredient.quality == Quality.Normal && i.ContainsVariant(ingredient.target))) {
                 amount += i.amount * (float)row.recipesPerSecond;
             }
         }
@@ -736,6 +736,7 @@ public static partial class DataUtils {
         return str;
     }
 
+    public static bool Match(this IObjectWithQuality<FactorioObject>? obj, SearchQuery query) => (obj?.target).Match(query);
     public static bool Match(this FactorioObject? obj, SearchQuery query) {
         if (query.empty) {
             return true;

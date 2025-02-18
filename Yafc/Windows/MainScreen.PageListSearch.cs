@@ -102,16 +102,16 @@ public partial class MainScreen {
                     yield return page;
                 }
                 else if (page.content is ProductionTable table) {
-                    if (checkboxValues[(int)PageSearchOption.DesiredProducts] && table.links.Any(l => l.amount != 0 && isMatch(l.goods.name, l.goods.locName))) {
+                    if (checkboxValues[(int)PageSearchOption.DesiredProducts] && table.links.Any(l => l.amount != 0 && isMatch(l.goods.target.name, l.goods.target.locName))) {
                         yield return page;
                     }
-                    else if (checkboxValues[(int)PageSearchOption.Ingredients] && table.flow.Any(f => f.amount < 0 && isMatch(f.goods.name, f.goods.locName))) {
+                    else if (checkboxValues[(int)PageSearchOption.Ingredients] && table.flow.Any(f => f.amount < 0 && isMatch(f.goods.target.name, f.goods.target.locName))) {
                         yield return page;
                     }
-                    else if (checkboxValues[(int)PageSearchOption.ExtraProducts] && table.flow.Any(f => f.amount > 0 && isMatch(f.goods.name, f.goods.locName))) {
+                    else if (checkboxValues[(int)PageSearchOption.ExtraProducts] && table.flow.Any(f => f.amount > 0 && isMatch(f.goods.target.name, f.goods.target.locName))) {
                         yield return page;
                     }
-                    else if (checkboxValues[(int)PageSearchOption.Recipes] && table.GetAllRecipes().Any(r => isMatch(r.recipe.name, r.recipe.locName))) {
+                    else if (checkboxValues[(int)PageSearchOption.Recipes] && table.GetAllRecipes().Any(r => isMatch(r.recipe.target.name, r.recipe.target.locName))) {
                         yield return page;
                     }
                 }

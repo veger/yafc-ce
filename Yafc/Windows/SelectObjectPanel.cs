@@ -25,7 +25,7 @@ public abstract class SelectObjectPanel<T> : PseudoScreenWithResult<T> {
 
     protected SelectObjectPanel() : base(40f) => list = new SearchableList<FactorioObject?>(30, new Vector2(2.5f, 2.5f), ElementDrawer, ElementFilter);
 
-    protected void SelectQuality<U>(IEnumerable<U> list, string header, Action<ObjectWithQuality<U>?> selectItem, IComparer<U>? ordering, Action<T?, Action<FactorioObject?>> mapResult,
+    protected void SelectWithQuality<U>(IEnumerable<U> list, string header, Action<ObjectWithQuality<U>?> selectItem, IComparer<U>? ordering, Action<T?, Action<FactorioObject?>> mapResult,
         bool allowNone, string? noneTooltip, Quality? currentQuality) where U : FactorioObject
         => Select(list, header, u => selectItem((u, this.currentQuality!)), ordering, mapResult, allowNone, noneTooltip, currentQuality ?? Quality.Normal);
 

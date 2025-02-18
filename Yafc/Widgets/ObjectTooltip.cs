@@ -665,26 +665,31 @@ doneDrawing:;
     }
 
     private static void BuildQuality(Quality quality, ImGui gui) {
-        BuildSubHeader(gui, "Quality bonuses");
-        if (quality == Quality.Normal) {
-            using (gui.EnterGroup(contentPadding)) {
-                gui.BuildText("Normal quality provides no bonuses.", TextBlockDisplayStyle.WrappedText);
-            }
-            return;
-        }
-        gui.allocator = RectAllocator.LeftAlign;
-        (string left, string right)[] text = [
-            ("Crafting speed:", '+' + DataUtils.FormatAmount(quality.StandardBonus, UnitOfMeasure.Percent)),
-            ("Accumulator capacity:", '+' + DataUtils.FormatAmount(quality.AccumulatorCapacityBonus, UnitOfMeasure.Percent)),
-            ("Module effects:", '+' + DataUtils.FormatAmount(quality.StandardBonus, UnitOfMeasure.Percent) + '*'),
-            ("Beacon transmission efficiency:", '+' + DataUtils.FormatAmount(quality.BeaconTransmissionBonus, UnitOfMeasure.None)),
-            ("Time before spoiling:", '+' + DataUtils.FormatAmount(quality.StandardBonus, UnitOfMeasure.Percent)),
-            ("Lightning attractor range & efficiency:", '+' + DataUtils.FormatAmount(quality.StandardBonus, UnitOfMeasure.Percent)),
-        ];
-
-        float rightWidth = text.Max(t => gui.GetTextDimensions(out _, t.right).X);
-
         using (gui.EnterGroup(contentPadding)) {
+            if (quality.UpgradeChance > 0) {
+                gui.BuildText("Upgrade chance: " + DataUtils.FormatAmount(quality.UpgradeChance, UnitOfMeasure.Percent) + " (multiplied by module bonus)");
+            }
+        }
+
+        BuildSubHeader(gui, "Quality bonuses");
+        using (gui.EnterGroup(contentPadding)) {
+            if (quality == Quality.Normal) {
+                gui.BuildText("Normal quality provides no bonuses.", TextBlockDisplayStyle.WrappedText);
+                return;
+            }
+
+            gui.allocator = RectAllocator.LeftAlign;
+            (string left, string right)[] text = [
+                ("Crafting speed:", '+' + DataUtils.FormatAmount(quality.StandardBonus, UnitOfMeasure.Percent)),
+                ("Accumulator capacity:", '+' + DataUtils.FormatAmount(quality.AccumulatorCapacityBonus, UnitOfMeasure.Percent)),
+                ("Module effects:", '+' + DataUtils.FormatAmount(quality.StandardBonus, UnitOfMeasure.Percent) + '*'),
+                ("Beacon transmission efficiency:", '+' + DataUtils.FormatAmount(quality.BeaconTransmissionBonus, UnitOfMeasure.None)),
+                ("Time before spoiling:", '+' + DataUtils.FormatAmount(quality.StandardBonus, UnitOfMeasure.Percent)),
+                ("Lightning attractor range & efficiency:", '+' + DataUtils.FormatAmount(quality.StandardBonus, UnitOfMeasure.Percent)),
+            ];
+
+            float rightWidth = text.Max(t => gui.GetTextDimensions(out _, t.right).X);
+
             gui.allocator = RectAllocator.LeftAlign;
             foreach (var (left, right) in text) {
                 gui.BuildText(left);

@@ -12,6 +12,7 @@ public enum WarningFlags {
     FuelUsageInputLimited = 1 << 2,
     AsteroidCollectionNotModelled = 1 << 3,
     AssumesFulgoraAndModel = 1 << 4,
+    UselessQuality = 1 << 5,
 
     // Static errors
     EntityNotSpecified = 1 << 8,
@@ -50,18 +51,18 @@ internal class RecipeParameters(float recipeTime, float fuelUsagePerSecondPerBui
     public static RecipeParameters CalculateParameters(RecipeRow row) {
         WarningFlags warningFlags = 0;
         ObjectWithQuality<EntityCrafter>? entity = row.entity;
-        RecipeOrTechnology recipe = row.recipe;
-        Goods? fuel = row.fuel;
+        ObjectWithQuality<RecipeOrTechnology> recipe = row.recipe;
+        ObjectWithQuality<Goods>? fuel = row.fuel;
         float recipeTime, fuelUsagePerSecondPerBuilding = 0, productivity, speed, consumption;
         ModuleEffects activeEffects = default;
         UsedModule modules = default;
 
         if (entity == null) {
             warningFlags |= WarningFlags.EntityNotSpecified;
-            recipeTime = recipe.time;
+            recipeTime = recipe.target.time;
         }
         else {
-            recipeTime = recipe.time / entity.GetCraftingSpeed();
+            recipeTime = recipe.target.time / entity.GetCraftingSpeed();
             productivity = entity.target.effectReceiver.baseEffect.productivity;
             speed = entity.target.effectReceiver.baseEffect.speed;
             consumption = entity.target.effectReceiver.baseEffect.consumption;
@@ -71,8 +72,8 @@ internal class RecipeParameters(float recipeTime, float fuelUsagePerSecondPerBui
 
             // Special case for fuel
             if (energy != null && fuel != null) {
-                var fluid = fuel.fluid;
-                energyPerUnitOfFuel = fuel.fuelValue;
+                var fluid = fuel.target.fluid;
+                energyPerUnitOfFuel = fuel.target.fuelValue;
 
                 if (energy.type == EntityEnergyType.FluidHeat) {
                     if (fluid == null) {
@@ -110,7 +111,7 @@ internal class RecipeParameters(float recipeTime, float fuelUsagePerSecondPerBui
             }
 
             // Special case for generators
-            if (recipe.flags.HasFlags(RecipeFlags.ScaleProductionWithPower) && energyPerUnitOfFuel > 0 && entity.target.energy.type != EntityEnergyType.Void) {
+            if (recipe.target.flags.HasFlags(RecipeFlags.ScaleProductionWithPower) && energyPerUnitOfFuel > 0 && entity.target.energy.type != EntityEnergyType.Void) {
                 if (energyUsage == 0) {
                     fuelUsagePerSecondPerBuilding = energy.FuelConsumptionLimit(entity.quality);
                     recipeTime = 1f / (energy.FuelConsumptionLimit(entity.quality) * energyPerUnitOfFuel * energy.effectivity);
@@ -120,16 +121,16 @@ internal class RecipeParameters(float recipeTime, float fuelUsagePerSecondPerBui
                 }
             }
 
-            bool isMining = recipe.flags.HasFlags(RecipeFlags.UsesMiningProductivity);
+            bool isMining = recipe.target.flags.HasFlags(RecipeFlags.UsesMiningProductivity);
             activeEffects = new ModuleEffects();
 
             if (isMining) {
                 productivity += Project.current.settings.miningProductivity;
             }
-            else if (recipe is Technology) {
+            else if (recipe.target is Technology) {
                 productivity += Project.current.settings.researchProductivity;
             }
-            else if (recipe is Recipe actualRecipe) {
+            else if (recipe.target is Recipe actualRecipe) {
                 Dictionary<Technology, int> levels = Project.current.settings.productivityTechnologyLevels;
                 foreach ((Technology productivityTechnology, float changePerLevel) in actualRecipe.technologyProductivity) {
                     if (!levels.TryGetValue(productivityTechnology, out int productivityTechLevel)) {
@@ -159,6 +160,15 @@ internal class RecipeParameters(float recipeTime, float fuelUsagePerSecondPerBui
 
             if (entity.target.allowedEffects != AllowedEffects.None && entity.target.allowedModuleCategories is not []) {
                 row.GetModulesInfo((recipeTime, fuelUsagePerSecondPerBuilding), entity.target, ref activeEffects, ref modules);
+            }
+
+            if (activeEffects.qualityMod > 0) {
+                if (recipe.target.products.All(i => i.goods is Fluid || i.goods == Database.science.target) || recipe.quality.nextQuality == null
+                    || !Milestones.Instance.IsAccessibleWithCurrentMilestones(recipe.quality.nextQuality)) {
+
+                    // All recipe products are fluids/science, or the next quality is nonexistent/inaccessible. You don't need quality modules
+                    warningFlags |= WarningFlags.UselessQuality;
+                }
             }
 
             activeEffects.productivity += productivity;

@@ -16,7 +16,7 @@ public static class BlueprintUtilities {
         return result;
     }
 
-    public static string ExportConstantCombinators(string name, IReadOnlyList<(Goods item, int amount)> goods, bool copyToClipboard = true) {
+    public static string ExportConstantCombinators(string name, IReadOnlyList<(IObjectWithQuality<Goods> item, int amount)> goods, bool copyToClipboard = true) {
         int combinatorCount = ((goods.Count - 1) / Database.constantCombinatorCapacity) + 1;
         int offset = -combinatorCount / 2;
         BlueprintString blueprint = new BlueprintString(name);
@@ -49,7 +49,7 @@ public static class BlueprintUtilities {
         return ExportBlueprint(blueprint, copyToClipboard);
     }
 
-    public static string ExportRequesterChests(string name, IReadOnlyList<(Item item, int amount)> goods, EntityContainer chest, bool copyToClipboard = true) {
+    public static string ExportRequesterChests(string name, IReadOnlyList<(IObjectWithQuality<Item> item, int amount)> goods, EntityContainer chest, bool copyToClipboard = true) {
         if (chest.logisticSlotsCount <= 0) {
             throw new NotSupportedException("Chest does not have logistic slots");
         }
@@ -65,7 +65,7 @@ public static class BlueprintUtilities {
 
             for (int j = 0; j < chest.logisticSlotsCount; j++) {
                 var (item, amount) = goods[index++];
-                BlueprintRequestFilter filter = new BlueprintRequestFilter { index = j + 1, count = amount, name = item.name };
+                BlueprintRequestFilter filter = new BlueprintRequestFilter { index = j + 1, count = amount, name = item.target.name, quality = item.quality.name };
                 entity.requestFilters.Add(filter);
 
                 if (index >= goods.Count) {

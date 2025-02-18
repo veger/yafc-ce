@@ -12,16 +12,16 @@ public class SelectableVariantsTests {
 
         ProjectPage page = new ProjectPage(project, typeof(ProductionTable));
         ProductionTable table = (ProductionTable)page.content;
-        table.AddRecipe(Database.recipes.all.Single(r => r.name == "generator.electricity"), DataUtils.DeterministicComparer);
+        table.AddRecipe(new(Database.recipes.all.Single(r => r.name == "generator.electricity"), Quality.Normal), DataUtils.DeterministicComparer);
         RecipeRow row = table.GetAllRecipes().Single();
 
         // Solve is not necessary in this test, but I'm calling it in case we decide to hide the fuel on disabled recipes.
         await table.Solve((ProjectPage)table.owner);
-        Assert.Equal("steam@165", row.FuelInformation.Goods.name);
+        Assert.Equal("steam@165", row.FuelInformation.Goods.target.name);
 
-        row.fuel = row.FuelInformation.Variants[1];
+        row.fuel = row.FuelInformation.Variants[1].With(Quality.Normal);
         await table.Solve((ProjectPage)table.owner);
-        Assert.Equal("steam@500", row.FuelInformation.Goods.name);
+        Assert.Equal("steam@500", row.FuelInformation.Goods.target.name);
     }
 
     [Fact]
@@ -31,16 +31,16 @@ public class SelectableVariantsTests {
 
         ProjectPage page = new ProjectPage(project, typeof(ProductionTable));
         ProductionTable table = (ProductionTable)page.content;
-        table.AddRecipe(Database.recipes.all.Single(r => r.name == "generator.electricity"), DataUtils.DeterministicComparer);
+        table.AddRecipe(new(Database.recipes.all.Single(r => r.name == "generator.electricity"), Quality.Normal), DataUtils.DeterministicComparer);
         RecipeRow row = table.GetAllRecipes().Single();
 
         // Solve is not necessary in this test, but I'm calling it in case we decide to hide the fuel on disabled recipes.
         await table.Solve((ProjectPage)table.owner);
-        Assert.Equal("steam@500", row.FuelInformation.Goods.name);
+        Assert.Equal("steam@500", row.FuelInformation.Goods.target.name);
 
-        row.fuel = row.FuelInformation.Variants[0];
+        row.fuel = row.FuelInformation.Variants[0].With(Quality.Normal);
         await table.Solve((ProjectPage)table.owner);
-        Assert.Equal("steam@165", row.FuelInformation.Goods.name);
+        Assert.Equal("steam@165", row.FuelInformation.Goods.target.name);
     }
 
     [Fact]
@@ -49,16 +49,16 @@ public class SelectableVariantsTests {
 
         ProjectPage page = new ProjectPage(project, typeof(ProductionTable));
         ProductionTable table = (ProductionTable)page.content;
-        table.AddRecipe(Database.recipes.all.Single(r => r.name == "steam_void"), DataUtils.DeterministicComparer);
+        table.AddRecipe((Database.recipes.all.Single(r => r.name == "steam_void"), Quality.Normal), DataUtils.DeterministicComparer);
         RecipeRow row = table.GetAllRecipes().Single();
 
         // Solve is necessary here: Disabled recipes have null ingredients (and products), and Solve is the call that updates hierarchyEnabled.
         await table.Solve((ProjectPage)table.owner);
-        Assert.Equal("steam@165", row.Ingredients.Single().Goods.name);
+        Assert.Equal("steam@165", row.Ingredients.Single().Goods.target.name);
 
-        row.ChangeVariant(row.Ingredients.Single().Goods, row.Ingredients.Single().Variants[1]);
+        row.ChangeVariant(row.Ingredients.Single().Goods.target, row.Ingredients.Single().Variants[1]);
         await table.Solve((ProjectPage)table.owner);
-        Assert.Equal("steam@500", row.Ingredients.Single().Goods.name);
+        Assert.Equal("steam@500", row.Ingredients.Single().Goods.target.name);
     }
 
     // No corresponding CanSelectVariantIngredientWithFavorites: Favorites control fuel selection, but not ingredient selection.

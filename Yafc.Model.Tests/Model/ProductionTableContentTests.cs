@@ -14,7 +14,7 @@ public class ProductionTableContentTests {
 
         ProjectPage page = new ProjectPage(project, typeof(ProductionTable));
         ProductionTable table = (ProductionTable)page.content;
-        table.AddRecipe(Database.recipes.all.Single(r => r.name == "recipe"), DataUtils.DeterministicComparer);
+        table.AddRecipe((Database.recipes.all.Single(r => r.name == "recipe"), Quality.Normal), DataUtils.DeterministicComparer);
         RecipeRow row = table.GetAllRecipes().Single();
 
         table.modules.beacon = new(Database.allBeacons.Single(), Quality.Normal);
@@ -31,7 +31,7 @@ public class ProductionTableContentTests {
                 row.entity = new(crafter, Quality.Normal);
 
                 foreach (Goods fuel in crafter.energy.fuels) {
-                    row.fuel = fuel;
+                    row.fuel = (fuel, Quality.Normal);
 
                     foreach (Module module in Database.allModules.Concat([null])) {
                         ModuleTemplateBuilder builder = new();
@@ -58,7 +58,7 @@ public class ProductionTableContentTests {
 
         ProjectPage page = new ProjectPage(project, typeof(ProductionTable));
         ProductionTable table = (ProductionTable)page.content;
-        table.AddRecipe(Database.recipes.all.Single(r => r.name == "recipe"), DataUtils.DeterministicComparer);
+        table.AddRecipe((Database.recipes.all.Single(r => r.name == "recipe"), Quality.Normal), DataUtils.DeterministicComparer);
         RecipeRow row = table.GetAllRecipes().Single();
 
         List<Module> modules = [.. Database.allModules.Where(m => !m.name.Contains("productivity"))];
@@ -73,7 +73,7 @@ public class ProductionTableContentTests {
                 row.entity = new(crafter, Quality.Normal);
 
                 foreach (Goods fuel in crafter.energy.fuels) {
-                    row.fuel = fuel;
+                    row.fuel = (fuel, Quality.Normal);
 
                     foreach (Module module in modules) {
                         for (int beaconCount = 0; beaconCount < 13; beaconCount++) {
@@ -117,7 +117,7 @@ public class ProductionTableContentTests {
 
         // Ensure that the fuel consumption remains constant, except when the entity and fuel change simultaneously.
         row.fixedFuel = true;
-        (Goods oldFuel, float fuelAmount, _, _) = row.FuelInformation;
+        ((Goods oldFuel, _), float fuelAmount, _, _) = row.FuelInformation;
         testCombinations(row, table, testFuel(row, table));
         row.fixedFuel = false;
 
@@ -149,7 +149,7 @@ public class ProductionTableContentTests {
                 row.fixedBuildings = 1;
                 row.fixedFuel = true;
                 table.Solve((ProjectPage)table.owner).Wait();
-                (oldFuel, fuelAmount, _, _) = row.FuelInformation;
+                ((oldFuel, _), fuelAmount, _, _) = row.FuelInformation;
                 assertCalls++;
             }
         };

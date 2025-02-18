@@ -85,7 +85,7 @@ public static class ImmediateWidgets {
                 Vector2 size = new Vector2(displayStyle.Size / 2f);
                 var delta = contain ? size : size / 2f;
                 Rect milestoneIcon = new Rect(gui.lastRect.BottomRight - delta, size);
-                var icon = milestone == Database.voidEnergy ? DataUtils.HandIcon : milestone.icon;
+                var icon = milestone == Database.voidEnergy.target ? DataUtils.HandIcon : milestone.icon;
                 gui.DrawIcon(milestoneIcon, icon, color);
             }
         }
@@ -197,7 +197,7 @@ public static class ImmediateWidgets {
         return gui.BuildFactorioObjectButtonBackground(gui.lastRect, obj, tooltipOptions: tooltipOptions);
     }
 
-    internal static bool BuildInlineObjectList<T>(this ImGui gui, IEnumerable<T> list, [NotNullWhen(true)] out T? selected, ObjectSelectOptions<T> options) where T : FactorioObject {
+    internal static bool BuildInlineObjectList<T>(this ImGui gui, IEnumerable<T> list, [NotNullWhen(true)] out T? selected, ObjectSelectOptions<T> options) where T : class, IFactorioObjectWrapper {
         gui.BuildText(options.Header, Font.productionTableHeader);
         IEnumerable<T> sortedList = list;
 
@@ -396,19 +396,21 @@ public static class ImmediateWidgets {
         }
 
         using ImGui.OverlappingAllocations controller = gui.StartOverlappingAllocations(false);
-        drawGrid(gui, ref newQuality);
+        drawGrid(gui, ref newQuality, out bool addSpacing);
         float width = gui.lastRect.Width;
         controller.StartNextAllocatePass(true);
         using (gui.EnterRow(0)) {
-            if (drawCentered) {
+            if (drawCentered && addSpacing) {
                 gui.AllocateRect((gui.statePosition.Width - width) / 2, 0);
             }
-            return drawGrid(gui, ref newQuality);
+            return drawGrid(gui, ref newQuality, out _);
         }
 
-        static bool drawGrid(ImGui gui, ref Quality? newQuality) {
+        static bool drawGrid(ImGui gui, ref Quality? newQuality, out bool addSpacing) {
+            addSpacing = false;
             using ImGuiUtils.InlineGridBuilder grid = gui.EnterInlineGrid(2, .5f);
             Quality? drawQuality = Quality.Normal;
+            int qualityCount = 0;
             while (drawQuality != null) {
                 grid.Next();
                 if (newQuality == drawQuality) {
@@ -416,10 +418,13 @@ public static class ImmediateWidgets {
                 }
                 else if (gui.BuildFactorioObjectButton(drawQuality, ButtonDisplayStyle.Default) == Click.Left) {
                     newQuality = drawQuality;
+                    addSpacing = false; // This has to be the second call, where the value doesn't matter.
                     return true;
                 }
+                qualityCount++;
                 drawQuality = drawQuality.nextQuality;
             }
+            addSpacing = qualityCount <= grid.elementsPerRow;
             return false;
         }
     }
@@ -456,7 +461,7 @@ public record DisplayAmount(float Value, UnitOfMeasure Unit = UnitOfMeasure.None
 /// Not used when selecting with a 'None' item or when <paramref name="Multiple"/> is <see langword="false"/>.</param>
 /// <param name="ExtraText">If not <see langword="null"/>, this will be called to get extra text to be displayed right-justified after the item's name.</param>
 public sealed record ObjectSelectOptions<T>(string Header, [AllowNull] IComparer<T> Ordering = null, int MaxCount = 6, bool Multiple = false, Predicate<T>? Checkmark = null,
-    Func<T, string>? ExtraText = null) where T : FactorioObject {
+    Func<T, string>? ExtraText = null) where T : IFactorioObjectWrapper {
 
-    public IComparer<T> Ordering { get; init; } = Ordering ?? DataUtils.DefaultOrdering;
+    public IComparer<T> Ordering { get; init; } = Ordering ?? (IComparer<T>)DataUtils.DefaultOrdering;
 }

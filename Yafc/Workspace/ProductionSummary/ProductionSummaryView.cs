@@ -9,7 +9,7 @@ namespace Yafc;
 public class ProductionSummaryView : ProjectPageView<ProductionSummary> {
     private readonly DataGrid<ProductionSummaryEntry> grid;
     private readonly FlatHierarchy<ProductionSummaryEntry, ProductionSummaryGroup> flatHierarchy;
-    private Goods? filteredGoods;
+    private ObjectWithQuality<Goods>? filteredGoods;
     private readonly Dictionary<ProductionSummaryColumn, GoodsColumn> goodsToColumn = [];
     private readonly PaddingColumn padding;
     private readonly SummaryColumn firstColumn;
@@ -148,13 +148,13 @@ public class ProductionSummaryView : ProjectPageView<ProductionSummary> {
     private class GoodsColumn(ProductionSummaryColumn column, ProductionSummaryView view) : DataColumn<ProductionSummaryEntry>(4f) {
         public readonly ProductionSummaryColumn column = column;
 
-        public Goods goods => column.goods;
+        public ObjectWithQuality<Goods> goods { get; } = column.goods as ObjectWithQuality<Goods> ?? new(column.goods.target, column.goods.quality);
 
         public override void BuildHeader(ImGui gui) {
             var moveHandle = gui.statePosition;
             moveHandle.Height = 5f;
 
-            if (gui.BuildFactorioObjectWithAmount(goods, new(view.model.GetTotalFlow(goods), goods.flowUnitOfMeasure),
+            if (gui.BuildFactorioObjectWithAmount(goods, new(view.model.GetTotalFlow(goods), goods.target.flowUnitOfMeasure),
                 ButtonDisplayStyle.ProductionTableScaled(view.filteredGoods == goods ? SchemeColor.Primary : SchemeColor.None)) == Click.Left) {
 
                 view.ApplyFilter(goods);
@@ -171,7 +171,7 @@ public class ProductionSummaryView : ProjectPageView<ProductionSummary> {
         public override void BuildElement(ImGui gui, ProductionSummaryEntry data) {
             float amount = data.GetAmount(goods);
             if (amount != 0) {
-                if (gui.BuildFactorioObjectWithAmount(goods, new(data.GetAmount(goods), goods.flowUnitOfMeasure), ButtonDisplayStyle.ProductionTableUnscaled) == Click.Left) {
+                if (gui.BuildFactorioObjectWithAmount(goods, new(data.GetAmount(goods), goods.target.flowUnitOfMeasure), ButtonDisplayStyle.ProductionTableUnscaled) == Click.Left) {
                     view.ApplyFilter(goods);
                 }
             }
@@ -188,19 +188,19 @@ public class ProductionSummaryView : ProjectPageView<ProductionSummary> {
 
                 if (!view.model.columnsExist.Contains(goods)) {
                     grid.Next();
-                    var evt = gui.BuildButton(goods.icon, amount > 0f ? SchemeColor.Green : SchemeColor.None, size: 1.5f);
+                    var evt = gui.BuildButton(goods.target.icon, amount > 0f ? SchemeColor.Green : SchemeColor.None, size: 1.5f);
                     if (evt == ButtonEvent.Click) {
                         view.AddOrRemoveColumn(goods);
                     }
                     else if (evt == ButtonEvent.MouseOver) {
-                        ImmediateWidgets.ShowPrecisionValueTooltip(gui, new(amount, goods.flowUnitOfMeasure), goods);
+                        ImmediateWidgets.ShowPrecisionValueTooltip(gui, new(amount, goods.target.flowUnitOfMeasure), goods);
                     }
                 }
             }
         }
     }
 
-    private void ApplyFilter(Goods goods) {
+    private void ApplyFilter(ObjectWithQuality<Goods> goods) {
         var filter = filteredGoods == goods ? null : goods;
         filteredGoods = filter;
         model.group.UpdateFilter(goods, default);
@@ -253,7 +253,7 @@ public class ProductionSummaryView : ProjectPageView<ProductionSummary> {
         base.BuildHeader(gui);
     }
 
-    private void AddOrRemoveColumn(Goods goods) {
+    private void AddOrRemoveColumn(IObjectWithQuality<Goods> goods) {
         _ = model.RecordUndo();
         bool found = false;
         for (int i = 0; i < model.columns.Count; i++) {
@@ -290,7 +290,7 @@ public class ProductionSummaryView : ProjectPageView<ProductionSummary> {
             using var inlineGrid = gui.EnterInlineGrid(3f, 1f);
             foreach (var (goods, amount) in model.sortedFlow) {
                 inlineGrid.Next();
-                if (gui.BuildFactorioObjectWithAmount(goods, new(amount, goods.flowUnitOfMeasure),
+                if (gui.BuildFactorioObjectWithAmount(goods, new(amount, goods.target.flowUnitOfMeasure),
                     ButtonDisplayStyle.ProductionTableScaled(model.columnsExist.Contains(goods) ? SchemeColor.Primary : SchemeColor.None)) == Click.Left) {
 
                     AddOrRemoveColumn(goods);

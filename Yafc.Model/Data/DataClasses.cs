@@ -163,7 +163,6 @@ public abstract class RecipeOrTechnology : FactorioObject {
         return true;
     }
 
-    public bool CanAcceptModule(ObjectWithQuality<Module> module) => CanAcceptModule(module.target);
     public virtual bool CanAcceptModule(Module _) => true;
 }
 
@@ -424,7 +423,7 @@ public class Item : Goods {
     }
 
     public override DependencyNode GetDependencies() {
-        if (this == Database.science) {
+        if (this == Database.science.target) {
             return (Database.technologies.all, DependencyNode.Flags.Source);
         }
         return base.GetDependencies();
@@ -785,6 +784,12 @@ public sealed class Quality : FactorioObject {
     public float AccumulatorCapacityBonus => level;
     public float BeaconTransmissionBonus => .2f * level;
     public float BeaconConsumptionFactor { get; internal set; }
+    public float UpgradeChance { get; internal set; }
+
+    public static bool operator <(Quality left, Quality right) => left.level < right.level;
+    public static bool operator >(Quality left, Quality right) => left.level > right.level;
+    public static bool operator <=(Quality left, Quality right) => left.level <= right.level;
+    public static bool operator >=(Quality left, Quality right) => left.level >= right.level;
 }
 
 /// <summary>
@@ -802,14 +807,6 @@ public interface IObjectWithQuality<out T> : IFactorioObjectWrapper where T : Fa
     Quality quality { get; }
 }
 
-public static class ObjectWithQualityExtensions {
-    // This method cannot be declared on the interface.
-    public static void Deconstruct<T>(this IObjectWithQuality<T> value, out T obj, out Quality quality) where T : FactorioObject {
-        obj = value.target;
-        quality = value.quality;
-    }
-}
-
 /// <summary>
 /// Represents a <see cref="FactorioObject"/> with an attached <see cref="Quality"/> modifier.
 /// </summary>
@@ -822,7 +819,16 @@ public sealed class ObjectWithQuality<T>(T target, Quality quality) : IObjectWit
     /// <inheritdoc/>
     public T target { get; } = target ?? throw new ArgumentNullException(nameof(target));
     /// <inheritdoc/>
-    public Quality quality { get; } = quality ?? throw new ArgumentNullException(nameof(quality));
+    public Quality quality { get; } = CheckQuality(target, quality ?? throw new ArgumentNullException(nameof(quality)));
+
+    private static Quality CheckQuality(T target, Quality quality) => target switch {
+        // Things that don't support quality:
+        Fluid or Location or Mechanics { source: Entity } or Quality or Special or Technology or Tile => Quality.Normal,
+        Recipe r when r.ingredients.All(i => i.goods is Fluid) => Quality.Normal,
+        // Everything else supports quality (except science):
+        // null-checking: Database.science is null when constructing the object that is stored in Database.science.
+        _ => target == Database.science?.target ? Quality.Normal : quality
+    };
 
     /// <summary>
     /// Creates a new <see cref="ObjectWithQuality{T}"/> with the current <see cref="target"/> and the specified <see cref="Quality"/>.
@@ -857,12 +863,12 @@ public sealed class ObjectWithQuality<T>(T target, Quality quality) : IObjectWit
     public bool Equals(IObjectWithQuality<FactorioObject>? other) => other is not null && target == other.target && quality == other.quality;
     public override int GetHashCode() => HashCode.Combine(target, quality);
 
-    public static bool operator ==(ObjectWithQuality<T>? left, ObjectWithQuality<T>? right) => left == (IObjectWithQuality<T>?)right;
-    public static bool operator ==(ObjectWithQuality<T>? left, IObjectWithQuality<T>? right) => (left is null && right is null) || (left is not null && left.Equals(right));
-    public static bool operator ==(IObjectWithQuality<T>? left, ObjectWithQuality<T>? right) => right == left;
+    public static bool operator ==(ObjectWithQuality<T>? left, ObjectWithQuality<T>? right) => left == (IObjectWithQuality<FactorioObject>?)right;
+    public static bool operator ==(ObjectWithQuality<T>? left, IObjectWithQuality<FactorioObject>? right) => (left is null && right is null) || (left is not null && left.Equals(right));
+    public static bool operator ==(IObjectWithQuality<FactorioObject>? left, ObjectWithQuality<T>? right) => right == left;
     public static bool operator !=(ObjectWithQuality<T>? left, ObjectWithQuality<T>? right) => !(left == right);
-    public static bool operator !=(ObjectWithQuality<T>? left, IObjectWithQuality<T>? right) => !(left == right);
-    public static bool operator !=(IObjectWithQuality<T>? left, ObjectWithQuality<T>? right) => !(left == right);
+    public static bool operator !=(ObjectWithQuality<T>? left, IObjectWithQuality<FactorioObject>? right) => !(left == right);
+    public static bool operator !=(IObjectWithQuality<FactorioObject>? left, ObjectWithQuality<T>? right) => !(left == right);
 }
 
 public class Effect {

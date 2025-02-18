@@ -52,6 +52,7 @@ internal partial class FactorioDataDeserializer {
         }
         quality.BeaconConsumptionFactor = table.Get("beacon_power_usage_multiplier", 1f);
         quality.level = table.Get("level", 0);
+        quality.UpgradeChance = table.Get("next_probability", 0f);
     }
 
     private void UpdateRecipeCatalysts() {

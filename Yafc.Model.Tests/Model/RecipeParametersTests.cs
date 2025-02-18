@@ -14,8 +14,8 @@ public class RecipeParametersTests {
         ProjectPage page = new(project, typeof(ProductionTable));
         project.pages.Add(page);
         ProductionTable table = (ProductionTable)page.content;
-        table.AddRecipe(Database.recipes.all.Single(r => r.name == "boiler.boiler.steam"), DataUtils.DeterministicComparer);
-        table.AddRecipe(Database.recipes.all.Single(r => r.name == "boiler.heat-exchanger.steam"), DataUtils.DeterministicComparer);
+        table.AddRecipe(new(Database.recipes.all.Single(r => r.name == "boiler.boiler.steam"), Quality.Normal), DataUtils.DeterministicComparer);
+        table.AddRecipe(new(Database.recipes.all.Single(r => r.name == "boiler.heat-exchanger.steam"), Quality.Normal), DataUtils.DeterministicComparer);
 
         List<Fluid> water = Database.fluidVariants["Fluid.water"];
 
@@ -30,8 +30,8 @@ public class RecipeParametersTests {
                 // boiler has changed in 2.0 and doesn't work yet
                 continue;
             }
-            boiler.ChangeVariant(boiler.Ingredients.Single().Goods, water[i]);
-            heatExchanger.ChangeVariant(boiler.Ingredients.Single().Goods, water[i]);
+            boiler.ChangeVariant(boiler.Ingredients.Single().Goods.target, water[i]);
+            heatExchanger.ChangeVariant(boiler.Ingredients.Single().Goods.target, water[i]);
 
             await table.Solve((ProjectPage)table.owner);
 
