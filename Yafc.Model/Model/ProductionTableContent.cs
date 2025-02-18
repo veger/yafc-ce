@@ -464,27 +464,33 @@ public class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Productio
         int i = 0;
         IObjectWithQuality<Item>? spentFuel = fuel.FuelResult();
         bool handledFuel = spentFuel == null || forSolver; // If we're running the solver or there's no spent fuel, it's already handled.
-        Quality? quality = recipe.quality;
+
         List<float> upgradeProbabilities = [1];
-        float runningProbability = 1;
-        while (quality != null && quality < Quality.MaxAccessible) {
-            runningProbability *= quality.UpgradeChance;
-            upgradeProbabilities.Add(runningProbability * parameters.activeEffects.qualityMod);
-            quality = quality.nextQuality;
+        if (parameters.activeEffects.qualityMod > 0) {
+            Quality? quality = recipe.quality;
+            float runningProbability = 1;
+            // Fill upgradeProbabilities with "this quality or better" probabilities.
+            while (quality != null && quality < Quality.MaxAccessible) {
+                runningProbability *= quality.UpgradeChance;
+                upgradeProbabilities.Add(Math.Min(1, runningProbability * parameters.activeEffects.qualityMod));
+                quality = quality.nextQuality;
+            }
+            // Subtract the "next quality or better" probabilities to get just the "exactly this quality" probability.
+            for (int j = 0; j < upgradeProbabilities.Count - 1; j++) {
+                upgradeProbabilities[j] -= upgradeProbabilities[j + 1];
+            }
         }
-        for (int j = 0; j < upgradeProbabilities.Count - 1; j++) {
-            upgradeProbabilities[j] -= upgradeProbabilities[j + 1];
-        }
+
         foreach (Product product in recipe.target.products) {
             if (hierarchyEnabled) {
-                quality = recipe.quality;
+                Quality quality = recipe.quality;
                 float baseAmount = product.GetAmountPerRecipe(parameters.productivity);
                 if (product.goods is Fluid || product.goods == Database.science.target) {
                     // Upgrade chances don't affect fluids or science
                     yield return (product.goods.With(Quality.Normal), baseAmount * factor, links.products[i, Quality.Normal], product.percentSpoiled);
                 }
                 else {
-                    for (int j = 0; j < upgradeProbabilities.Count && upgradeProbabilities[j] > 0; j++) {
+                    for (int j = 0; j < upgradeProbabilities.Count; j++) {
                         // The result amount for this quality is the normal output amount times the probability of this quality,
                         float amount = baseAmount * upgradeProbabilities[j];
                         if (!handledFuel && product.goods.With(quality) == spentFuel) {
@@ -493,7 +499,9 @@ public class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Productio
                             handledFuel = true;
                         }
 
-                        yield return (product.goods.With(quality), amount * factor, links.products[i, quality], product.percentSpoiled);
+                        if (amount > 0) {
+                            yield return (product.goods.With(quality), amount * factor, links.products[i, quality], product.percentSpoiled);
+                        }
                         quality = quality.nextQuality!;
                     }
 
