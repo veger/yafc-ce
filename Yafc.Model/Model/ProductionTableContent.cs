@@ -461,7 +461,6 @@ public class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Productio
 
     private IEnumerable<RecipeRowProduct> BuildProducts(bool forSolver) {
         float factor = forSolver ? 1 : (float)recipesPerSecond; // recipesPerSecond can be 0 when running the solver, which would create useless results.
-        int i = 0;
         IObjectWithQuality<Item>? spentFuel = fuel.FuelResult();
         bool handledFuel = spentFuel == null || forSolver; // If we're running the solver or there's no spent fuel, it's already handled.
 
@@ -481,7 +480,9 @@ public class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Productio
             }
         }
 
-        foreach (Product product in recipe.target.products) {
+        for (int i = 0; i < recipe.target.products.Length; i++) {
+            Product product = recipe.target.products[i];
+
             if (hierarchyEnabled) {
                 Quality quality = recipe.quality;
                 float baseAmount = product.GetAmountPerRecipe(parameters.productivity);
@@ -504,8 +505,6 @@ public class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Productio
                         }
                         quality = quality.nextQuality!;
                     }
-
-                    i++;
                 }
             }
             else {

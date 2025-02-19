@@ -15,6 +15,11 @@
 //     Internal changes:
 //         Changes to the code that do not affect the behavior of the program.
 ----------------------------------------------------------------------------------------------------------------------
+Version:
+Date:
+    Fixes:
+        - (regression) Links for recipes with fluid outputs were not handled correctly.
+----------------------------------------------------------------------------------------------------------------------
 Version: 2.8.0
 Date: February 19th 2025
     Features:
