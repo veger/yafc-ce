@@ -205,7 +205,7 @@ match:
     /// </summary>
     /// <param name="skip">Filter out all these recipes and do not step into their childeren.</param>
     public IEnumerable<RecipeRow> GetAllRecipes(ProductionTable? skip = null) => this == skip ? [] : recipes
-        .SelectMany<RecipeRow, RecipeRow>(row => [row, ..row?.subgroup?.GetAllRecipes(skip) ?? []]);
+        .SelectMany<RecipeRow, RecipeRow>(row => [row, .. row?.subgroup?.GetAllRecipes(skip) ?? []]);
 
     private static void AddFlow(RecipeRow recipe, Dictionary<IObjectWithQuality<Goods>, (double prod, double cons)> summer) {
         foreach (var product in recipe.Products) {

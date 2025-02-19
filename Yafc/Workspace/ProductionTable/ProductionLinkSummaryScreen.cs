@@ -81,20 +81,21 @@ public class ProductionLinkSummaryScreen : PseudoScreen, IComparer<(RecipeRow ro
                 table.Add((row, localFlow));
             }
             var color = 1;
+            gui.spacing = 0.75f;
             if (childLinks.Values.Any(e => e.Any())) {
-                gui.BuildText("Child links: ", Font.subheader);
+                gui.BuildText("Child links: ", Font.productionTableHeader);
                 foreach (var relTable in childLinks.Values) {
                     BuildFlow(gui, relTable, relTable.Sum(e => Math.Abs(e.flow)), false, color++);
                 }
             }
             if (parentLinks.Values.Any(e => e.Any())) {
-                gui.BuildText("Parent links: ", Font.subheader);
+                gui.BuildText("Parent links: ", Font.productionTableHeader);
                 foreach (var relTable in parentLinks.Values) {
                     BuildFlow(gui, relTable, relTable.Sum(e => Math.Abs(e.flow)), false, color++);
                 }
             }
             if (otherLinks.Values.Any(e => e.Any())) {
-                gui.BuildText("Unrelated links: ", Font.subheader);
+                gui.BuildText("Unrelated links: ", Font.productionTableHeader);
                 foreach (var relTable in otherLinks.Values) {
                     BuildFlow(gui, relTable, relTable.Sum(e => Math.Abs(e.flow)), false, color++);
                 }
