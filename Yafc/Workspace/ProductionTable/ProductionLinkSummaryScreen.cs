@@ -196,16 +196,19 @@ public class ProductionLinkSummaryScreen : PseudoScreen, IComparer<(RecipeRow ro
         }
     }
 
-    private static SchemeColor GetFlowColor(int colorIndex) => (colorIndex % 7) switch {
-        0 => SchemeColor.Primary,
-        1 => SchemeColor.Secondary,
-        2 => SchemeColor.Green,
-        3 => SchemeColor.Magenta,
-        4 => SchemeColor.Grey,
-        5 => SchemeColor.TagColorRed,
-        6 => SchemeColor.TagColorYellow,
-        _ => throw new UnreachableException(),
-    };
+    private static SchemeColor GetFlowColor(int colorIndex) {
+        ArgumentOutOfRangeException.ThrowIfNegative(colorIndex);
+        return (colorIndex % 7) switch {
+            0 => SchemeColor.Primary,
+            1 => SchemeColor.Secondary,
+            2 => SchemeColor.Green,
+            3 => SchemeColor.Magenta,
+            4 => SchemeColor.Grey,
+            5 => SchemeColor.TagColorRed,
+            6 => SchemeColor.TagColorYellow,
+            _ => throw new UnreachableException(),
+        };
+    }
 
     /// <summary>
     /// Returns a delegate that will be called when drawing <see cref="ObjectTooltip"/>, to provide nesting information when hovering recipes and links.
