@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using SDL2;
@@ -39,7 +40,81 @@ public class ProductionLinkSummaryScreen : PseudoScreen, IComparer<(RecipeRow ro
             gui.BuildText((amount > 0 ? "Overproduction: " : "Overconsumption: ") + DataUtils.FormatAmount(MathF.Abs(amount), link.flowUnitOfMeasure),
                 new TextBlockDisplayStyle(Font.subheader, Color: SchemeColor.Error));
         }
+        ShowRelatedLinks(gui);
     }
+
+    private void ShowRelatedLinks(ImGui gui) {
+        ModelObject o = link;
+        List<ModelObject> parents = [];
+        while (o.ownerObject is not ProjectPage) {
+            var t = o.ownerObject;
+            if (t is null) {
+                break;
+            }
+            o = t;
+            if (t == o.ownerObject) continue;
+            parents.Add(t);
+        }
+        if (o is ProductionTable page) {
+            Dictionary<ProductionLink, List<(RecipeRow row, float flow)>> childLinks = [], parentLinks = [], otherLinks = [];
+            List<(RecipeRow row, float flow)> unlinked = [], table;
+            foreach (var (row, relationLinks) in
+                page.GetAllRecipes(link.owner)
+                .Select(e => (e, IsLinkParent(e, parents) ? parentLinks : otherLinks))
+                .Concat(link.owner.GetAllRecipes().Select(e => (e, childLinks)))) {
+                if (isPartOfCurrentLink(row)
+                    || isNotRelatedToCurrentLink(row)) {
+                    continue;
+                }
+                float localFlow = DetermineFlow(link.goods, row);
+
+                if ((row.FindLink(link.goods, out var otherLink) && otherLink != link)) {
+                    if (!relationLinks.ContainsKey(otherLink)) {
+                        relationLinks.Add(otherLink, []);
+                    }
+                    table = relationLinks[otherLink];
+                }
+                else {
+                    table = unlinked;
+                }
+
+                table.Add((row, localFlow));
+            }
+            var color = 1;
+            gui.spacing = 0.75f;
+            if (childLinks.Values.Any(e => e.Any())) {
+                gui.BuildText("Child links: ", Font.productionTableHeader);
+                foreach (var relTable in childLinks.Values) {
+                    BuildFlow(gui, relTable, relTable.Sum(e => Math.Abs(e.flow)), false, color++);
+                }
+            }
+            if (parentLinks.Values.Any(e => e.Any())) {
+                gui.BuildText("Parent links: ", Font.productionTableHeader);
+                foreach (var relTable in parentLinks.Values) {
+                    BuildFlow(gui, relTable, relTable.Sum(e => Math.Abs(e.flow)), false, color++);
+                }
+            }
+            if (otherLinks.Values.Any(e => e.Any())) {
+                gui.BuildText("Unrelated links: ", Font.productionTableHeader);
+                foreach (var relTable in otherLinks.Values) {
+                    BuildFlow(gui, relTable, relTable.Sum(e => Math.Abs(e.flow)), false, color++);
+                }
+            }
+            if (unlinked.Any()) {
+                gui.BuildText("Unlinked: ", Font.subheader);
+                BuildFlow(gui, unlinked, 0, false);
+            }
+        }
+    }
+
+    private bool isNotRelatedToCurrentLink(RecipeRow? row) => (!row.Ingredients.Any(e => e.Goods == link.goods)
+                        && !row.Products.Any(e => e.Goods == link.goods)
+                        && !(row.fuel is not null && row.fuel == link.goods));
+    private bool isPartOfCurrentLink(RecipeRow row) => link.capturedRecipes.Any(e => e == row);
+    private bool IsLinkParent(RecipeRow row, List<ModelObject> parents) => row.Ingredients.Select(e => e.Link).Concat(row.Products.Select(e => e.Link)).Append(row.FuelInformation.Link)
+        .Where(e => e?.ownerObject is not null)
+        .Where(e => e!.goods == link.goods)
+        .Any(e => parents.Contains(e!.ownerObject!));
 
     public override void Build(ImGui gui) {
         BuildHeader(gui, "Link summary");
@@ -64,7 +139,7 @@ public class ProductionLinkSummaryScreen : PseudoScreen, IComparer<(RecipeRow ro
 
     protected override void ReturnPressed() => Close();
 
-    private void BuildFlow(ImGui gui, List<(RecipeRow row, float flow)> list, float total, bool isLinkOutput) {
+    private void BuildFlow(ImGui gui, List<(RecipeRow row, float flow)> list, float total, bool isLinkOutput, int colorIndex = 0) {
         gui.spacing = 0f;
         foreach (var (row, flow) in list) {
             string amount = DataUtils.FormatAmount(flow, link.flowUnitOfMeasure);
@@ -78,7 +153,10 @@ public class ProductionLinkSummaryScreen : PseudoScreen, IComparer<(RecipeRow ro
                 links.Remove(link.goods); // except the current one, only applicable for recipes like kovarex that have catalysts.
 
                 // Jump to the only link, or offer a selection of links to inspect next.
-                if (links.Count == 1) {
+                if (row.FindLink(link.goods, out var otherLink) && otherLink != link) {
+                    changeLinkView(otherLink);
+                }
+                else if (links.Count == 1) {
                     changeLinkView(links.First().Value);
                 }
                 else {
@@ -107,8 +185,8 @@ public class ProductionLinkSummaryScreen : PseudoScreen, IComparer<(RecipeRow ro
 
             if (gui.isBuilding) {
                 var lastRect = gui.lastRect;
-                lastRect.Width *= (flow / total);
-                gui.DrawRectangle(lastRect, SchemeColor.Primary);
+                lastRect.Width *= Math.Abs(flow / total);
+                gui.DrawRectangle(lastRect, GetFlowColor(colorIndex));
             }
         }
 
@@ -117,6 +195,17 @@ public class ProductionLinkSummaryScreen : PseudoScreen, IComparer<(RecipeRow ro
             CalculateFlow(newLink);
         }
     }
+
+    private static SchemeColor GetFlowColor(int colorIndex) => (colorIndex % 7) switch {
+        0 => SchemeColor.Primary,
+        1 => SchemeColor.Secondary,
+        2 => SchemeColor.Green,
+        3 => SchemeColor.Magenta,
+        4 => SchemeColor.Grey,
+        5 => SchemeColor.TagColorRed,
+        6 => SchemeColor.TagColorYellow,
+        _ => throw new UnreachableException(),
+    };
 
     /// <summary>
     /// Returns a delegate that will be called when drawing <see cref="ObjectTooltip"/>, to provide nesting information when hovering recipes and links.
@@ -159,10 +248,7 @@ public class ProductionLinkSummaryScreen : PseudoScreen, IComparer<(RecipeRow ro
         List<(RecipeRow row, float flow)> input = [], output = [];
         totalInput = totalOutput = 0;
         foreach (var recipe in link.capturedRecipes) {
-            float production = recipe.GetProductionForRow(link.goods);
-            float consumption = recipe.GetConsumptionForRow(link.goods);
-            float fuelUsage = recipe.fuel == link.goods ? recipe.FuelInformation.Amount : 0;
-            float localFlow = production - consumption - fuelUsage;
+            float localFlow = DetermineFlow(link.goods, recipe);
             if (localFlow > 0) {
                 input.Add((recipe, localFlow));
                 totalInput += localFlow;
@@ -181,6 +267,14 @@ public class ProductionLinkSummaryScreen : PseudoScreen, IComparer<(RecipeRow ro
 
         Rebuild();
         scrollArea.RebuildContents();
+    }
+
+    private static float DetermineFlow(IObjectWithQuality<Goods> goods, RecipeRow recipe) {
+        float production = recipe.GetProductionForRow(goods);
+        float consumption = recipe.GetConsumptionForRow(goods);
+        float fuelUsage = recipe.fuel == goods ? recipe.FuelInformation.Amount : 0;
+        float localFlow = production - consumption - fuelUsage;
+        return localFlow;
     }
 
     public static void Show(ProductionLink link) => _ = MainScreen.Instance.ShowPseudoScreen(new ProductionLinkSummaryScreen(link));

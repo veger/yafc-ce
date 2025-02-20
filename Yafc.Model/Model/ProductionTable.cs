@@ -203,21 +203,9 @@ match:
     /// <summary>
     /// Get all <see cref="RecipeRow"/>s contained in this <see cref="ProductionTable"/>, in a depth-first ordering. (The same as in the UI when all nested tables are expanded.)
     /// </summary>
-    public IEnumerable<RecipeRow> GetAllRecipes() {
-        return flatten(recipes);
-
-        static IEnumerable<RecipeRow> flatten(IEnumerable<RecipeRow> rows) {
-            foreach (var row in rows) {
-                yield return row;
-
-                if (row.subgroup is not null) {
-                    foreach (var row2 in flatten(row.subgroup.GetAllRecipes())) {
-                        yield return row2;
-                    }
-                }
-            }
-        }
-    }
+    /// <param name="skip">Filter out all these recipes and do not step into their childeren.</param>
+    public IEnumerable<RecipeRow> GetAllRecipes(ProductionTable? skip = null) => this == skip ? [] : recipes
+        .SelectMany<RecipeRow, RecipeRow>(row => [row, .. row?.subgroup?.GetAllRecipes(skip) ?? []]);
 
     private static void AddFlow(RecipeRow recipe, Dictionary<IObjectWithQuality<Goods>, (double prod, double cons)> summer) {
         foreach (var product in recipe.Products) {
