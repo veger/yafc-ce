@@ -23,7 +23,20 @@ public class ProductionTable : ProjectPageContents, IComparer<ProductionTableFlo
     List<RecipeRow> IElementGroup<RecipeRow>.elements => recipes;
     [NoUndo]
     public bool expanded { get; set; } = true;
+    /// <summary>
+    /// Gets the serialized links in this production table, both those created explicitly by the user and those created automatically when adding
+    /// a production or consumption recipe.
+    /// </summary>
     public List<ProductionLink> links { get; } = [];
+    /// <summary>
+    /// Gets all links in this production table, containing both <see cref="links"/> and <see cref="implicitLinks"/>.
+    /// </summary>
+    internal IEnumerable<IProductionLink> allLinks => links.UnionBy(implicitLinks, l => l.goods);
+    /// <summary>
+    /// Gets the implicit links in this production table, created to link quality science pack production to the corresponding
+    /// <see cref="ScienceDecomposition"/> recipes.
+    /// </summary>
+    internal List<IProductionLink> implicitLinks { get; } = [];
     public List<RecipeRow> recipes { get; } = [];
     public ProductionTableFlow[] flow { get; private set; } = [];
     public ModuleFillerParameters? modules { get; } // If you add a setter for this, ensure it calls RecipeRow.ModuleFillerParametersChanging().
@@ -68,6 +81,7 @@ public class ProductionTable : ProjectPageContents, IComparer<ProductionTableFlo
             Dictionary<(ProductionTable, IObjectWithQuality<Goods>), IProductionLink> extraLinks) {
 
         containsDesiredProducts = false;
+        implicitLinks.Clear();
 
         // Science packs need special treatment:
         // If the normal pack is consumed by research at this or a deeper level,
@@ -152,6 +166,7 @@ public class ProductionTable : ProjectPageContents, IComparer<ProductionTableFlo
                         ImplicitLink implicitLink = new(pack, this);
                         allLinks.Add(implicitLink);
                         extraLinks[(this, pack)] = implicitLink;
+                        implicitLinks.Add(implicitLink);
                         allRecipes.Add(new ScienceDecomposition(goods, quality, link, implicitLink));
                     }
                 }
@@ -353,7 +368,7 @@ match:
             }
         }
 
-        foreach (IProductionLink link in links) {
+        foreach (IProductionLink link in allLinks) {
             (double prod, double cons) flowParams;
 
             if (!link.flags.HasFlagAny(ProductionLink.Flags.LinkNotMatched)) {
