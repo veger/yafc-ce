@@ -840,7 +840,7 @@ goodsHaveNoProduction:;
     }
 
     private void CreateLink(ProductionTable table, IObjectWithQuality<Goods> goods) {
-        if (table.linkMap.ContainsKey(goods) || !goods.target.isLinkable) {
+        if (table.linkMap.GetValueOrDefault(goods) is ProductionLink || !goods.target.isLinkable) {
             return;
         }
 
@@ -1242,7 +1242,7 @@ goodsHaveNoProduction:;
                 iconColor = SchemeColor.Error;
             }
             // TODO (shpaass/yafc-ce/issues/269): refactor enum check into explicit instead of ordinal instructions
-            else if (dropdownType >= ProductDropdownType.Product && CheckPossibleOverproducing(link)) {
+            else if (dropdownType >= ProductDropdownType.Product && CheckPossibleOverproducing(link as ProductionLink)) {
                 // Actual overproduction occurred in the recipe
                 iconColor = SchemeColor.Magenta;
             }
@@ -1297,13 +1297,13 @@ goodsHaveNoProduction:;
 
         switch (evt) {
             case GoodsWithAmountEvent.LeftButtonClick when goods is not null:
-                OpenProductDropdown(gui, gui.lastRect, new(goods.target, goods.quality), amount, link, dropdownType, recipe, context, variants);
+                OpenProductDropdown(gui, gui.lastRect, new(goods.target, goods.quality), amount, link as ProductionLink, dropdownType, recipe, context, variants);
                 break;
             case GoodsWithAmountEvent.RightButtonClick when goods is not null and not { target.isLinkable: false } && (link is null || link.owner != context):
                 CreateLink(context, goods);
                 break;
-            case GoodsWithAmountEvent.RightButtonClick when link?.amount == 0 && link.owner == context:
-                DestroyLink(link);
+            case GoodsWithAmountEvent.RightButtonClick when link is ProductionLink && link.amount == 0 && link.owner == context:
+                DestroyLink((link as ProductionLink)!);
                 break;
             case GoodsWithAmountEvent.TextEditing when displayAmount.Value >= 0:
                 // The amount is always stored in fixedBuildings. Scale it to match the requested change to this item.
@@ -1315,7 +1315,7 @@ goodsHaveNoProduction:;
     /// <summary>
     /// Checks some criteria that are necessary but not sufficient to consider something overproduced.
     /// </summary>
-    private static bool CheckPossibleOverproducing(ProductionLink link) => link.algorithm == LinkAlgorithm.AllowOverProduction && link.flags.HasFlag(ProductionLink.Flags.LinkNotMatched);
+    private static bool CheckPossibleOverproducing(ProductionLink? link) => link?.algorithm == LinkAlgorithm.AllowOverProduction && link.flags.HasFlag(ProductionLink.Flags.LinkNotMatched);
 
     /// <param name="isForSummary">If <see langword="true"/>, this call is for a summary box, at the top of a root-level or nested table.
     /// If <see langword="false"/>, this call is for collapsed recipe row.</param>
@@ -1557,12 +1557,12 @@ goodsHaveNoProduction:;
 
     private static void AddDesiredProductAtLevel(ProductionTable table) => SelectMultiObjectPanel.SelectWithQuality(
         Database.goods.all.Except(table.linkMap.Where(p => p.Value.amount != 0).Select(p => p.Key.target)).Where(g => g.isLinkable), "Add desired product", product => {
-            if (table.linkMap.TryGetValue(product, out var existing)) {
-                if (existing.amount != 0) {
+            if (table.linkMap.TryGetValue(product, out var existing) && existing is ProductionLink link) {
+                if (link.amount != 0) {
                     return;
                 }
 
-                existing.RecordUndo().amount = 1f;
+                link.RecordUndo().amount = 1f;
             }
             else {
                 table.RecordUndo().links.Add(new ProductionLink(table, new(product.target, product.quality)) { amount = 1f });
