@@ -266,7 +266,7 @@ public class ProductionSummaryView : ProjectPageView<ProductionSummary> {
         }
 
         if (!found) {
-            model.columns.Add(new ProductionSummaryColumn(model, goods));
+            model.columns.Add(new ProductionSummaryColumn(model, new(goods.target, goods.quality)));
         }
     }
 
