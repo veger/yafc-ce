@@ -606,7 +606,7 @@ public class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Productio
     internal float fuelUsagePerSecond => (float)(parameters.fuelUsagePerSecondPerRecipe * recipesPerSecond);
     public UsedModule usedModules => parameters.modules;
     public WarningFlags warningFlags => parameters.warningFlags;
-    public bool FindLink(IObjectWithQuality<Goods> goods, [MaybeNullWhen(false)] out ProductionLink link) => linkRoot.FindLink(goods, out link);
+    public bool FindLink(IObjectWithQuality<Goods> goods, [MaybeNullWhen(false)] out IProductionLink link) => linkRoot.FindLink(goods, out link);
 
     public T GetVariant<T>(T[] options) where T : FactorioObject {
         foreach (var option in options) {
@@ -791,20 +791,25 @@ public enum LinkAlgorithm {
 /// Represents an object that can be treated by the solver as one link from a production table.
 /// An <see cref="IProductionLink"/> may or may not be visible to the user, and may or may not be saved in the project file.
 /// </summary>
-internal interface IProductionLink {
-    LinkAlgorithm algorithm { get; }
+public interface IProductionLink {
+    internal LinkAlgorithm algorithm { get; }
     ObjectWithQuality<Goods> goods { get; }
     float amount { get; }
-    int solverIndex { get; set; }
+    internal int solverIndex { get; set; }
     ProductionLink.Flags flags { get; set; }
     /// <summary>
     /// The recipes belonging to this production link
     /// </summary>
-    HashSet<IRecipeRow> capturedRecipes { get; }
-    float notMatchedFlow { get; set; }
+    internal HashSet<IRecipeRow> capturedRecipes { get; }
+    internal float notMatchedFlow { get; set; }
     ProductionTable owner { get; }
     IEnumerable<string> LinkWarnings { get; }
-    float linkFlow { get; set; }
+    internal float linkFlow { get; set; }
+
+    /// <summary>
+    /// The link that should be displayed when the user requests a link summary.
+    /// </summary>
+    ProductionLink DisplayLink { get; }
 }
 
 /// <summary>
@@ -857,6 +862,7 @@ public class ProductionLink(ProductionTable group, ObjectWithQuality<Goods> good
     float IProductionLink.notMatchedFlow { get => notMatchedFlow; set => notMatchedFlow = value; }
     float IProductionLink.linkFlow { get => linkFlow; set => linkFlow = value; }
     int IProductionLink.solverIndex { get => solverIndex; set => solverIndex = value; }
+    ProductionLink IProductionLink.DisplayLink => this;
 
     public IEnumerable<string> LinkWarnings {
         get {
@@ -903,12 +909,12 @@ public record RecipeRowIngredient(ObjectWithQuality<Goods>? Goods, float Amount,
 /// <summary>
 /// A product from a recipe row, as reported to the UI.
 /// </summary>
-public record RecipeRowProduct(ObjectWithQuality<Goods>? Goods, float Amount, ProductionLink? Link, float? PercentSpoiled) {
+public record RecipeRowProduct(ObjectWithQuality<Goods>? Goods, float Amount, IProductionLink? Link, float? PercentSpoiled) {
     /// <summary>
     /// Convert from a <see cref="SolverProduct"/> (the form initially generated when reporting products) to a <see cref="RecipeRowProduct"/>.
     /// </summary>
     internal static RecipeRowProduct FromSolver(SolverProduct value)
-        => new(value.Goods, value.Amount, value.Link as ProductionLink, value.PercentSpoiled);
+        => new(value.Goods, value.Amount, value.Link, value.PercentSpoiled);
 }
 
 /// <summary>

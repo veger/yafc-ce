@@ -26,6 +26,13 @@ public class ProductionLinkSummaryScreen : PseudoScreen, IComparer<(RecipeRow ro
     private void BuildScrollArea(ImGui gui) {
         gui.BuildText("Production: " + DataUtils.FormatAmount(totalInput, link.flowUnitOfMeasure), Font.subheader);
         BuildFlow(gui, input, totalInput, false);
+        if (link.capturedRecipes.Any(r => r is not RecipeRow)) {
+            // captured recipes that are not user-visible RecipeRows imply the existence of implicit links
+            using (gui.EnterRow()) {
+                gui.AllocateRect(0, ButtonDisplayStyle.Default.Size);
+                gui.BuildText("Plus additional production from implicit links");
+            }
+        }
         gui.spacing = 0.5f;
         gui.BuildText("Consumption: " + DataUtils.FormatAmount(totalOutput, link.flowUnitOfMeasure), Font.subheader);
         BuildFlow(gui, output, totalOutput, true);
@@ -56,7 +63,7 @@ public class ProductionLinkSummaryScreen : PseudoScreen, IComparer<(RecipeRow ro
             parents.Add(t);
         }
         if (o is ProductionTable page) {
-            Dictionary<ProductionLink, List<(RecipeRow row, float flow)>> childLinks = [], parentLinks = [], otherLinks = [];
+            Dictionary<IProductionLink, List<(RecipeRow row, float flow)>> childLinks = [], parentLinks = [], otherLinks = [];
             List<(RecipeRow row, float flow)> unlinked = [], table;
             foreach (var (row, relationLinks) in
                 page.GetAllRecipes(link.owner)
@@ -112,9 +119,9 @@ public class ProductionLinkSummaryScreen : PseudoScreen, IComparer<(RecipeRow ro
                         && !(row.fuel is not null && row.fuel == link.goods));
     private bool isPartOfCurrentLink(RecipeRow row) => link.capturedRecipes.Any(e => e == row);
     private bool IsLinkParent(RecipeRow row, List<ModelObject> parents) => row.Ingredients.Select(e => e.Link).Concat(row.Products.Select(e => e.Link)).Append(row.FuelInformation.Link)
-        .Where(e => e?.ownerObject is not null)
-        .Where(e => e!.goods == link.goods)
-        .Any(e => parents.Contains(e!.ownerObject!));
+        .WhereNotNull()
+        .Where(e => e.goods == link.goods)
+        .Any(e => parents.Contains(e.owner));
 
     public override void Build(ImGui gui) {
         BuildHeader(gui, "Link summary");
@@ -123,7 +130,7 @@ public class ProductionLinkSummaryScreen : PseudoScreen, IComparer<(RecipeRow ro
             _ = gui.BuildFactorioObjectButtonWithText(link.goods, tooltipOptions: DrawParentRecipes(link.owner, "link"));
         }
         scrollArea.Build(gui);
-        if (gui.BuildButton("Remove link", link.owner.links.Contains(link) ? SchemeColor.Primary : SchemeColor.Grey)) {
+        if (gui.BuildButton("Remove link", link.owner.allLinks.Contains(link) ? SchemeColor.Primary : SchemeColor.Grey)) {
             DestroyLink(link);
             Close();
         }
@@ -146,15 +153,15 @@ public class ProductionLinkSummaryScreen : PseudoScreen, IComparer<(RecipeRow ro
             if (gui.BuildFactorioObjectButtonWithText(row.recipe, amount, tooltipOptions: DrawParentRecipes(row.owner, "recipe")) == Click.Left) {
                 // Find the corresponding links associated with the clicked recipe,
                 IEnumerable<IObjectWithQuality<Goods>> goods = (isLinkOutput ? row.Products.Select(p => p.Goods) : row.Ingredients.Select(i => i.Goods))!;
-                Dictionary<IObjectWithQuality<Goods>, ProductionLink> links = goods
-                    .Select(goods => { row.FindLink(goods, out ProductionLink? link); return (goods, link: link!); })
-                    .Where(x => x.link != null)
-                    .ToDictionary(x => x.goods, x => x.link);
+                Dictionary<ObjectWithQuality<Goods>, ProductionLink> links = goods
+                    .Select(goods => { row.FindLink(goods, out IProductionLink? link); return link as ProductionLink; })
+                    .WhereNotNull()
+                    .ToDictionary(x => x.goods);
                 links.Remove(link.goods); // except the current one, only applicable for recipes like kovarex that have catalysts.
 
                 // Jump to the only link, or offer a selection of links to inspect next.
-                if (row.FindLink(link.goods, out var otherLink) && otherLink != link) {
-                    changeLinkView(otherLink);
+                if (row.FindLink(link.goods, out var otherLink) && otherLink != link && otherLink is ProductionLink destLink) {
+                    changeLinkView(destLink);
                 }
                 else if (links.Count == 1) {
                     changeLinkView(links.First().Value);
@@ -175,8 +182,8 @@ public class ProductionLinkSummaryScreen : PseudoScreen, IComparer<(RecipeRow ro
                         }
 
                         string header = isLinkOutput ? "Select product link to inspect" : "Select ingredient link to inspect";
-                        ObjectSelectOptions<IObjectWithQuality<Goods>> options = new(header, comparer, int.MaxValue);
-                        if (gui.BuildInlineObjectList(links.Keys, out IObjectWithQuality<Goods>? selected, options) && gui.CloseDropdown()) {
+                        ObjectSelectOptions<ObjectWithQuality<Goods>> options = new(header, comparer, int.MaxValue);
+                        if (gui.BuildInlineObjectList(links.Keys, out ObjectWithQuality<Goods>? selected, options) && gui.CloseDropdown()) {
                             changeLinkView(links[selected]);
                         }
                     }

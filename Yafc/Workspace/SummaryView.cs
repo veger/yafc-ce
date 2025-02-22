@@ -365,7 +365,7 @@ public class SummaryView : ProjectPageView<Summary> {
                 continue;
             }
 
-            foreach (ProductionLink link in content.links) {
+            foreach (IProductionLink link in content.allLinks) {
                 if (link.amount != 0f) {
                     GoodDetails value = newGoods.GetValueOrDefault(link.goods.QualityName());
                     value.totalProvided += YafcRounding(link.amount); ;
@@ -381,7 +381,7 @@ public class SummaryView : ProjectPageView<Summary> {
                     newGoods[flow.goods.QualityName()] = value;
                 }
                 else if (flow.amount > Epsilon) {
-                    if (!content.links.Exists(x => x.goods == flow.goods)) {
+                    if (!content.allLinks.Any(x => x.goods == flow.goods)) {
                         // Only count extras if not linked
                         GoodDetails value = newGoods.GetValueOrDefault(flow.goods.QualityName());
                         value.extraProduced += YafcRounding(flow.amount);

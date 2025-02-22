@@ -11,15 +11,15 @@ using Yafc.UI;
 
 namespace Yafc.Model;
 
-public struct ProductionTableFlow(IObjectWithQuality<Goods> goods, float amount, ProductionLink? link) {
+public struct ProductionTableFlow(IObjectWithQuality<Goods> goods, float amount, IProductionLink? link) {
     public IObjectWithQuality<Goods> goods = goods;
     public float amount = amount;
-    public ProductionLink? link = link;
+    public IProductionLink? link = link;
 }
 
 public class ProductionTable : ProjectPageContents, IComparer<ProductionTableFlow>, IElementGroup<RecipeRow> {
     private static readonly ILogger logger = Logging.GetLogger<ProductionTable>();
-    [SkipSerialization] public Dictionary<IObjectWithQuality<Goods>, ProductionLink> linkMap { get; } = [];
+    [SkipSerialization] public Dictionary<IObjectWithQuality<Goods>, IProductionLink> linkMap { get; } = [];
     List<RecipeRow> IElementGroup<RecipeRow>.elements => recipes;
     [NoUndo]
     public bool expanded { get; set; } = true;
@@ -31,7 +31,7 @@ public class ProductionTable : ProjectPageContents, IComparer<ProductionTableFlo
     /// <summary>
     /// Gets all links in this production table, containing both <see cref="links"/> and <see cref="implicitLinks"/>.
     /// </summary>
-    internal IEnumerable<IProductionLink> allLinks => links.UnionBy(implicitLinks, l => l.goods);
+    public IEnumerable<IProductionLink> allLinks => links.UnionBy(implicitLinks, l => l.goods);
     /// <summary>
     /// Gets the implicit links in this production table, created to link quality science pack production to the corresponding
     /// <see cref="ScienceDecomposition"/> recipes.
@@ -61,7 +61,7 @@ public class ProductionTable : ProjectPageContents, IComparer<ProductionTableFlo
     public void RebuildLinkMap() {
         linkMap.Clear();
 
-        foreach (var link in links) {
+        foreach (var link in allLinks) {
             linkMap[link.goods] = link;
         }
     }
@@ -82,6 +82,7 @@ public class ProductionTable : ProjectPageContents, IComparer<ProductionTableFlo
 
         containsDesiredProducts = false;
         implicitLinks.Clear();
+        RebuildLinkMap();
 
         // Science packs need special treatment:
         // If the normal pack is consumed by research at this or a deeper level,
@@ -93,7 +94,7 @@ public class ProductionTable : ProjectPageContents, IComparer<ProductionTableFlo
         Dictionary<Goods, IProductionLink> linkedConsumption = [], locallyLinkedConsumption = [];
         HashSet<IObjectWithQuality<Goods>> unlinkedProduction = [], locallyLinkedGoods = [];
 
-        foreach (var link in links) {
+        foreach (var link in this.allLinks) {
             if (link.amount != 0f) {
                 containsDesiredProducts = true;
             }
@@ -127,6 +128,7 @@ public class ProductionTable : ProjectPageContents, IComparer<ProductionTableFlo
             }
             else {
                 // The header recipe for this table, and all recipes that are not part of a nested table.
+                recipe.parameters = RecipeParameters.CalculateParameters(recipe);
                 allRecipes.Add(new GenuineRecipe(recipe, extraLinks));
 
                 if (recipe.recipe.Is<Technology>()) {
@@ -163,10 +165,11 @@ public class ProductionTable : ProjectPageContents, IComparer<ProductionTableFlo
                     // and there is unlinked production here or anywhere deeper: (This test only succeeds for non-normal qualities)
                     if (unlinkedProduction.Remove(pack)) { // Remove the quality pack, since it's about to be linked,
                         // and create the decomposition.
-                        ImplicitLink implicitLink = new(pack, this);
+                        ImplicitLink implicitLink = new(pack, this, (ProductionLink)link);
                         allLinks.Add(implicitLink);
                         extraLinks[(this, pack)] = implicitLink;
                         implicitLinks.Add(implicitLink);
+                        linkMap[pack] = implicitLink;
                         allRecipes.Add(new ScienceDecomposition(goods, quality, link, implicitLink));
                     }
                 }
@@ -185,7 +188,7 @@ public class ProductionTable : ProjectPageContents, IComparer<ProductionTableFlo
         if (subgroup != null) {
             subgroup.flow = [];
 
-            foreach (var link in subgroup.links) {
+            foreach (var link in subgroup.allLinks) {
                 link.flags = 0;
                 link.linkFlow = 0;
             }
@@ -231,7 +234,7 @@ match:
             return true;
         }
 
-        foreach (var link in links) {
+        foreach (var link in allLinks) {
             if (link.goods.Match(query)) {
                 return true;
             }
@@ -741,7 +744,7 @@ match:
         return (sources, splits);
     }
 
-    public bool FindLink(IObjectWithQuality<Goods> goods, [MaybeNullWhen(false)] out ProductionLink link) {
+    public bool FindLink(IObjectWithQuality<Goods> goods, [MaybeNullWhen(false)] out IProductionLink link) {
         if (goods == null) {
             link = null;
             return false;
@@ -775,7 +778,9 @@ match:
     /// </summary>
     /// <param name="goods">The linked <see cref="ObjectWithQuality{T}"/>.</param>
     /// <param name="owner">The <see cref="ProductionTable"/> that owns this link.</param>
-    private class ImplicitLink(ObjectWithQuality<Goods> goods, ProductionTable owner) : IProductionLink {
+    /// <param name="displayLink">The ordinary link that caused the creation of this implict link, and the link that will be displayed if the
+    /// user requests the summary for this link.</param>
+    private class ImplicitLink(ObjectWithQuality<Goods> goods, ProductionTable owner, ProductionLink displayLink) : IProductionLink {
         /// <summary>
         /// Always <see cref="LinkAlgorithm.Match"/>; implicit links never allow over/under production.
         /// </summary>
@@ -800,6 +805,8 @@ match:
         /// Always empty; implicit links never have warnings.
         /// </summary>
         public IEnumerable<string> LinkWarnings { get; } = [];
+
+        public ProductionLink DisplayLink { get; } = displayLink;
     }
 
     /// <summary>
