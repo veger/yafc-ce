@@ -50,7 +50,7 @@ public class SerializationTypeValidation {
         }
     }
 
-    private static ConstructorInfo FindConstructor(Type type) {
+    internal static ConstructorInfo FindConstructor(Type type) {
         BindingFlags flags = BindingFlags.Instance;
         if (type.GetCustomAttribute<DeserializeWithNonPublicConstructorAttribute>() != null) {
             flags |= BindingFlags.NonPublic;
@@ -111,7 +111,7 @@ public class SerializationTypeValidation {
         }
     }
 
-    private static string MakeTypeName(Type type) {
+    internal static string MakeTypeName(Type type) {
         if (type.IsGenericType) {
             if (type.GetGenericTypeDefinition() == typeof(Nullable<>)) {
                 return MakeTypeName(type.GetGenericArguments()[0]) + '?';
