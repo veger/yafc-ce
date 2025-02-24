@@ -19,6 +19,8 @@ Version:
 Date:
     Features:
         - Add related recipes to the Link Summary screen.
+    Fixes:
+        - (regression) Legacy summary pages could not be saved or loaded.
 ----------------------------------------------------------------------------------------------------------------------
 Version: 2.8.1
 Date: February 20th 2025

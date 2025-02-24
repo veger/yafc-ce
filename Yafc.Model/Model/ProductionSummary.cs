@@ -155,8 +155,8 @@ public class ProductionSummaryEntry(ProductionSummaryGroup owner) : ModelObject<
     }
 }
 
-public class ProductionSummaryColumn(ProductionSummary owner, IObjectWithQuality<Goods> goods) : ModelObject<ProductionSummary>(owner) {
-    public IObjectWithQuality<Goods> goods { get; } = goods ?? throw new ArgumentNullException(nameof(goods), "Object does not exist");
+public class ProductionSummaryColumn(ProductionSummary owner, ObjectWithQuality<Goods> goods) : ModelObject<ProductionSummary>(owner) {
+    public ObjectWithQuality<Goods> goods { get; } = goods ?? throw new ArgumentNullException(nameof(goods), "Object does not exist");
 }
 
 public class ProductionSummary : ProjectPageContents, IComparer<(IObjectWithQuality<Goods> goods, float amount)> {
@@ -169,7 +169,7 @@ public class ProductionSummary : ProjectPageContents, IComparer<(IObjectWithQual
     [SkipSerialization] public HashSet<IObjectWithQuality<Goods>> columnsExist { get; } = [];
 
     public override void InitNew() {
-        columns.Add(new ProductionSummaryColumn(this, Database.electricity));
+        columns.Add(new ProductionSummaryColumn(this, new(Database.electricity.target, Quality.Normal)));
         base.InitNew();
     }
 

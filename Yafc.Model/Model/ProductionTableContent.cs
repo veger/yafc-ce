@@ -78,7 +78,7 @@ public class RecipeRowCustomModule(ModuleTemplate owner, ObjectWithQuality<Modul
 /// The template that determines what modules are (or will be) applied to a <see cref="RecipeRow"/>.
 /// </summary>
 /// <remarks>Immutable. To modify, call <see cref="GetBuilder"/>, modify the builder, and call <see cref="ModuleTemplateBuilder.Build"/>.</remarks>
-[Serializable, DeserializeWithNonPublicConstructor]
+[DeserializeWithNonPublicConstructor]
 public class ModuleTemplate : ModelObject<ModelObject> {
     /// <summary>
     /// The beacon to use, if any, for the associated <see cref="RecipeRow"/>.
