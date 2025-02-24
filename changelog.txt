@@ -15,8 +15,8 @@
 //     Internal changes:
 //         Changes to the code that do not affect the behavior of the program.
 ----------------------------------------------------------------------------------------------------------------------
-Version:
-Date:
+Version: 2.9.0
+Date: February 24th 2025
     Features:
         - Add related recipes to the Link Summary screen.
     Fixes:
