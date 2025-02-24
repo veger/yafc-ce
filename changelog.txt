@@ -18,7 +18,7 @@
 Version:
 Date:
     Internal changes:
-        - Quality objects now have reference equality, like FactorioObjects.
+        - Quality objects now have reference equality and abstract serialization, like FactorioObjects.
 ----------------------------------------------------------------------------------------------------------------------
 Version: 2.11.0
 Date: March 21st 2025

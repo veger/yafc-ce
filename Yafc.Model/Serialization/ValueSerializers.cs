@@ -2,6 +2,7 @@
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace Yafc.Model;
 
@@ -18,6 +19,10 @@ internal static class ValueSerializer {
         }
 
         if (type.IsEnum && type.GetEnumUnderlyingType() == typeof(int)) {
+            return true;
+        }
+
+        if (type.IsInterface && type.IsGenericType && type.GetGenericTypeDefinition() == typeof(IObjectWithQuality<>)) {
             return true;
         }
 
@@ -73,6 +78,10 @@ internal abstract class ValueSerializer<T> {
         // See System.Private.CoreLib\src\System\Activator.cs:20, e.g. https://github.com/dotnet/runtime/blob/main/src/libraries/System.Private.CoreLib/src/System/Activator.cs#L20
         if (typeof(FactorioObject).IsAssignableFrom(typeof(T))) {
             return Activator.CreateInstance(typeof(FactorioObjectSerializer<>).MakeGenericType(typeof(T)))!;
+        }
+
+        if (typeof(T).IsInterface && typeof(T).IsGenericType && typeof(T).GetGenericTypeDefinition() == typeof(IObjectWithQuality<>)) {
+            return Activator.CreateInstance(typeof(QualityObjectSerializer<>).MakeGenericType(typeof(T).GenericTypeArguments[0]))!;
         }
 
         if (typeof(T).IsEnum && typeof(T).GetEnumUnderlyingType() == typeof(int)) {
@@ -332,6 +341,113 @@ internal class FactorioObjectSerializer<T> : ValueSerializer<T> where T : Factor
     public override void WriteToUndoSnapshot(UndoSnapshotBuilder writer, T? value) => writer.WriteManagedReference(value);
 
     public override bool CanBeNull => true;
+}
+
+internal sealed partial class QualityObjectSerializer<T> : ValueSerializer<IObjectWithQuality<T>> where T : FactorioObject {
+    private static readonly ValueSerializer<T> objectSerializer = ValueSerializer<T>.Default;
+    private static readonly ValueSerializer<Quality> qualitySerializer = ValueSerializer<Quality>.Default;
+
+    public override bool CanBeNull => true;
+
+    public override IObjectWithQuality<T>? ReadFromJson(ref Utf8JsonReader reader, DeserializationContext context, object? owner) {
+        if (reader.TokenType is JsonTokenType.String or JsonTokenType.PropertyName) {
+            string value = reader.GetString()!;
+            if (value.StartsWith('!')) {
+                // Read the new dictionary-key format, typically "!Item.coal!normal"
+                string separator = Separator().Match(value).Value;
+                string[] parts = value.Split(separator);
+                if (parts.Length == 3) { // The parts are <empty>, target.typeDotName, and quality.name
+                    _ = Database.objectsByTypeName.TryGetValue(parts[1], out var obj);
+                    _ = Database.objectsByTypeName.TryGetValue("Quality." + parts[2], out var qual);
+                    if (obj is not T) {
+                        context.Error($"Factorio object '{parts[1]}' no longer exists. Check mods configuration.", ErrorSeverity.MinorDataLoss);
+                    }
+                    else if (qual is not Quality quality) {
+                        context.Error($"Factorio quality '{parts[2]}' no longer exists. Check mods configuration.", ErrorSeverity.MinorDataLoss);
+                    }
+                    else {
+                        return ObjectWithQuality.Get(obj as T, quality);
+                    }
+                }
+                // If anything went wrong reading the dictionary-key format, try the non-quality format instead.
+            }
+
+            // Read the old non-quality "Item.coal" format
+            return ObjectWithQuality.Get(objectSerializer.ReadFromJson(ref reader, context, owner), Quality.Normal);
+        }
+
+        if (reader.TokenType == JsonTokenType.StartObject) {
+            // Read the object-based quality format: { "target": "Item.coal", "quality": "Quality.normal" }
+            reader.Read(); // {
+            reader.Read(); // "target":
+            T? obj = objectSerializer.ReadFromJson(ref reader, context, owner);
+            reader.Read(); // target
+            reader.Read(); // "quality":
+            Quality? quality = qualitySerializer.ReadFromJson(ref reader, context, owner);
+            reader.Read(); // quality
+            // If anything went wrong, the error has already been reported. We can just return null and continue.
+            return quality == null ? null : ObjectWithQuality.Get(obj, quality);
+        }
+
+        if (reader.TokenType != JsonTokenType.Null) {
+            context.Error($"Unexpected token {reader.TokenType} reading a quality object.", ErrorSeverity.MinorDataLoss);
+        }
+
+        return null; // Input is JsonTokenType.Null, or couldn't parse the input
+    }
+
+    public override void WriteToJson(Utf8JsonWriter writer, IObjectWithQuality<T>? value) {
+        if (value == null) {
+            writer.WriteNullValue();
+            return;
+        }
+
+        // TODO: This writes values that can be read by older versions of Yafc. For consistency with quality objects written as dictionary keys,
+        // replace these four lines with this after a suitable period of backwards compatibility:
+        // writer.WriteStringValue(GetJsonProperty(value));
+        writer.WriteStartObject();
+        writer.WriteString("target", value.target.typeDotName);
+        writer.WriteString("quality", value.quality.typeDotName);
+        writer.WriteEndObject();
+    }
+
+    public override string GetJsonProperty(IObjectWithQuality<T> value) {
+        string target = value.target.typeDotName;
+        string quality = value.quality.name;
+
+        // Construct an unambiguous separator that does not appear in the string data: Alternate ! and @ until (A) the separator does not appear
+        // in either the target or quality names, and (B) the first character of the object name cannot be interpreted as part of the separator.
+        // That is, if target is (somehow) "!target", separator cannot be "!@", because there would otherwise be no way to distinguish
+        // "!@" + "!target" from "!@!" + "target".
+        // Note that "!@!" + "@quality" is fine. Once we see that the initial "!@!" is not followed by '@', we know the separator is "!@!", and
+        // the @ in "@quality" must be part of the quality name.
+        // In reality, rule B should never trigger, since types do not start with ! or @.
+        // Even rule A will be rare, since most internal names do not contain '!'.
+        string separator = "!";
+        while (true) {
+            if (target.Contains(separator) || quality.Contains(separator) || target.StartsWith('@')) {
+                separator += '@';
+            }
+            else {
+                break;
+            }
+            if (target.Contains(separator) || quality.Contains(separator) || target.StartsWith('!')) {
+                separator += '!';
+            }
+            else {
+                break;
+            }
+        }
+
+        return separator + target + separator + quality;
+    }
+
+    public override IObjectWithQuality<T>? ReadFromUndoSnapshot(UndoSnapshotReader reader, object owner)
+        => (IObjectWithQuality<T>?)reader.ReadManagedReference();
+    public override void WriteToUndoSnapshot(UndoSnapshotBuilder writer, IObjectWithQuality<T>? value) => writer.WriteManagedReference(value);
+
+    [GeneratedRegex("^(!@)*!?")]
+    private static partial Regex Separator();
 }
 
 internal class EnumSerializer<T> : ValueSerializer<T> where T : struct, Enum {
