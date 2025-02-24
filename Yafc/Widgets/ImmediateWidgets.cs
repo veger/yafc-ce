@@ -323,14 +323,14 @@ public static class ImmediateWidgets {
     /// <param name="selectQuality">If not <see langword="null"/>, this will be called, and the dropdown will be closed, when the user selects a quality.
     /// In general, set this parameter when modifying an existing object, and leave it <see langword="null"/> when setting a new object.</param>
     /// <param name="width">Width of the popup. Make sure the header text fits!</param>
-    public static void BuildObjectQualitySelectDropDown<T>(this ImGui gui, ICollection<T> list, Action<ObjectWithQuality<T>> selectItem, ObjectSelectOptions<T> options,
+    public static void BuildObjectQualitySelectDropDown<T>(this ImGui gui, ICollection<T> list, Action<IObjectWithQuality<T>> selectItem, ObjectSelectOptions<T> options,
         Quality quality, Action<Quality>? selectQuality = null, float width = 20f) where T : FactorioObject
 
         => gui.ShowDropDown(gui => {
             if (gui.BuildQualityList(quality, out quality) && selectQuality != null && gui.CloseDropdown()) {
                 selectQuality(quality);
             }
-            gui.BuildInlineObjectListAndButton(list, i => selectItem(new(i, quality)), options);
+            gui.BuildInlineObjectListAndButton(list, i => selectItem(i.With(quality)), options);
         }, width);
 
     /// <summary>Shows a dropdown containing the (partial) <paramref name="list"/> of elements, with an action for when an element is selected.
@@ -343,14 +343,14 @@ public static class ImmediateWidgets {
     /// Also shows the available quality levels, and allows the user to select a quality.</summary>
     /// <param name="selectQuality">This will be called, and the dropdown will be closed, when the user selects a quality.</param>
     /// <param name="width">Width of the popup. Make sure the header text fits!</param>
-    public static void BuildObjectQualitySelectDropDownWithNone<T>(this ImGui gui, ICollection<T> list, Action<ObjectWithQuality<T>?> selectItem, ObjectSelectOptions<T> options,
+    public static void BuildObjectQualitySelectDropDownWithNone<T>(this ImGui gui, ICollection<T> list, Action<IObjectWithQuality<T>?> selectItem, ObjectSelectOptions<T> options,
         Quality quality, Action<Quality> selectQuality, float width = 20f) where T : FactorioObject
 
         => gui.ShowDropDown(gui => {
             if (gui.BuildQualityList(quality, out quality) && gui.CloseDropdown()) {
                 selectQuality(quality);
             }
-            gui.BuildInlineObjectListAndButtonWithNone(list, i => selectItem((i, quality)), options);
+            gui.BuildInlineObjectListAndButtonWithNone(list, i => selectItem(i.With(quality)), options);
         }, width);
 
     /// <summary>Draws a button displaying the icon belonging to a <see cref="FactorioObject"/>, or an empty box as a placeholder if no object is available.

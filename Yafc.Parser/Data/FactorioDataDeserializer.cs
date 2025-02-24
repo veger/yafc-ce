@@ -169,6 +169,7 @@ internal partial class FactorioDataDeserializer {
         var iconRenderTask = renderIcons ? Task.Run(RenderIcons) : Task.CompletedTask;
         UpdateRecipeCatalysts();
         CalculateItemWeights();
+        ObjectWithQuality.LoadCache(allObjects);
         ExportBuiltData();
         progress.Report(("Post-processing", "Calculating dependencies"));
         Dependencies.Calculate();

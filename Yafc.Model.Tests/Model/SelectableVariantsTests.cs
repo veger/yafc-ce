@@ -12,7 +12,7 @@ public class SelectableVariantsTests {
 
         ProjectPage page = new ProjectPage(project, typeof(ProductionTable));
         ProductionTable table = (ProductionTable)page.content;
-        table.AddRecipe(new(Database.recipes.all.Single(r => r.name == "generator.electricity"), Quality.Normal), DataUtils.DeterministicComparer);
+        table.AddRecipe(Database.recipes.all.Single(r => r.name == "generator.electricity").With(Quality.Normal), DataUtils.DeterministicComparer);
         RecipeRow row = table.GetAllRecipes().Single();
 
         // Solve is not necessary in this test, but I'm calling it in case we decide to hide the fuel on disabled recipes.
@@ -31,7 +31,7 @@ public class SelectableVariantsTests {
 
         ProjectPage page = new ProjectPage(project, typeof(ProductionTable));
         ProductionTable table = (ProductionTable)page.content;
-        table.AddRecipe(new(Database.recipes.all.Single(r => r.name == "generator.electricity"), Quality.Normal), DataUtils.DeterministicComparer);
+        table.AddRecipe(Database.recipes.all.Single(r => r.name == "generator.electricity").With(Quality.Normal), DataUtils.DeterministicComparer);
         RecipeRow row = table.GetAllRecipes().Single();
 
         // Solve is not necessary in this test, but I'm calling it in case we decide to hide the fuel on disabled recipes.
@@ -49,7 +49,7 @@ public class SelectableVariantsTests {
 
         ProjectPage page = new ProjectPage(project, typeof(ProductionTable));
         ProductionTable table = (ProductionTable)page.content;
-        table.AddRecipe((Database.recipes.all.Single(r => r.name == "steam_void"), Quality.Normal), DataUtils.DeterministicComparer);
+        table.AddRecipe(Database.recipes.all.Single(r => r.name == "steam_void").With(Quality.Normal), DataUtils.DeterministicComparer);
         RecipeRow row = table.GetAllRecipes().Single();
 
         // Solve is necessary here: Disabled recipes have null ingredients (and products), and Solve is the call that updates hierarchyEnabled.

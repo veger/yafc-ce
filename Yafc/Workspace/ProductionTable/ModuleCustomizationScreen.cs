@@ -193,7 +193,7 @@ public class ModuleCustomizationScreen : PseudoScreenWithResult<ModuleTemplateBu
         }
     }
 
-    private Module[] GetModules(ObjectWithQuality<EntityBeacon>? beacon) {
+    private Module[] GetModules(IObjectWithQuality<EntityBeacon>? beacon) {
         var modules = (beacon == null && recipe is { recipe: IObjectWithQuality<RecipeOrTechnology> rec })
             ? [.. Database.allModules.Where(rec.CanAcceptModule)]
             : Database.allModules;
@@ -205,13 +205,13 @@ public class ModuleCustomizationScreen : PseudoScreenWithResult<ModuleTemplateBu
         return [.. modules.Where(x => filter.CanAcceptModule(x.moduleSpecification))];
     }
 
-    private void DrawRecipeModules(ImGui gui, ObjectWithQuality<EntityBeacon>? beacon, ref ModuleEffects effects) {
+    private void DrawRecipeModules(ImGui gui, IObjectWithQuality<EntityBeacon>? beacon, ref ModuleEffects effects) {
         int remainingModules = recipe?.entity?.target.moduleSlots ?? 0;
         using var grid = gui.EnterInlineGrid(3f, 1f);
         var list = beacon != null ? modules!.beaconList : modules!.list;// null-forgiving: Both calls are from places where we know modules is not null
         for (int i = 0; i < list.Count; i++) {
             grid.Next();
-            (ObjectWithQuality<Module> module, int fixedCount) = list[i];
+            (IObjectWithQuality<Module> module, int fixedCount) = list[i];
             DisplayAmount amount = fixedCount;
             switch (gui.BuildFactorioObjectWithEditableAmount(module, amount, ButtonDisplayStyle.ProductionTableUnscaled)) {
                 case GoodsWithAmountEvent.LeftButtonClick:
@@ -226,7 +226,7 @@ public class ModuleCustomizationScreen : PseudoScreenWithResult<ModuleTemplateBu
                         }
                         gui.Rebuild();
                     }, new("Select module", DataUtils.FavoriteModule), list[idx].module.quality, quality => {
-                        list[idx] = list[idx] with { module = new(list[idx].module.target, quality) };
+                        list[idx] = list[idx] with { module = list[idx].module.target.With(quality) };
                         gui.Rebuild();
                     });
                     break;

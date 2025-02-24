@@ -13,9 +13,9 @@ public partial class ProductionTable {
     /// <param name="productLink">The (genuine) link for the output pack.</param>
     /// <param name="ingredientLink">The (implicit) link for the input pack.</param>
     private class ScienceDecomposition(Goods pack, Quality quality, IProductionLink productLink, ImplicitLink ingredientLink) : IRecipeRow {
-        public ObjectWithQuality<EntityCrafter>? entity => null;
+        public IObjectWithQuality<EntityCrafter>? entity => null;
 
-        public ObjectWithQuality<Goods>? fuel => null;
+        public IObjectWithQuality<Goods>? fuel => null;
 
         /// <summary>
         /// Always 0; the solver must scale this recipe to match the available quality packs.

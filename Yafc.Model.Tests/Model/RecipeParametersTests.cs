@@ -14,8 +14,8 @@ public class RecipeParametersTests {
         ProjectPage page = new(project, typeof(ProductionTable));
         project.pages.Add(page);
         ProductionTable table = (ProductionTable)page.content;
-        table.AddRecipe(new(Database.recipes.all.Single(r => r.name == "boiler.boiler.steam"), Quality.Normal), DataUtils.DeterministicComparer);
-        table.AddRecipe(new(Database.recipes.all.Single(r => r.name == "boiler.heat-exchanger.steam"), Quality.Normal), DataUtils.DeterministicComparer);
+        table.AddRecipe(Database.recipes.all.Single(r => r.name == "boiler.boiler.steam").With(Quality.Normal), DataUtils.DeterministicComparer);
+        table.AddRecipe(Database.recipes.all.Single(r => r.name == "boiler.heat-exchanger.steam").With(Quality.Normal), DataUtils.DeterministicComparer);
 
         List<Fluid> water = Database.fluidVariants["Fluid.water"];
 

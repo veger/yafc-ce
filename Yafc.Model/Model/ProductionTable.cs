@@ -161,7 +161,7 @@ public sealed partial class ProductionTable : ProjectPageContents, IComparer<Pro
             // If the link is at the current level,
             if (link.owner == this) {
                 foreach (var quality in Database.qualities.all) {
-                    ObjectWithQuality<Goods> pack = goods.With(quality);
+                    IObjectWithQuality<Goods> pack = goods.With(quality);
                     // and there is unlinked production here or anywhere deeper: (This test only succeeds for non-normal qualities)
                     if (unlinkedProduction.Remove(pack)) { // Remove the quality pack, since it's about to be linked,
                         // and create the decomposition.
@@ -251,15 +251,15 @@ match:
     /// <param name="selectedFuel">If not <see langword="null"/>, this method will select a crafter or lab that can use this fuel, assuming such an entity exists.
     /// For example, if the selected fuel is coal, the recipe will be configured with a burner assembler/lab if any are available.</param>
     /// <param name="spentFuel"></param>
-    public void AddRecipe(ObjectWithQuality<RecipeOrTechnology> recipe, IComparer<Goods> ingredientVariantComparer,
-        ObjectWithQuality<Goods>? selectedFuel = null, IObjectWithQuality<Goods>? spentFuel = null) {
+    public void AddRecipe(IObjectWithQuality<RecipeOrTechnology> recipe, IComparer<Goods> ingredientVariantComparer,
+        IObjectWithQuality<Goods>? selectedFuel = null, IObjectWithQuality<Goods>? spentFuel = null) {
 
         RecipeRow recipeRow = new RecipeRow(this, recipe);
         this.RecordUndo().recipes.Add(recipeRow);
         EntityCrafter? selectedFuelCrafter = GetSelectedFuelCrafter(recipe.target, selectedFuel);
         EntityCrafter? spentFuelRecipeCrafter = GetSpentFuelCrafter(recipe.target, spentFuel);
 
-        recipeRow.entity = (selectedFuelCrafter ?? spentFuelRecipeCrafter ?? recipe.target.crafters.AutoSelect(DataUtils.FavoriteCrafter), Quality.Normal);
+        recipeRow.entity = (selectedFuelCrafter ?? spentFuelRecipeCrafter ?? recipe.target.crafters.AutoSelect(DataUtils.FavoriteCrafter)).With(Quality.Normal);
 
         if (recipeRow.entity != null) {
             recipeRow.fuel = GetSelectedFuel(selectedFuel, recipeRow)
@@ -275,7 +275,7 @@ match:
         }
     }
 
-    private static EntityCrafter? GetSelectedFuelCrafter(RecipeOrTechnology recipe, ObjectWithQuality<Goods>? selectedFuel) =>
+    private static EntityCrafter? GetSelectedFuelCrafter(RecipeOrTechnology recipe, IObjectWithQuality<Goods>? selectedFuel) =>
         selectedFuel?.target.fuelFor.OfType<EntityCrafter>()
             .Where(e => e.recipes.Contains(recipe))
             .AutoSelect(DataUtils.FavoriteCrafter);
@@ -290,7 +290,7 @@ match:
             .AutoSelect(DataUtils.FavoriteCrafter);
     }
 
-    private static ObjectWithQuality<Goods>? GetFuelForSpentFuel(IObjectWithQuality<Goods>? spentFuel, [NotNull] RecipeRow recipeRow) {
+    private static IObjectWithQuality<Goods>? GetFuelForSpentFuel(IObjectWithQuality<Goods>? spentFuel, [NotNull] RecipeRow recipeRow) {
         if (spentFuel is null) {
             return null;
         }
@@ -299,7 +299,7 @@ match:
             .AutoSelect(DataUtils.FavoriteFuel).With(spentFuel.quality);
     }
 
-    private static ObjectWithQuality<Goods>? GetSelectedFuel(ObjectWithQuality<Goods>? selectedFuel, [NotNull] RecipeRow recipeRow) =>
+    private static IObjectWithQuality<Goods>? GetSelectedFuel(IObjectWithQuality<Goods>? selectedFuel, [NotNull] RecipeRow recipeRow) =>
         // Skipping AutoSelect since there will only be one result at most.
         recipeRow.entity?.target.energy?.fuels.FirstOrDefault(e => e == selectedFuel?.target)?.With(selectedFuel!.quality);
 

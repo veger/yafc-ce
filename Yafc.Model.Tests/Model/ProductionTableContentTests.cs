@@ -15,11 +15,11 @@ public class ProductionTableContentTests {
 
         ProjectPage page = new ProjectPage(project, typeof(ProductionTable));
         ProductionTable table = (ProductionTable)page.content;
-        table.AddRecipe((Database.recipes.all.Single(r => r.name == "recipe"), Quality.Normal), DataUtils.DeterministicComparer);
+        table.AddRecipe(Database.recipes.all.Single(r => r.name == "recipe").With(Quality.Normal), DataUtils.DeterministicComparer);
         RecipeRow row = table.GetAllRecipes().Single();
 
-        table.modules.beacon = new(Database.allBeacons.Single(), Quality.Normal);
-        table.modules.beaconModule = new(Database.allModules.Single(m => m.name == "speed-module"), Quality.Normal);
+        table.modules.beacon = Database.allBeacons.Single().With(Quality.Normal);
+        table.modules.beaconModule = Database.allModules.Single(m => m.name == "speed-module").With(Quality.Normal);
         table.modules.beaconsPerBuilding = 2;
         table.modules.autoFillPayback = MathF.Sqrt(float.MaxValue);
 
@@ -29,16 +29,16 @@ public class ProductionTableContentTests {
         // assert will ensure the currently fixed value has not changed by more than 0.01%.
         static void testCombinations(RecipeRow row, ProductionTable table, Action assert) {
             foreach (EntityCrafter crafter in Database.allCrafters) {
-                row.entity = new(crafter, Quality.Normal);
+                row.entity = crafter.With(Quality.Normal);
 
                 foreach (Goods fuel in crafter.energy.fuels) {
-                    row.fuel = (fuel, Quality.Normal);
+                    row.fuel = fuel.With(Quality.Normal);
 
                     foreach (Module module in Database.allModules.Concat([null])) {
                         ModuleTemplateBuilder builder = new();
 
                         if (module != null) {
-                            builder.list.Add((new(module, Quality.Normal), 0));
+                            builder.list.Add((module.With(Quality.Normal), 0));
                         }
 
                         row.modules = builder.Build(row);
@@ -59,7 +59,7 @@ public class ProductionTableContentTests {
 
         ProjectPage page = new ProjectPage(project, typeof(ProductionTable));
         ProductionTable table = (ProductionTable)page.content;
-        table.AddRecipe((Database.recipes.all.Single(r => r.name == "recipe"), Quality.Normal), DataUtils.DeterministicComparer);
+        table.AddRecipe(Database.recipes.all.Single(r => r.name == "recipe").With(Quality.Normal), DataUtils.DeterministicComparer);
         RecipeRow row = table.GetAllRecipes().Single();
 
         List<Module> modules = [.. Database.allModules.Where(m => !m.name.Contains("productivity"))];
@@ -71,10 +71,10 @@ public class ProductionTableContentTests {
         // Call assert for each combination. assert will ensure the currently fixed value has not changed by more than 0.01%.
         void testCombinations(RecipeRow row, ProductionTable table, Action assert) {
             foreach (EntityCrafter crafter in Database.allCrafters) {
-                row.entity = new(crafter, Quality.Normal);
+                row.entity = crafter.With(Quality.Normal);
 
                 foreach (Goods fuel in crafter.energy.fuels) {
-                    row.fuel = (fuel, Quality.Normal);
+                    row.fuel = fuel.With(Quality.Normal);
 
                     foreach (Module module in modules) {
                         for (int beaconCount = 0; beaconCount < 13; beaconCount++) {
@@ -83,14 +83,14 @@ public class ProductionTableContentTests {
                                     // Preemptive code for if ProductionTable.modules is made writable.
                                     // The ProductionTable.modules setter must notify all relevant recipes if it is added.
                                     _ = method.Invoke(table, [new ModuleFillerParameters(table) {
-                                        beacon = new(beacon, Quality.Normal),
-                                        beaconModule = new(module, Quality.Normal),
+                                        beacon = beacon.With(Quality.Normal),
+                                        beaconModule = module.With(Quality.Normal),
                                         beaconsPerBuilding = beaconCount,
                                     }]);
                                 }
                                 else {
-                                    table.modules.beacon = new(beacon, Quality.Normal);
-                                    table.modules.beaconModule = new(module, Quality.Normal);
+                                    table.modules.beacon = beacon.With(Quality.Normal);
+                                    table.modules.beaconModule = module.With(Quality.Normal);
                                     table.modules.beaconsPerBuilding = beaconCount;
                                 }
                                 table.Solve((ProjectPage)table.owner).Wait();
@@ -117,17 +117,17 @@ public class ProductionTableContentTests {
         int testCount = 0;
 
         // Run through all combinations of recipe, crafter, fuel, and fixed module, including all qualities.
-        foreach (ObjectWithQuality<RecipeOrTechnology> recipe in Database.recipes.all.WithAllQualities<RecipeOrTechnology>()) {
+        foreach (IObjectWithQuality<RecipeOrTechnology> recipe in Database.recipes.all.WithAllQualities()) {
             table.AddRecipe(recipe, DataUtils.DeterministicComparer);
             RecipeRow row = table.GetAllRecipes().Last();
 
-            foreach (ObjectWithQuality<EntityCrafter> crafter in Database.allCrafters.WithAllQualities()) {
+            foreach (IObjectWithQuality<EntityCrafter> crafter in Database.allCrafters.WithAllQualities()) {
                 row.entity = crafter;
 
-                foreach (ObjectWithQuality<Goods> fuel in crafter.target.energy.fuels.WithAllQualities()) {
+                foreach (IObjectWithQuality<Goods> fuel in crafter.target.energy.fuels.WithAllQualities()) {
                     row.fuel = fuel;
 
-                    foreach (ObjectWithQuality<Module> module in Database.allModules.WithAllQualities().Prepend(null)) {
+                    foreach (IObjectWithQuality<Module> module in Database.allModules.WithAllQualities().Prepend(null)) {
                         row.modules = module == null ? null : new ModuleTemplateBuilder { list = { (module, 0) } }.Build(row);
                         do {
                             // r.NextDouble could (at least in theory) return 0 or a value that rounds to 0.
@@ -158,7 +158,7 @@ public class ProductionTableContentTests {
                             // ProductsForSolver doesn't include the spent fuel. Append an entry for the spent fuel, in the case that the spent
                             // fuel is not a recipe product.
                             // If the spent fuel is also a recipe product, this value will ignored in favor of the recipe-product value.
-                            .Append(new(row.fuel.FuelResult()?.target.With<Goods>(row.fuel.FuelResult().quality), 0, null, 0, null)))) {
+                            .Append(new(row.fuel.FuelResult(), 0, null, 0, null)))) {
 
                             var (solverGoods, solverAmount, _, _, _) = solver;
                             var (displayGoods, displayAmount, _, _) = display;

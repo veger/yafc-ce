@@ -18,9 +18,9 @@ public class SerializationTreeChangeDetection {
         [typeof(ModuleFillerParameters)] = new() {
             [nameof(ModuleFillerParameters.fillMiners)] = typeof(bool),
             [nameof(ModuleFillerParameters.autoFillPayback)] = typeof(float),
-            [nameof(ModuleFillerParameters.fillerModule)] = typeof(ObjectWithQuality<Module>),
-            [nameof(ModuleFillerParameters.beacon)] = typeof(ObjectWithQuality<EntityBeacon>),
-            [nameof(ModuleFillerParameters.beaconModule)] = typeof(ObjectWithQuality<Module>),
+            [nameof(ModuleFillerParameters.fillerModule)] = typeof(IObjectWithQuality<Module>),
+            [nameof(ModuleFillerParameters.beacon)] = typeof(IObjectWithQuality<EntityBeacon>),
+            [nameof(ModuleFillerParameters.beaconModule)] = typeof(IObjectWithQuality<Module>),
             [nameof(ModuleFillerParameters.beaconsPerBuilding)] = typeof(int),
             [nameof(ModuleFillerParameters.overrideCrafterBeacons)] = typeof(OverrideCrafterBeacons),
         },
@@ -35,7 +35,7 @@ public class SerializationTreeChangeDetection {
             [nameof(ProductionSummaryEntry.subgroup)] = typeof(ProductionSummaryGroup),
         },
         [typeof(ProductionSummaryColumn)] = new() {
-            [nameof(ProductionSummaryColumn.goods)] = typeof(ObjectWithQuality<Goods>),
+            [nameof(ProductionSummaryColumn.goods)] = typeof(IObjectWithQuality<Goods>),
         },
         [typeof(ProductionSummary)] = new() {
             [nameof(ProductionSummary.group)] = typeof(ProductionSummaryGroup),
@@ -48,22 +48,22 @@ public class SerializationTreeChangeDetection {
             [nameof(ProductionTable.modules)] = typeof(ModuleFillerParameters),
         },
         [typeof(RecipeRowCustomModule)] = new() {
-            [nameof(RecipeRowCustomModule.module)] = typeof(ObjectWithQuality<Module>),
+            [nameof(RecipeRowCustomModule.module)] = typeof(IObjectWithQuality<Module>),
             [nameof(RecipeRowCustomModule.fixedCount)] = typeof(int),
         },
         [typeof(ModuleTemplate)] = new() {
-            [nameof(ModuleTemplate.beacon)] = typeof(ObjectWithQuality<EntityBeacon>),
+            [nameof(ModuleTemplate.beacon)] = typeof(IObjectWithQuality<EntityBeacon>),
             [nameof(ModuleTemplate.list)] = typeof(ReadOnlyCollection<RecipeRowCustomModule>),
             [nameof(ModuleTemplate.beaconList)] = typeof(ReadOnlyCollection<RecipeRowCustomModule>),
         },
         [typeof(RecipeRow)] = new() {
-            [nameof(RecipeRow.recipe)] = typeof(ObjectWithQuality<RecipeOrTechnology>),
-            [nameof(RecipeRow.entity)] = typeof(ObjectWithQuality<EntityCrafter>),
-            [nameof(RecipeRow.fuel)] = typeof(ObjectWithQuality<Goods>),
+            [nameof(RecipeRow.recipe)] = typeof(IObjectWithQuality<RecipeOrTechnology>),
+            [nameof(RecipeRow.entity)] = typeof(IObjectWithQuality<EntityCrafter>),
+            [nameof(RecipeRow.fuel)] = typeof(IObjectWithQuality<Goods>),
             [nameof(RecipeRow.fixedBuildings)] = typeof(float),
             [nameof(RecipeRow.fixedFuel)] = typeof(bool),
-            [nameof(RecipeRow.fixedIngredient)] = typeof(ObjectWithQuality<Goods>),
-            [nameof(RecipeRow.fixedProduct)] = typeof(ObjectWithQuality<Goods>),
+            [nameof(RecipeRow.fixedIngredient)] = typeof(IObjectWithQuality<Goods>),
+            [nameof(RecipeRow.fixedProduct)] = typeof(IObjectWithQuality<Goods>),
             [nameof(RecipeRow.builtBuildings)] = typeof(int?),
             [nameof(RecipeRow.showTotalIO)] = typeof(bool),
             [nameof(RecipeRow.enabled)] = typeof(bool),
@@ -73,7 +73,7 @@ public class SerializationTreeChangeDetection {
             [nameof(RecipeRow.variants)] = typeof(HashSet<FactorioObject>),
         },
         [typeof(ProductionLink)] = new() {
-            [nameof(ProductionLink.goods)] = typeof(ObjectWithQuality<Goods>),
+            [nameof(ProductionLink.goods)] = typeof(IObjectWithQuality<Goods>),
             [nameof(ProductionLink.amount)] = typeof(float),
             [nameof(ProductionLink.algorithm)] = typeof(LinkAlgorithm),
         },
@@ -131,30 +131,10 @@ public class SerializationTreeChangeDetection {
             [nameof(AutoPlannerGoal.item)] = typeof(Goods),
             [nameof(AutoPlannerGoal.amount)] = typeof(float),
         },
-        [typeof(ObjectWithQuality<Module>)] = new() {
-            [nameof(ObjectWithQuality<Module>.target)] = typeof(Module),
-            [nameof(ObjectWithQuality<Module>.quality)] = typeof(Quality),
-        },
-        [typeof(ObjectWithQuality<EntityBeacon>)] = new() {
-            [nameof(ObjectWithQuality<EntityBeacon>.target)] = typeof(EntityBeacon),
-            [nameof(ObjectWithQuality<EntityBeacon>.quality)] = typeof(Quality),
-        },
         [typeof(BeaconOverrideConfiguration)] = new() {
-            [nameof(BeaconOverrideConfiguration.beacon)] = typeof(ObjectWithQuality<EntityBeacon>),
+            [nameof(BeaconOverrideConfiguration.beacon)] = typeof(IObjectWithQuality<EntityBeacon>),
             [nameof(BeaconOverrideConfiguration.beaconCount)] = typeof(int),
-            [nameof(BeaconOverrideConfiguration.beaconModule)] = typeof(ObjectWithQuality<Module>),
-        },
-        [typeof(ObjectWithQuality<Goods>)] = new() {
-            [nameof(ObjectWithQuality<Goods>.target)] = typeof(Goods),
-            [nameof(ObjectWithQuality<Goods>.quality)] = typeof(Quality),
-        },
-        [typeof(ObjectWithQuality<RecipeOrTechnology>)] = new() {
-            [nameof(ObjectWithQuality<RecipeOrTechnology>.target)] = typeof(RecipeOrTechnology),
-            [nameof(ObjectWithQuality<RecipeOrTechnology>.quality)] = typeof(Quality),
-        },
-        [typeof(ObjectWithQuality<EntityCrafter>)] = new() {
-            [nameof(ObjectWithQuality<EntityCrafter>.target)] = typeof(EntityCrafter),
-            [nameof(ObjectWithQuality<EntityCrafter>.quality)] = typeof(Quality),
+            [nameof(BeaconOverrideConfiguration.beaconModule)] = typeof(IObjectWithQuality<Module>),
         },
     };
 

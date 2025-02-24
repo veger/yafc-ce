@@ -31,8 +31,8 @@ public enum WarningFlags {
 }
 
 public struct UsedModule {
-    public (ObjectWithQuality<Module> module, int count, bool beacon)[]? modules;
-    public ObjectWithQuality<EntityBeacon>? beacon;
+    public (IObjectWithQuality<Module> module, int count, bool beacon)[]? modules;
+    public IObjectWithQuality<EntityBeacon>? beacon;
     public int beaconCount;
 }
 
@@ -50,9 +50,9 @@ internal class RecipeParameters(float recipeTime, float fuelUsagePerSecondPerBui
 
     public static RecipeParameters CalculateParameters(IRecipeRow row) {
         WarningFlags warningFlags = 0;
-        ObjectWithQuality<EntityCrafter>? entity = row.entity;
-        ObjectWithQuality<RecipeOrTechnology>? recipe = row.RecipeRow?.recipe;
-        ObjectWithQuality<Goods>? fuel = row.fuel;
+        IObjectWithQuality<EntityCrafter>? entity = row.entity;
+        IObjectWithQuality<RecipeOrTechnology>? recipe = row.RecipeRow?.recipe;
+        IObjectWithQuality<Goods>? fuel = row.fuel;
         float recipeTime, fuelUsagePerSecondPerBuilding = 0, productivity, speed, consumption;
         ModuleEffects activeEffects = default;
         UsedModule modules = default;

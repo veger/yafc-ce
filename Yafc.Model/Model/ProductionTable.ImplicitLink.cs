@@ -6,17 +6,17 @@ public partial class ProductionTable {
     /// <summary>
     /// An implicitly-created link, used to ensure synthetic recipes are properly connected to the rest of the production table.
     /// </summary>
-    /// <param name="goods">The linked <see cref="ObjectWithQuality{T}"/>.</param>
+    /// <param name="goods">The linked <see cref="IObjectWithQuality{T}"/>.</param>
     /// <param name="owner">The <see cref="ProductionTable"/> that owns this link.</param>
     /// <param name="displayLink">The ordinary link that caused the creation of this implicit link, and the link that will be displayed if the
     /// user requests the summary for this link.</param>
-    private class ImplicitLink(ObjectWithQuality<Goods> goods, ProductionTable owner, ProductionLink displayLink) : IProductionLink {
+    private class ImplicitLink(IObjectWithQuality<Goods> goods, ProductionTable owner, ProductionLink displayLink) : IProductionLink {
         /// <summary>
         /// Always <see cref="LinkAlgorithm.Match"/>; implicit links never allow over/under production.
         /// </summary>
         public LinkAlgorithm algorithm => LinkAlgorithm.Match;
 
-        public ObjectWithQuality<Goods> goods { get; } = goods;
+        public IObjectWithQuality<Goods> goods { get; } = goods;
 
         /// <summary>
         /// Always 0; implicit links never request additional production or consumption.
