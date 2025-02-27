@@ -10,8 +10,13 @@ namespace Yafc;
 
 public class ShoppingListScreen : PseudoScreen {
     private enum DisplayState { Total, Built, Missing }
+
+    private static readonly ObjectSelectOptions<Entity> options
+        = new(null, MaxCount: 15, ExtraText: e => DataUtils.FormatAmount(e.heatingPower, UnitOfMeasure.Megawatt));
+
     private readonly VirtualScrollList<(IObjectWithQuality<FactorioObject>, float)> list;
-    private float shoppingCost, totalBuildings, totalModules;
+    private float shoppingCost, totalBuildings, totalModules, totalHeat;
+    private List<Entity> pipes = null!, belts = null!, other = null!; //null-forgiving: set by RebuildData
     private bool decomposed = false;
     private static DisplayState displayState {
         get => (DisplayState)(Preferences.Instance.shoppingDisplayState >> 1);
@@ -50,6 +55,7 @@ public class ShoppingListScreen : PseudoScreen {
         decomposed = false;
 
         // Count buildings and modules
+        totalHeat = 0;
         Dictionary<IObjectWithQuality<FactorioObject>, int> counts = [];
         foreach (RecipeRow recipe in recipes) {
             if (recipe.entity != null) {
@@ -62,6 +68,7 @@ public class ShoppingListScreen : PseudoScreen {
                     DisplayState.Missing => MathUtils.Ceil(Math.Max(recipe.buildingCount - builtCount, 0)),
                     _ => throw new InvalidOperationException(nameof(displayState) + " has an unrecognized value.")
                 };
+                totalHeat += recipe.entity.target.heatingPower * displayCount;
                 counts[shopItem] = prev + displayCount;
                 if (recipe.usedModules.modules != null) {
                     foreach ((ObjectWithQuality<Module> module, int moduleCount, bool beacon) in recipe.usedModules.modules) {
@@ -90,6 +97,16 @@ public class ShoppingListScreen : PseudoScreen {
         shoppingCost = cost;
         totalBuildings = buildings;
         totalModules = modules;
+
+        pipes = Database.entities.all.Where(e => e.factorioType is "pipe" or "pipe-to-ground" or "storage-tank" or "pump" && e.heatingPower > 0)
+            .ToList();
+        belts = Database.entities.all
+            .Where(e => e.factorioType is "transport-belt" or "underground-belt" or "splitter" or "loader" or "loader-1x1" && e.heatingPower > 0)
+            .ToList();
+        other = Database.entities.all
+            .Except(Database.allInserters).Except(pipes).Except(belts)
+            .Where(e => e is not EntityCrafter && e.heatingPower > 0)
+            .ToList();
     }
 
     private static readonly (string, string?)[] displayStateOptions = [
@@ -121,6 +138,36 @@ public class ShoppingListScreen : PseudoScreen {
         }
         gui.AllocateSpacing(1f);
         list.Build(gui);
+
+        if (totalHeat > 0) {
+            using (gui.EnterRow(0)) {
+                gui.AllocateRect(0, 1.5f);
+                gui.BuildText("These entities require " + DataUtils.FormatAmount(totalHeat, UnitOfMeasure.Megawatt));
+                gui.BuildFactorioObjectIcon(Database.heat, IconDisplayStyle.Default with { Size = 1.5f });
+                gui.BuildText("heat on cold planets.");
+            }
+
+            using (gui.EnterRow(0)) {
+                gui.BuildText("Allow additional heat for ");
+                if (gui.BuildLink("inserters")) {
+                    gui.BuildObjectSelectDropDown(Database.allInserters, _ => { }, options);
+                }
+                gui.BuildText(", ");
+                if (gui.BuildLink("pipes")) {
+                    gui.BuildObjectSelectDropDown(pipes, _ => { }, options);
+                }
+                gui.BuildText(", ");
+                if (gui.BuildLink("belts")) {
+                    gui.BuildObjectSelectDropDown(belts, _ => { }, options);
+                }
+                gui.BuildText(", and ");
+                if (gui.BuildLink("other entities")) {
+                    gui.BuildObjectSelectDropDown(other, _ => { }, options);
+                }
+                gui.BuildText(".");
+            }
+        }
+
         using (gui.EnterRow(allocator: RectAllocator.RightRow)) {
             if (gui.BuildButton("Done")) {
                 Close();

@@ -621,6 +621,8 @@ internal partial class FactorioDataDeserializer {
             fuelUsers.Add(entity, SpecialNames.Void);
         }
 
+        entity.heatingPower = ParseEnergy(table.Get<string>("heating_energy"));
+
         if (table.Get("production_health_effect", out LuaTable? healthEffect) && healthEffect.Get("not_producing", out float? lossPerTick)) {
             entity.baseSpoilTime = (float)(table.Get<float>("max_health") * -60 * lossPerTick.Value);
             table.Get<LuaTable>("dying_trigger_effect")?.ReadObjectOrArray(readDeathEffect);
