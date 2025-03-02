@@ -62,7 +62,7 @@ public class MilestonesEditor : PseudoScreen {
                 milestoneList.RebuildContents();
             }
             if (gui.BuildButton(LSs.MilestoneAdd)) {
-                SelectMultiObjectPanel.Select(Database.objects.explorable.Except(Project.current.settings.milestones), LSs.MilestoneAddNew, AddMilestone);
+                SelectMultiObjectPanel.Select(Database.objects.explorable.Except(Project.current.settings.milestones), new(LSs.MilestoneAddNew, Multiple: true), AddMilestone);
             }
         }
     }

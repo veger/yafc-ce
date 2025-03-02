@@ -18,6 +18,7 @@ public abstract class SelectObjectPanel<T> : PseudoScreenWithResult<T> {
     private Rect searchBox;
     private string? noneTooltip;
     private Quality? currentQuality;
+
     /// <summary>
     /// If <see langword="true"/> and the object being hovered is not a <see cref="Goods"/>, the <see cref="ObjectTooltip"/> should specify the type of object.
     /// See also <see cref="ObjectTooltipOptions.ShowTypeInHeader"/>.
@@ -26,48 +27,46 @@ public abstract class SelectObjectPanel<T> : PseudoScreenWithResult<T> {
 
     protected SelectObjectPanel() : base(40f) => list = new SearchableList<FactorioObject?>(30, new Vector2(2.5f, 2.5f), ElementDrawer, ElementFilter);
 
-    protected void SelectWithQuality<U>(IEnumerable<U> list, string? header, Action<IObjectWithQuality<U>?> selectItem, IComparer<U>? ordering, Action<T?, Action<FactorioObject?>> mapResult,
-        bool allowNone, string? noneTooltip, Quality? currentQuality) where U : FactorioObject
-        => Select(list, header, u => selectItem(u.With(this.currentQuality!)), ordering, mapResult, allowNone, noneTooltip, currentQuality ?? Quality.Normal);
+    protected void SelectWithQuality<U>(IEnumerable<U> list, bool allowNone, ObjectSelectOptions<U> options,
+        Action<IObjectWithQuality<U>?> selectItem, Action<T?, Action<FactorioObject?>> mapResult, string? noneTooltip, Quality? currentQuality)
+        where U : FactorioObject
+        => Select(list, allowNone, options, u => selectItem(u.With(this.currentQuality!)), mapResult, currentQuality ?? Quality.Normal, noneTooltip);
 
     /// <summary>
     /// Opens a <see cref="SelectObjectPanel{T}"/> to allow the user to select zero or more <see cref="FactorioObject"/>s.
     /// </summary>
-    /// <typeparam name="U"><see cref="FactorioObject"/> or one of its derived classes, to allow <paramref name="selectItem"/> and <paramref name="ordering"/>
-    /// to have better type checking.</typeparam>
+    /// <typeparam name="U"><see cref="FactorioObject"/> or one of its derived classes, to allow better type checking in
+    /// <paramref name="selectItem"/> and <paramref name="options"/>.</typeparam>
     /// <param name="list">The items to be displayed in this panel.</param>
-    /// <param name="header">The string that describes to the user why they're selecting these items.</param>
     /// <param name="selectItem">An action to be called for each selected item when the panel is closed.
     /// The parameter may be <see langword="null"/> if <paramref name="allowNone"/> is <see langword="true"/>.</param>
-    /// <param name="ordering">An optional ordering specifying how to sort the displayed items. If <see langword="null"/>, defaults to <see cref="DataUtils.DefaultOrdering"/>.</param>
     /// <param name="mapResult">An action that should convert the <typeparamref name="T"/>? result into zero or more <see cref="FactorioObject"/>s, and then call its second
     /// parameter for each <see cref="FactorioObject"/>. The first parameter may be <see langword="null"/> if <paramref name="allowNone"/> is <see langword="true"/>.</param>
     /// <param name="allowNone">If <see langword="true"/>, a "none" option will be displayed. Selection of this item will be conveyed by calling <paramref name="mapResult"/>
     /// and <paramref name="selectItem"/> with <see langword="default"/> values for <typeparamref name="T"/> and <typeparamref name="U"/>.</param>
     /// <param name="noneTooltip">If not <see langword="null"/>, this tooltip will be displayed when hovering over the "none" item.</param>
-    protected void Select<U>(IEnumerable<U> list, string? header, Action<U?> selectItem, IComparer<U>? ordering, Action<T?, Action<FactorioObject?>> mapResult, bool allowNone,
-        string? noneTooltip = null, Quality? currentQuality = null) where U : FactorioObject {
+    protected void Select<U>(IEnumerable<U> list, bool allowNone, ObjectSelectOptions<U> options, Action<U?> selectItem,
+        Action<T?, Action<FactorioObject?>> mapResult, Quality? currentQuality = null, string? noneTooltip = null) where U : FactorioObject {
 
         _ = MainScreen.Instance.ShowPseudoScreen(this);
         this.currentQuality = currentQuality;
         this.noneTooltip = noneTooltip;
+        header = options.Header;
         showTypeInHeader = typeof(U) == typeof(FactorioObject);
         List<U?> data = [.. list];
-        ordering ??= DataUtils.DefaultOrdering;
-        data.Sort(ordering!); // null-forgiving: We don't have any nulls in the list yet.
+        data.Sort(options.Ordering!); // null-forgiving: We don't have any nulls in the list yet.
         if (allowNone) {
             data.Insert(0, null);
         }
 
         this.list.filter = default;
         this.list.data = data;
-        this.header = header;
         Rebuild();
         completionCallback = (hasResult, result) => {
             if (hasResult) {
                 mapResult(result, obj => {
                     if (obj is U u) {
-                        if (ordering is DataUtils.FavoritesComparer<U> favoritesComparer) {
+                        if (options.Ordering is DataUtils.FavoritesComparer<U> favoritesComparer) {
                             favoritesComparer.AddToFavorite(u);
                         }
 

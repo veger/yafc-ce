@@ -269,15 +269,17 @@ goodsHaveNoProduction:;
         private static void BuildRecipeButton(ImGui gui, ProductionTable table) {
             if (gui.BuildButton(LSs.ProductionTableAddRawRecipe).WithTooltip(gui, LSs.ProductionTableAddTechnologyHint) && gui.CloseDropdown()) {
                 if (InputSystem.Instance.control) {
-                    SelectMultiObjectPanel.Select(Database.technologies.all, LSs.ProductionTableAddTechnology,
-                        r => table.AddRecipe(r.With(Quality.Normal), DefaultVariantOrdering), checkMark: r => table.recipes.Any(rr => rr.recipe.target == r), yellowMark: r => table.GetAllRecipes().Any(rr => rr.recipe.target == r));
+                    SelectMultiObjectPanel.Select(Database.technologies.all, new(LSs.ProductionTableAddTechnology, Multiple: true, Checkmark: checkmark, YellowMark: r => table.GetAllRecipes().Any(rr => rr.recipe.target == r)),
+                        r => table.AddRecipe(r.With(Quality.Normal), DefaultVariantOrdering));
                 }
                 else {
                     var prodTable = ProductionLinkSummaryScreen.FindProductionTable(table, out List<ModelObject> parents);
-                    SelectMultiObjectPanel.SelectWithQuality(Database.recipes.explorable.AsEnumerable<RecipeOrTechnology>(), LSs.ProductionTableAddRawRecipe,
-                        r => table.AddRecipe(r, DefaultVariantOrdering), Quality.Normal, checkMark: r => table.recipes.Any(rr => rr.recipe.target == r), yellowMark: r => prodTable?.GetAllRecipes().Any(rr => rr.recipe.target == r) ?? false);
+                    SelectMultiObjectPanel.SelectWithQuality(Database.recipes.explorable.AsEnumerable<RecipeOrTechnology>(), new(LSs.ProductionTableAddRawRecipe, Multiple: true, Checkmark: checkmark, YellowMark: r => prodTable?.GetAllRecipes().Any(rr => rr.recipe.target == r) ?? false),
+                        Quality.Normal, r => table.AddRecipe(r, DefaultVariantOrdering));
                 }
             }
+
+            bool checkmark(RecipeOrTechnology r) => table.recipes.Any(rr => rr.recipe.target == r);
         }
 
         private void ExportIo(float multiplier) {
@@ -579,7 +581,7 @@ goodsHaveNoProduction:;
 
         public override void BuildMenu(ImGui gui) {
             if (gui.BuildButton(LSs.ProductionTableMassSetAssembler) && gui.CloseDropdown()) {
-                SelectSingleObjectPanel.Select(Database.allCrafters, LSs.ProductionTableMassSetAssembler, set => {
+                SelectSingleObjectPanel.Select(Database.allCrafters, new(LSs.ProductionTableMassSetAssembler, DataUtils.FavoriteCrafter), set => {
                     DataUtils.FavoriteCrafter.AddToFavorite(set, 10);
 
                     foreach (var recipe in view.GetRecipesRecursive()) {
@@ -592,7 +594,7 @@ goodsHaveNoProduction:;
                             }
                         }
                     }
-                }, DataUtils.FavoriteCrafter);
+                });
             }
 
             if (gui.BuildQualityList(null, out Quality? quality, LSs.ProductionTableMassSetQuality) && gui.CloseDropdown()) {
@@ -602,7 +604,7 @@ goodsHaveNoProduction:;
             }
 
             if (gui.BuildButton(LSs.ProductionTableMassSetFuel) && gui.CloseDropdown()) {
-                SelectSingleObjectPanel.SelectWithQuality(Database.goods.all.Where(x => x.fuelValue > 0), LSs.ProductionTableMassSetFuel, set => {
+                SelectSingleObjectPanel.SelectWithQuality(Database.goods.all.Where(x => x.fuelValue > 0), new(LSs.ProductionTableMassSetFuel, DataUtils.FavoriteFuel), null, set => {
                     DataUtils.FavoriteFuel.AddToFavorite(set.target, 10);
 
                     foreach (var recipe in view.GetRecipesRecursive()) {
@@ -610,7 +612,7 @@ goodsHaveNoProduction:;
                             recipe.RecordUndo().fuel = set;
                         }
                     }
-                }, null, DataUtils.FavoriteFuel);
+                });
             }
 
             if (gui.BuildButton(LSs.ShoppingList) && gui.CloseDropdown()) {
@@ -1003,8 +1005,8 @@ goodsHaveNoProduction:;
 
             if (goods == Database.science) {
                 if (gui.BuildButton(LSs.ProductionTableAddTechnology) && gui.CloseDropdown()) {
-                    SelectMultiObjectPanel.Select(Database.technologies.all, LSs.ProductionTableAddTechnology,
-                        r => context.AddRecipe(r.With(Quality.Normal), DefaultVariantOrdering), checkMark: r => context.recipes.Any(rr => rr.recipe.target == r));
+                    SelectMultiObjectPanel.Select(Database.technologies.all, new(LSs.ProductionTableAddTechnology, Multiple: true, Checkmark: r => context.recipes.Any(rr => rr.recipe.target == r)),
+                        r => context.AddRecipe(r.With(Quality.Normal), DefaultVariantOrdering));
                 }
             }
             else if (type <= ProductDropdownType.Ingredient && allProduction.Length > 0) {
@@ -1068,7 +1070,7 @@ goodsHaveNoProduction:;
                 && gui.BuildButton(LSs.ProductionTableAddConsumptionTechnology) && gui.CloseDropdown()) {
                 // Select from the technologies that consume this science pack.
                 SelectMultiObjectPanel.Select(Database.technologies.all.Where(t => t.ingredients.Select(i => i.goods).Contains(goods.target)),
-                    LSs.ProductionTableAddTechnology, addRecipe, checkMark: recipeExists, yellowMark: recipeExistsAnywhere);
+                    new(LSs.ProductionTableAddTechnology, Multiple: true, Checkmark: recipeExists, YellowMark: recipeExistsAnywhere), addRecipe);
             }
 
             if (type >= ProductDropdownType.Product && allProduction.Length > 0) {
@@ -1584,7 +1586,7 @@ goodsHaveNoProduction:;
     }
 
     private static void AddDesiredProductAtLevel(ProductionTable table) => SelectMultiObjectPanel.SelectWithQuality(
-        Database.goods.all.Except(table.linkMap.Where(p => p.Value.amount != 0).Select(p => p.Key.target)).Where(g => g.isLinkable), LSs.ProductionTableAddDesiredProduct, product => {
+        Database.goods.all.Except(table.linkMap.Where(p => p.Value.amount != 0).Select(p => p.Key.target)).Where(g => g.isLinkable), new(LSs.ProductionTableAddDesiredProduct, Multiple: true), Quality.Normal, product => {
             if (table.linkMap.TryGetValue(product, out var existing) && existing is ProductionLink link) {
                 if (link.amount != 0) {
                     return;
@@ -1595,7 +1597,7 @@ goodsHaveNoProduction:;
             else {
                 table.RecordUndo().links.Add(new ProductionLink(table, product.target.With(product.quality)) { amount = 1f });
             }
-        }, Quality.Normal);
+        });
 
     private void BuildSummary(ImGui gui, ProductionTable table) {
         bool isRoot = table == model;

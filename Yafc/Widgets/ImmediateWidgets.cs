@@ -239,10 +239,10 @@ public static class ImmediateWidgets {
 
             if (list.Count > options.MaxCount && gui.BuildButton(LSs.SeeFullListButton) && gui.CloseDropdown()) {
                 if (options.Multiple) {
-                    SelectMultiObjectPanel.Select(list, options.Header, selectItem, options.Ordering, options.Checkmark, options.YellowMark);
+                    SelectMultiObjectPanel.Select(list, options, selectItem);
                 }
                 else {
-                    SelectSingleObjectPanel.Select(list, options.Header, selectItem, options.Ordering);
+                    SelectSingleObjectPanel.Select(list, options, selectItem);
                 }
             }
         }
@@ -259,7 +259,7 @@ public static class ImmediateWidgets {
             }
 
             if (list.Count > options.MaxCount && gui.BuildButton(LSs.SeeFullListButton) && gui.CloseDropdown()) {
-                SelectSingleObjectPanel.SelectWithNone(list, options.Header, selectItem, options.Ordering);
+                SelectSingleObjectPanel.SelectWithNone(list, options, selectItem);
             }
         }
     }
@@ -470,7 +470,7 @@ public record DisplayAmount(float Value, UnitOfMeasure Unit = UnitOfMeasure.None
 /// <param name="YellowMark">If Checkmark is not set, draw a less distinct checkmark instead.</param>
 /// <param name="ExtraText">If not <see langword="null"/>, this will be called to get extra text to be displayed right-justified after the item's name.</param>
 public sealed record ObjectSelectOptions<T>(string? Header, [AllowNull] IComparer<T> Ordering = null, int MaxCount = 6, bool Multiple = false, Predicate<T>? Checkmark = null,
-    Predicate<T>? YellowMark = null, Func<T, string>? ExtraText = null) where T : IFactorioObjectWrapper {
+    Predicate<T>? YellowMark = null, Func<T, string>? ExtraText = null) where T : class, IFactorioObjectWrapper {
 
-    public IComparer<T> Ordering { get; init; } = Ordering ?? (IComparer<T>)DataUtils.DefaultOrdering;
+    public IComparer<T> Ordering { get; init; } = Ordering ?? DataUtils.DefaultOrdering;
 }

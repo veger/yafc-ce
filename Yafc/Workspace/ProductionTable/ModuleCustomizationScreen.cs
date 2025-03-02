@@ -43,7 +43,7 @@ public class ModuleCustomizationScreen : PseudoScreenWithResult<ModuleTemplateBu
         if (template != null) {
             using (gui.EnterRow()) {
                 if (gui.BuildFactorioObjectButton(template.icon, ButtonDisplayStyle.Default) == Click.Left) {
-                    SelectSingleObjectPanel.SelectWithNone(Database.objects.all, LSs.SelectIcon, x => {
+                    SelectSingleObjectPanel.SelectWithNone(Database.objects.all, new(LSs.SelectIcon), x => {
                         template.RecordUndo().icon = x;
                         Rebuild();
                     });
@@ -106,7 +106,7 @@ public class ModuleCustomizationScreen : PseudoScreenWithResult<ModuleTemplateBu
                 }
 
                 SelectSingleObjectPanel.Select(Database.allCrafters.Where(isSuitable),
-                                               LSs.ModuleCustomizationAddFilterBuilding,
+                                               new(LSs.ModuleCustomizationAddFilterBuilding),
                                                doToSelectedItem);
             }
         }
