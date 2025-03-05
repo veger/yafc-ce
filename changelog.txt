@@ -14,10 +14,11 @@
 //         Bugfixes go there.
 //     Internal changes:
 //         Changes to the code that do not affect the behavior of the program.
-Version:
-Date:
+Version: 2.10.0
+Date: March 5th 2025
     Features:
         - (SA) Calculate the required heating and show it in tooltips and the shopping list.
+        - Update Yafc to support Factorio 2.0.38
 ----------------------------------------------------------------------------------------------------------------------
 Version: 2.9.0
 Date: February 24th 2025
