@@ -116,8 +116,8 @@ public static class ImmediateWidgets {
         return false;
     }
 
-    public static Click BuildFactorioObjectButtonBackground(this ImGui gui, Rect rect, IFactorioObjectWrapper? obj, SchemeColor bgColor = SchemeColor.None,
-        ObjectTooltipOptions tooltipOptions = default) {
+    public static Click BuildFactorioObjectButtonBackground(this ImGui gui, Rect rect, IFactorioObjectWrapper? obj,
+        SchemeColor bgColor = SchemeColor.None, bool drawTransparent = false, ObjectTooltipOptions tooltipOptions = default) {
 
         SchemeColor overColor;
 
@@ -132,7 +132,7 @@ public static class ImmediateWidgets {
             bgColor = overColor;
         }
 
-        var evt = gui.BuildButton(rect, bgColor, overColor, button: 0);
+        var evt = gui.BuildButton(rect, bgColor, overColor, button: 0, drawTransparent: drawTransparent);
 
         if (evt == ButtonEvent.MouseOver && obj != null) {
             MainScreen.Instance.ShowTooltip(obj, gui, rect, tooltipOptions);
@@ -163,7 +163,7 @@ public static class ImmediateWidgets {
     /// <param name="obj">Draw the icon for this object, or an empty box if this is <see langword="null"/>.</param>
     public static Click BuildFactorioObjectButton(this ImGui gui, IFactorioObjectWrapper? obj, ButtonDisplayStyle displayStyle, ObjectTooltipOptions tooltipOptions = default) {
         gui.BuildFactorioObjectIcon(obj, displayStyle);
-        return gui.BuildFactorioObjectButtonBackground(gui.lastRect, obj, displayStyle.BackgroundColor, tooltipOptions);
+        return gui.BuildFactorioObjectButtonBackground(gui.lastRect, obj, displayStyle.BackgroundColor, displayStyle.DrawTransparent, tooltipOptions);
     }
 
     public static Click BuildFactorioObjectButtonWithText(this ImGui gui, IFactorioObjectWrapper? obj, string? extraText = null,

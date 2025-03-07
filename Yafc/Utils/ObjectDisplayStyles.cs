@@ -23,7 +23,9 @@ public record IconDisplayStyle(float Size, MilestoneDisplay MilestoneDisplay, bo
 /// <param name="Size">The icon size. The production tables use size 3.</param>
 /// <param name="MilestoneDisplay">The <see cref="MilestoneDisplay"/> option to use when drawing the icon.</param>
 /// <param name="BackgroundColor">The background color to display behind the icon.</param>
-public record ButtonDisplayStyle(float Size, MilestoneDisplay MilestoneDisplay, SchemeColor BackgroundColor) : IconDisplayStyle(Size, MilestoneDisplay, true) {
+/// <param name="DrawTransparent">If <see langword="true"/>, the background will be drawn with an opacity of approximately 40%. If
+/// <see langword="false"/> (the default), the background will be drawn 100% opaque.</param>
+public record ButtonDisplayStyle(float Size, MilestoneDisplay MilestoneDisplay, SchemeColor BackgroundColor, bool DrawTransparent = false) : IconDisplayStyle(Size, MilestoneDisplay, true) {
     /// <summary>
     /// Creates a new <see cref="ButtonDisplayStyle"/> for buttons that do not have a background color.
     /// These buttons will not obey the <see cref="Model.ProjectPreferences.iconScale"/> setting.
@@ -42,12 +44,15 @@ public record ButtonDisplayStyle(float Size, MilestoneDisplay MilestoneDisplay, 
     /// <param name="backgroundColor">The background color to use for this button.</param>
     public static ButtonDisplayStyle SelectObjectPanel(SchemeColor backgroundColor) => new(2.5f, MilestoneDisplay.Contained, backgroundColor);
     /// <summary>
-    /// Gets the button style for production table buttons with a background: Size 2.5, <see cref="MilestoneDisplay.Contained"/>, and scaled.
+    /// Gets the button style for production table buttons with a background: Size 3, <see cref="MilestoneDisplay.Contained"/>, and scaled.
     /// </summary>
     /// <param name="backgroundColor">The background color to use for this button.</param>
-    public static ButtonDisplayStyle ProductionTableScaled(SchemeColor backgroundColor) => new(3, MilestoneDisplay.Contained, backgroundColor);
+    /// <param name="drawTransparent">If <see langword="true"/>, the background will be drawn with an opacity of approximately 40%. If
+    /// <see langword="false"/> (the default), the background will be drawn 100% opaque.</param>
+    public static ButtonDisplayStyle ProductionTableScaled(SchemeColor backgroundColor, bool drawTransparent = false)
+        => new(3, MilestoneDisplay.Contained, backgroundColor, drawTransparent);
     /// <summary>
-    /// Gets the button style for production table buttons with no background: Size 2.5, <see cref="MilestoneDisplay.Contained"/>, and not scaled.
+    /// Gets the button style for production table buttons with no background: Size 3, <see cref="MilestoneDisplay.Contained"/>, and not scaled.
     /// </summary>
     public static ButtonDisplayStyle ProductionTableUnscaled { get; } = new(3, MilestoneDisplay.Contained);
     /// <summary>

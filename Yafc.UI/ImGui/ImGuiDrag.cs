@@ -110,7 +110,7 @@ public partial class ImGui {
             ExtractDrawCommandsFrom(source.icons, contents.icons, rect);
             ExtractDrawCommandsFrom(source.renderables, contents.renderables, rect);
             ExtractDrawCommandsFrom(source.panels, contents.panels, rect);
-            contents.rects.Add(new DrawCommand<RectangleBorder>(new Rect(default, rect.Size), RectangleBorder.Thin, bgColor));
+            contents.rects.Add(new(new Rect(default, rect.Size), (RectangleBorder.Thin, false), bgColor));
             contents.contentSize = rect.Size;
         }
 

@@ -75,6 +75,13 @@ public static class RenderingUtils {
 
     public static SDL.SDL_Color ToSdlColor(this SchemeColor color) => SchemeColors[(int)color];
 
+    public static SDL.SDL_Color ToSdlColor(this (SchemeColor color, bool drawTransparent) color) {
+        if (color.drawTransparent) {
+            return SchemeColors[(int)color.color] with { a = SEMITRANSPARENT };
+        }
+        return SchemeColors[(int)color.color];
+    }
+
     public static unsafe ref SDL.SDL_Surface AsSdlSurface(IntPtr ptr) => ref Unsafe.AsRef<SDL.SDL_Surface>((void*)ptr);
 
     public static readonly IntPtr CircleSurface;

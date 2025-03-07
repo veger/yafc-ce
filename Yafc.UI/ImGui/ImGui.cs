@@ -171,11 +171,11 @@ public sealed partial class ImGui : IDisposable, IPanel {
         }
 
         localClip = new Rect(screenClip.Position - screenOffset, screenClip.Size / scale);
-        SchemeColor currentColor = (SchemeColor)(-1);
+        (SchemeColor, bool) currentColor = ((SchemeColor)(-1), false);
         borders.Clear();
 
         for (int i = rects.Count - 1; i >= 0; i--) {
-            var (rect, border, color) = rects[i];
+            var (rect, (border, transparent), color) = rects[i];
 
             if (!rect.IntersectsWith(localClip)) {
                 continue;
@@ -191,8 +191,8 @@ public sealed partial class ImGui : IDisposable, IPanel {
                 continue;
             }
 
-            if (color != currentColor) {
-                currentColor = color;
+            if ((color, transparent) != currentColor) {
+                currentColor = (color, transparent);
                 var sdlColor = currentColor.ToSdlColor();
                 _ = SDL.SDL_SetRenderDrawColor(renderer, sdlColor.r, sdlColor.g, sdlColor.b, sdlColor.a);
             }

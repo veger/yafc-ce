@@ -35,7 +35,7 @@ public partial class ImGui {
         }
     }
 
-    private readonly List<DrawCommand<RectangleBorder>> rects = [];
+    private readonly List<DrawCommand<(RectangleBorder, bool)>> rects = [];
     private readonly List<DrawCommand<Icon>> icons = [];
     private readonly List<DrawCommand<IRenderable>> renderables = [];
     private readonly List<DrawCommand<IPanel>> panels = [];
@@ -45,12 +45,12 @@ public partial class ImGui {
     public RectangleBorder boxShadow { get; set; } = RectangleBorder.None;
     public Padding initialPadding { get; set; }
 
-    public void DrawRectangle(Rect rect, SchemeColor color, RectangleBorder border = RectangleBorder.None) {
+    public void DrawRectangle(Rect rect, SchemeColor color, RectangleBorder border = RectangleBorder.None, bool drawTransparent = false) {
         if (action != ImGuiAction.Build || !enableDrawing) {
             return;
         }
 
-        rects.Add(new DrawCommand<RectangleBorder>(rect, border, color));
+        rects.Add(new DrawCommand<(RectangleBorder, bool)>(rect, (border, drawTransparent), color));
     }
 
     public void DrawIcon(Rect rect, Icon icon, SchemeColor color) {
@@ -253,7 +253,7 @@ public partial class ImGui {
 
         if (boxColor != SchemeColor.None) {
             Rect rect = new Rect(default, contentSize);
-            rects.Add(new DrawCommand<RectangleBorder>(rect, boxShadow, boxColor));
+            rects.Add(new(rect, (boxShadow, false), boxColor));
         }
 
         textCache.PurgeUnused();
