@@ -48,20 +48,20 @@ public class ProductionTableView : ProjectPageView<ProductionTable> {
 
             if (row.warningFlags != 0) {
                 bool isError = row.warningFlags >= WarningFlags.EntityNotSpecified;
-                bool hover;
+                ButtonEvent evt;
 
                 if (isError) {
-                    hover = gui.BuildRedButton(Icon.Error, invertedColors: true) == ButtonEvent.MouseOver;
+                    evt = gui.BuildRedButton(Icon.Error, invertedColors: true);
                 }
                 else {
                     using (gui.EnterGroup(ImGuiUtils.DefaultIconPadding)) {
                         gui.BuildIcon(Icon.Help);
                     }
 
-                    hover = gui.BuildButton(gui.lastRect, SchemeColor.None, SchemeColor.Grey) == ButtonEvent.MouseOver;
+                    evt = gui.BuildButton(gui.lastRect, SchemeColor.None, SchemeColor.Grey);
                 }
 
-                if (hover) {
+                if (evt == ButtonEvent.MouseOver) {
                     gui.ShowTooltip(g => {
                         if (isError) {
                             g.boxColor = SchemeColor.Error;
@@ -73,6 +73,14 @@ public class ProductionTableView : ProjectPageView<ProductionTable> {
                             }
                         }
                     });
+                }
+                else if (evt == ButtonEvent.Click) {
+                    if (row.warningFlags.HasFlag(WarningFlags.ReactorsNeighborsFromPrefs)) {
+                        PreferencesScreen.ShowGeneral();
+                    }
+                    else if (row.warningFlags.HasFlag(WarningFlags.UselessQuality)) {
+                        _ = MainScreen.Instance.ShowPseudoScreen(new MilestonesPanel());
+                    }
                 }
             }
             else {
@@ -1513,7 +1521,7 @@ goodsHaveNoProduction:;
         {WarningFlags.FuelDoesNotProvideEnergy, "This fuel cannot provide any energy to this building. The building won't work."},
         {WarningFlags.FuelUsageInputLimited, "This building has max fuel consumption. The rate at which it works is limited by it."},
         {WarningFlags.TemperatureForIngredientNotMatch, "This recipe does care about ingredient temperature, and the temperature range does not match"},
-        {WarningFlags.ReactorsNeighborsFromPrefs, "Assumes reactor formation from preferences"},
+        {WarningFlags.ReactorsNeighborsFromPrefs, "Assumes reactor formation from preferences. (Click to open the preferences)"},
         {WarningFlags.AssumesNauvisSolarRatio, "Energy production values assumes Nauvis solar ration (70% power output). Don't forget accumulators."},
         {WarningFlags.ExceedsBuiltCount, "This recipe requires more buildings than are currently built."},
         {WarningFlags.AsteroidCollectionNotModelled, "The speed of asteroid collectors depends heavily on location and travel speed. " +
@@ -1521,7 +1529,7 @@ goodsHaveNoProduction:;
         {WarningFlags.AssumesFulgoraAndModel, "Energy production values assume Fulgoran storms and attractors in a square grid.\n" +
             "The accumulator estimate tries to store 10% of the energy captured by the attractors."},
         {WarningFlags.UselessQuality, "The quality bonus on this recipe has no effect. " +
-            "Make sure the recipe produces items and that all milestones for the next quality are unlocked."},
+            "Make sure the recipe produces items and that all milestones for the next quality are unlocked. (Click to open the milestone window)"},
     };
 
     private static readonly (Icon icon, SchemeColor color)[] tagIcons = [
