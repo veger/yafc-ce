@@ -42,6 +42,8 @@ The constructor may have any number of parameters, subject to the following limi
 It must be present, must be of type `T`, and can have any name.
 * Each (other) parameter must have the same type and name as one of the class's writable properties.
 Parameters may match either directly owned properties or properties inherited from a base class.
+* If the parameter has a default value, that value must be `default`.
+(Or an equivalent: e.g. `null` for reference types and `Nullable<>`, `0` for numeric types, and/or `new()` for value types without a explicit 0-parameter constructor.)
 
 Writable properties that are not one of the supported types must have the `[SkipSerialization]` attribute.
 

@@ -42,6 +42,9 @@ public class SerializationTypeValidation {
     // except compiler-generated types and those in Yafc.Blueprints.
     // For details about the serialization rules and how to approach changes and test failures, see Docs/Architecture/Serialization.md.
     public void Serializables_AreSerializable(Type serializableType) {
+        Assert.False(serializableType.IsAbstract, "[Serializable] types must not be abstract.");
+        Assert.False(serializableType.IsValueType, "[Serializable] types must not be structs (or record structs).");
+
         ConstructorInfo constructor = FindConstructor(serializableType);
 
         AssertConstructorParameters(serializableType, constructor.GetParameters());
@@ -84,7 +87,26 @@ public class SerializationTypeValidation {
             Assert.True(property != null, $"Constructor of type {MakeTypeName(type)} parameter '{parameter.Name}' does not have a matching property.");
             Assert.True(parameter.ParameterType == property.PropertyType,
                 $"Constructor of type {MakeTypeName(type)} parameter '{parameter.Name}' does not have the same type as its property.");
+
+            if (!parameter.IsOptional) {
+                Assert.True(property.GetCustomAttribute<SkipSerializationAttribute>() == null,
+                    $"Constructor of type {MakeTypeName(type)} parameter '{parameter.Name}' is a required parameter, but matches a [SkipSerialization] property.");
+                Assert.True(property.GetCustomAttribute<ObsoleteAttribute>() == null,
+                    $"Constructor of type {MakeTypeName(type)} parameter '{parameter.Name}' is a required parameter, but matches an [Obsolete] property.");
+            }
+            else if (parameter.ParameterType.IsValueType) {
+                typeof(SerializationTypeValidation).GetMethod(nameof(CheckDefaultValue), BindingFlags.Static | BindingFlags.NonPublic)
+                    .MakeGenericMethod(parameter.ParameterType)
+                    .Invoke(null, [type, parameter]);
+            }
         }
+    }
+
+    private static void CheckDefaultValue<T>(Type type, ParameterInfo parameter) {
+        // parameter.DefaultValue is null when complex structs (e.g. Guids) should be 0-initialized.
+        T defaultValue = (T)(parameter.DefaultValue ?? default(T));
+        Assert.True(Equals(defaultValue, default(T)),
+            $"Constructor of type {MakeTypeName(type)} parameter '{parameter.Name}' is an optional parameter with a default value ({defaultValue}) that is not default({MakeTypeName(parameter.ParameterType)}).");
     }
 
     private static void AssertSettableProperties(Type type) {

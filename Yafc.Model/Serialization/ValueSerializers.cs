@@ -28,7 +28,7 @@ internal static class ValueSerializer {
             return true;
         }
 
-        if (type.IsClass && (typeof(ModelObject).IsAssignableFrom(type) || type.GetCustomAttribute<SerializableAttribute>() != null)) {
+        if (type.IsClass && !type.IsAbstract && (typeof(ModelObject).IsAssignableFrom(type) || type.GetCustomAttribute<SerializableAttribute>() != null)) {
             return true;
         }
 
@@ -121,13 +121,14 @@ internal abstract class ValueSerializer<T> {
             return Activator.CreateInstance(typeof(EnumSerializer<>).MakeGenericType(typeof(T)))!;
         }
 
-        if (typeof(T).IsClass) {
+        if (typeof(T).IsClass && !typeof(T).IsAbstract) {
             if (typeof(ModelObject).IsAssignableFrom(typeof(T))) {
                 return Activator.CreateInstance(typeof(ModelObjectSerializer<>).MakeGenericType(typeof(T)))!;
             }
 
             return Activator.CreateInstance(typeof(PlainClassesSerializer<>).MakeGenericType(typeof(T)))!;
         }
+
         if (typeof(T).IsGenericType && typeof(T).GetGenericTypeDefinition() == typeof(Nullable<>)) {
             return Activator.CreateInstance(typeof(NullableSerializer<>).MakeGenericType(typeof(T).GetGenericArguments()[0]))!;
         }
