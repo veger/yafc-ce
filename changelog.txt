@@ -14,6 +14,12 @@
 //         Bugfixes go there.
 //     Internal changes:
 //         Changes to the code that do not affect the behavior of the program.
+----------------------------------------------------------------------------------------------------------------------
+Version:
+Date:
+    Features:
+        - Open the preferences or milestones when you click on the icon for the reactor or quality warning messages.
+----------------------------------------------------------------------------------------------------------------------
 Version: 2.10.0
 Date: March 5th 2025
     Features:
