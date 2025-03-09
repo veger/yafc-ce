@@ -220,13 +220,13 @@ public class ModuleCustomizationScreen : PseudoScreenWithResult<ModuleTemplateBu
             gui.BuildObjectQualitySelectDropDown(Database.allBeacons, sel => {
                 modules.beacon = sel;
                 contents.Rebuild();
-            }, new(LSs.SelectBeacon), Quality.Normal);
+            }, new(LSs.SelectBeacon, Quality.Normal));
         }
         else {
             gui.BuildObjectQualitySelectDropDownWithNone(Database.allBeacons, sel => {
                 modules.beacon = sel;
                 contents.Rebuild();
-            }, new(LSs.SelectBeacon), modules.beacon.quality, quality => {
+            }, new(LSs.SelectBeacon, modules.beacon.quality), quality => {
                 modules.beacon = modules.beacon.With(quality);
                 contents.Rebuild();
             });
@@ -265,7 +265,7 @@ public class ModuleCustomizationScreen : PseudoScreenWithResult<ModuleTemplateBu
                             list[idx] = (sel, list[idx].fixedCount);
                         }
                         gui.Rebuild();
-                    }, new(LSs.SelectModule, DataUtils.FavoriteModule), list[idx].module.quality, quality => {
+                    }, new(LSs.SelectModule, DataUtils.FavoriteModule, SelectedQuality: list[idx].module.quality), quality => {
                         list[idx] = list[idx] with { module = list[idx].module.target.With(quality) };
                         gui.Rebuild();
                     });
@@ -294,7 +294,7 @@ public class ModuleCustomizationScreen : PseudoScreenWithResult<ModuleTemplateBu
             gui.BuildObjectQualitySelectDropDown(GetModules(beacon), sel => {
                 list.Add(new(sel, 0));
                 gui.Rebuild();
-            }, new(LSs.SelectModule, DataUtils.FavoriteModule), Quality.Normal);
+            }, new(LSs.SelectModule, DataUtils.FavoriteModule, SelectedQuality: Quality.Normal));
         }
     }
 

@@ -274,8 +274,8 @@ goodsHaveNoProduction:;
                 }
                 else {
                     var prodTable = ProductionLinkSummaryScreen.FindProductionTable(table, out List<ModelObject> parents);
-                    SelectMultiObjectPanel.SelectWithQuality(Database.recipes.explorable.AsEnumerable<RecipeOrTechnology>(), new(LSs.ProductionTableAddRawRecipe, Multiple: true, Checkmark: checkmark, YellowMark: r => prodTable?.GetAllRecipes().Any(rr => rr.recipe.target == r) ?? false),
-                        Quality.Normal, r => table.AddRecipe(r, DefaultVariantOrdering));
+                    SelectMultiObjectPanel.SelectWithQuality(Database.recipes.explorable, new(LSs.ProductionTableAddRawRecipe, Multiple: true, Checkmark: checkmark, YellowMark: r => prodTable?.GetAllRecipes().Any(rr => rr.recipe.target == r) ?? false, SelectedQuality: Quality.Normal),
+                        r => table.AddRecipe(r, DefaultVariantOrdering));
                 }
             }
 
@@ -445,28 +445,35 @@ goodsHaveNoProduction:;
             }
         }
 
-        private static void ShowAccumulatorDropdown(ImGui gui, RecipeRow recipe, Entity currentAccumulator, Quality accumulatorQuality)
-            => gui.BuildObjectQualitySelectDropDown(Database.allAccumulators,
+        private static void ShowAccumulatorDropdown(ImGui gui, RecipeRow recipe, Entity currentAccumulator, Quality accumulatorQuality) {
+            gui.BuildObjectQualitySelectDropDown(Database.allAccumulators,
                 newAccumulator => recipe.RecordUndo().ChangeVariant(currentAccumulator, newAccumulator.target),
-                new(LSs.ProductionTableSelectAccumulator, ExtraText: x => DataUtils.FormatAmount(x.AccumulatorCapacity(accumulatorQuality), UnitOfMeasure.Megajoule)),
-                accumulatorQuality,
-                newQuality => recipe.RecordUndo().ChangeVariant(accumulatorQuality, newQuality));
+                new(LSs.ProductionTableSelectAccumulator, ExtraText: extraText, SelectedQuality: accumulatorQuality), selectQuality);
+
+            string extraText(EntityAccumulator x) => DataUtils.FormatAmount(x.AccumulatorCapacity(accumulatorQuality), UnitOfMeasure.Megajoule);
+            void selectQuality(Quality newQuality) => recipe.RecordUndo().ChangeVariant(accumulatorQuality, newQuality);
+        }
 
         private static void ShowEntityDropdown(ImGui gui, RecipeRow recipe) {
             Quality quality = recipe.entity?.quality ?? Quality.Normal;
+            QualitySelectOptions<EntityCrafter> options = null!;
+            options = new(LSs.ProductionTableSelectCraftingEntity, DataUtils.FavoriteCrafter, ExtraText: extraText) { SelectedQuality = quality };
+
+            string extraText(EntityCrafter x) => DataUtils.FormatAmount(x.CraftingSpeed(options.SelectedQuality!), UnitOfMeasure.Percent);
+
             gui.ShowDropDown(gui => {
                 EntityCrafter? favoriteCrafter = recipe.recipe.target.crafters.AutoSelect(DataUtils.FavoriteCrafter);
                 if (favoriteCrafter == recipe.entity?.target) { favoriteCrafter = null; }
                 bool willResetFixed = favoriteCrafter == null, willResetBuilt = willResetFixed && recipe.fixedBuildings == 0;
 
                 if (recipe.entity == null) {
-                    _ = gui.BuildQualityList(quality, out quality);
+                    _ = gui.BuildQualityList(options);
                 }
-                else if (gui.BuildQualityList(recipe.entity.quality, out quality) && gui.CloseDropdown()) {
-                    if (quality == recipe.entity.quality) {
+                else if (gui.BuildQualityList(options) && gui.CloseDropdown()) {
+                    if (options.SelectedQuality == recipe.entity.quality) {
                         return;
                     }
-                    recipe.RecordUndo().entity = recipe.entity.With(quality);
+                    recipe.RecordUndo().entity = recipe.entity.With(options.SelectedQuality);
                 }
 
                 gui.BuildInlineObjectListAndButton(recipe.recipe.target.crafters, sel => {
@@ -475,11 +482,11 @@ goodsHaveNoProduction:;
                     }
 
                     _ = recipe.RecordUndo();
-                    recipe.entity = sel.With(quality);
+                    recipe.entity = sel.With(options.SelectedQuality);
                     if (!sel.energy.fuels.Contains(recipe.fuel?.target)) {
                         recipe.fuel = recipe.entity.target.energy.fuels.AutoSelect(DataUtils.FavoriteFuel).With(Quality.Normal);
                     }
-                }, new(LSs.ProductionTableSelectCraftingEntity, DataUtils.FavoriteCrafter, ExtraText: x => DataUtils.FormatAmount(x.CraftingSpeed(quality), UnitOfMeasure.Percent)));
+                }, options);
 
                 gui.AllocateSpacing(0.5f);
 
@@ -597,14 +604,16 @@ goodsHaveNoProduction:;
                 });
             }
 
-            if (gui.BuildQualityList(null, out Quality? quality, LSs.ProductionTableMassSetQuality) && gui.CloseDropdown()) {
+            QualitySelectOptions<FactorioObject> options = new(null) { QualityHeader = LSs.ProductionTableMassSetQuality, SelectedQuality = null };
+            if (gui.BuildQualityList(options) && gui.CloseDropdown()) {
                 foreach (RecipeRow recipe in view.GetRecipesRecursive()) {
-                    recipe.RecordUndo().entity = recipe.entity?.With(quality);
+                    // null-forgiving: When options.Multiple is false and BuildQualityList returns true, SelectedQuality is not null.
+                    recipe.RecordUndo().entity = recipe.entity?.With(options.SelectedQuality!);
                 }
             }
 
             if (gui.BuildButton(LSs.ProductionTableMassSetFuel) && gui.CloseDropdown()) {
-                SelectSingleObjectPanel.SelectWithQuality(Database.goods.all.Where(x => x.fuelValue > 0), new(LSs.ProductionTableMassSetFuel, DataUtils.FavoriteFuel), null, set => {
+                SelectSingleObjectPanel.SelectWithQuality(Database.goods.all.Where(x => x.fuelValue > 0), new(LSs.ProductionTableMassSetFuel, DataUtils.FavoriteFuel), set => {
                     DataUtils.FavoriteFuel.AddToFavorite(set.target, 10);
 
                     foreach (var recipe in view.GetRecipesRecursive()) {
@@ -781,7 +790,7 @@ goodsHaveNoProduction:;
                 .Where(x => x.filterEntities.Count == 0 || x.filterEntities.Contains(recipe.entity?.target!))
                 .OrderByDescending(x => x.template.IsCompatibleWith(recipe))];
 
-            Quality quality = Quality.Normal;
+            QualitySelectOptions<Module> options = new(LSs.ProductionTableSelectModules, DataUtils.FavoriteModule) { SelectedQuality = Quality.Normal };
             gui.ShowDropDown(dropGui => {
                 if (recipe.modules != null && dropGui.BuildButton(LSs.ProductionTableUseDefaultModules).WithTooltip(dropGui, LSs.ProductionTableShortcutRightClick) && dropGui.CloseDropdown()) {
                     recipe.RemoveFixedModules();
@@ -789,17 +798,17 @@ goodsHaveNoProduction:;
 
                 if (recipe.entity?.target.moduleSlots > 0) {
                     if (recipe.modules?.list.Count > 0) {
-                        quality = recipe.modules.list[0].module.quality;
-                        if (dropGui.BuildQualityList(quality, out Quality newQuality) && dropGui.CloseDropdown()) {
+                        options.SelectedQuality = recipe.modules.list[0].module.quality;
+                        if (dropGui.BuildQualityList(options) && dropGui.CloseDropdown()) {
                             ModuleTemplateBuilder builder = recipe.modules.GetBuilder();
-                            builder.list[0] = builder.list[0] with { module = builder.list[0].module.With(newQuality) };
+                            builder.list[0] = builder.list[0] with { module = builder.list[0].module.With(options.SelectedQuality) };
                             recipe.RecordUndo().modules = builder.Build(recipe);
                         }
                     }
                     else {
-                        _ = dropGui.BuildQualityList(quality, out quality);
+                        _ = dropGui.BuildQualityList(options);
                     }
-                    dropGui.BuildInlineObjectListAndButton(modules, m => recipe.SetFixedModule(m.With(quality)), new(LSs.ProductionTableSelectModules, DataUtils.FavoriteModule));
+                    dropGui.BuildInlineObjectListAndButton(modules, (Module m) => recipe.SetFixedModule(m.With(options.SelectedQuality)), options);
                 }
 
                 if (moduleTemplateList.data.Count > 0) {
@@ -965,7 +974,7 @@ goodsHaveNoProduction:;
 
                     BuildFavorites(gui, recipe.fuel!.target, LSs.ProductionTableAddFuelToFavorites);
                     gui.BuildInlineObjectListAndButton(energy.fuels, fuel => recipe.RecordUndo().fuel = fuel.With(Quality.Normal),
-                        new(LSs.ProductionTableSelectFuel, DataUtils.FavoriteFuel, ExtraText: fuelDisplayFunc));
+                        new ObjectSelectOptions<Goods>(LSs.ProductionTableSelectFuel, DataUtils.FavoriteFuel, ExtraText: fuelDisplayFunc));
                 }
             }
 
@@ -1586,7 +1595,9 @@ goodsHaveNoProduction:;
     }
 
     private static void AddDesiredProductAtLevel(ProductionTable table) => SelectMultiObjectPanel.SelectWithQuality(
-        Database.goods.all.Except(table.linkMap.Where(p => p.Value.amount != 0).Select(p => p.Key.target)).Where(g => g.isLinkable), new(LSs.ProductionTableAddDesiredProduct, Multiple: true), Quality.Normal, product => {
+        Database.goods.all.Except(table.linkMap.Where(p => p.Value.amount != 0).Select(p => p.Key.target)).Where(g => g.isLinkable),
+        new(LSs.ProductionTableAddDesiredProduct, Multiple: true, SelectedQuality: Quality.Normal),
+        product => {
             if (table.linkMap.TryGetValue(product, out var existing) && existing is ProductionLink link) {
                 if (link.amount != 0) {
                     return;
@@ -1596,6 +1607,7 @@ goodsHaveNoProduction:;
             }
             else {
                 table.RecordUndo().links.Add(new ProductionLink(table, product.target.With(product.quality)) { amount = 1f });
+                table.RebuildLinkMap();
             }
         });
 

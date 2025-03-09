@@ -45,27 +45,28 @@ public class ModuleFillerParametersScreen : PseudoScreen {
         gui.DrawIcon(new(gui.lastRect.TopRight - new Vector2(1.25f, 0), new Vector2(1.25f, 1.25f)), config.beaconModule.target.icon, SchemeColor.Source);
         switch (click) {
             case GoodsWithAmountEvent.LeftButtonClick:
-                SelectSingleObjectPanel.SelectQualityWithNone(Database.usableBeacons, new(LSs.SelectBeacon), modules.overrideCrafterBeacons[crafter].beacon.quality, selectedBeacon => {
+                SelectSingleObjectPanel.SelectQualityWithNone(Database.usableBeacons,
+                    new(LSs.SelectBeacon, modules.overrideCrafterBeacons[crafter].beacon.quality), selectedBeacon => {
 
-                    if (selectedBeacon is null) {
-                        _ = modules.overrideCrafterBeacons.Remove(crafter);
-                    }
-                    else {
-                        modules.overrideCrafterBeacons[crafter] = modules.overrideCrafterBeacons[crafter] with { beacon = selectedBeacon };
-
-                        if (!selectedBeacon.target.CanAcceptModule(modules.overrideCrafterBeacons[crafter].beaconModule)) {
-                            _ = Database.GetDefaultModuleFor(selectedBeacon.target, out Module? module);
-                            // null-forgiving: Anything from usableBeacons accepts at least one module.
-                            modules.overrideCrafterBeacons[crafter] = modules.overrideCrafterBeacons[crafter] with { beaconModule = module!.With(Quality.MaxAccessible) };
+                        if (selectedBeacon is null) {
+                            _ = modules.overrideCrafterBeacons.Remove(crafter);
                         }
-                    }
+                        else {
+                            modules.overrideCrafterBeacons[crafter] = modules.overrideCrafterBeacons[crafter] with { beacon = selectedBeacon };
 
-                    overrideList.data = [.. modules.overrideCrafterBeacons];
-                }, noneTooltip: LSs.ModuleFillerRemoveCurrentOverrideHint);
+                            if (!selectedBeacon.target.CanAcceptModule(modules.overrideCrafterBeacons[crafter].beaconModule)) {
+                                _ = Database.GetDefaultModuleFor(selectedBeacon.target, out Module? module);
+                                // null-forgiving: Anything from usableBeacons accepts at least one module.
+                                modules.overrideCrafterBeacons[crafter] = modules.overrideCrafterBeacons[crafter] with { beaconModule = module!.With(Quality.MaxAccessible) };
+                            }
+                        }
+
+                        overrideList.data = [.. modules.overrideCrafterBeacons];
+                    }, noneTooltip: LSs.ModuleFillerRemoveCurrentOverrideHint);
                 break;
             case GoodsWithAmountEvent.RightButtonClick:
                 SelectSingleObjectPanel.SelectQualityWithNone(Database.allModules.Where(m => modules.overrideCrafterBeacons[crafter].beacon.target.CanAcceptModule(m.moduleSpecification)),
-                    new(LSs.SelectBeaconModule), modules.overrideCrafterBeacons[crafter].beaconModule.quality, selectedModule => {
+                    new(LSs.SelectBeaconModule, modules.overrideCrafterBeacons[crafter].beaconModule.quality), selectedModule => {
 
                         if (selectedModule is null) {
                             _ = modules.overrideCrafterBeacons.Remove(crafter);
@@ -125,7 +126,8 @@ public class ModuleFillerParametersScreen : PseudoScreen {
         gui.BuildText(LSs.ModuleFillerModule, Font.subheader);
         gui.BuildText(LSs.ModuleFillerModuleHint, TextBlockDisplayStyle.WrappedText);
         if (gui.BuildFactorioObjectButtonWithText(modules.fillerModule) == Click.Left) {
-            SelectSingleObjectPanel.SelectQualityWithNone(Database.allModules, new(LSs.ModuleFillerSelectModule), modules.fillerModule?.quality, select => modules.fillerModule = select);
+            SelectSingleObjectPanel.SelectQualityWithNone(Database.allModules,
+                new(LSs.ModuleFillerSelectModule, modules.fillerModule?.quality), select => modules.fillerModule = select);
         }
 
         gui.AllocateSpacing();
@@ -135,7 +137,7 @@ public class ModuleFillerParametersScreen : PseudoScreen {
         }
         else {
             if (gui.BuildFactorioObjectButtonWithText(modules.beacon) == Click.Left) {
-                SelectSingleObjectPanel.SelectQualityWithNone(Database.allBeacons, new(LSs.SelectBeacon), modules.beacon?.quality, select => {
+                SelectSingleObjectPanel.SelectQualityWithNone(Database.allBeacons, new(LSs.SelectBeacon, modules.beacon?.quality), select => {
                     modules.beacon = select;
                     if (modules.beaconModule != null && (modules.beacon == null || !modules.beacon.target.CanAcceptModule(modules.beaconModule))) {
                         modules.beaconModule = null;
@@ -147,7 +149,7 @@ public class ModuleFillerParametersScreen : PseudoScreen {
 
             if (gui.BuildFactorioObjectButtonWithText(modules.beaconModule) == Click.Left) {
                 SelectSingleObjectPanel.SelectQualityWithNone(Database.allModules.Where(x => modules.beacon?.target.CanAcceptModule(x.moduleSpecification) ?? false),
-                    new(LSs.ModuleFillerSelectBeaconModule), modules.beaconModule?.quality, select => modules.beaconModule = select);
+                    new(LSs.ModuleFillerSelectBeaconModule, modules.beaconModule?.quality), select => modules.beaconModule = select);
             }
 
             using (gui.EnterRow()) {

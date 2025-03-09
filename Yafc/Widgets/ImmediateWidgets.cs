@@ -248,6 +248,28 @@ public static class ImmediateWidgets {
         }
     }
 
+    public static void BuildInlineObjectListAndButton<T>(this ImGui gui, ICollection<T> list, Action<IObjectWithQuality<T>> selectItem, QualitySelectOptions<T> options) where T : FactorioObject {
+        using (gui.EnterGroup(default, RectAllocator.Stretch)) {
+            if (gui.BuildInlineObjectList(list, out var selected, options) && options.SelectedQuality != null) {
+                foreach (Quality quality in options.SelectedQualities) {
+                    selectItem(selected.With(quality));
+                }
+                if (!options.Multiple || !InputSystem.Instance.control) {
+                    _ = gui.CloseDropdown();
+                }
+            }
+
+            if (list.Count > options.MaxCount && gui.BuildButton(LSs.SeeFullListButton) && gui.CloseDropdown()) {
+                if (options.Multiple) {
+                    SelectMultiObjectPanel.SelectWithQuality(list, options, selectItem);
+                }
+                else {
+                    SelectSingleObjectPanel.SelectWithQuality(list, options, selectItem);
+                }
+            }
+        }
+    }
+
     public static void BuildInlineObjectListAndButtonWithNone<T>(this ImGui gui, ICollection<T> list, Action<T?> selectItem, ObjectSelectOptions<T> options) where T : FactorioObject {
         using (gui.EnterGroup(default, RectAllocator.Stretch)) {
             if (gui.BuildInlineObjectList(list, out var selected, options)) {
@@ -260,6 +282,21 @@ public static class ImmediateWidgets {
 
             if (list.Count > options.MaxCount && gui.BuildButton(LSs.SeeFullListButton) && gui.CloseDropdown()) {
                 SelectSingleObjectPanel.SelectWithNone(list, options, selectItem);
+            }
+        }
+    }
+
+    public static void BuildInlineObjectListAndButtonWithNone<T>(this ImGui gui, ICollection<T> list, Action<IObjectWithQuality<T>?> selectItem, QualitySelectOptions<T> options) where T : FactorioObject {
+        using (gui.EnterGroup(default, RectAllocator.Stretch)) {
+            if (gui.BuildInlineObjectList(list, out var selected, options) && options.SelectedQuality != null && gui.CloseDropdown()) {
+                selectItem(selected.With(options.SelectedQuality));
+            }
+            if (gui.BuildRedButton(LSs.ClearButton) && gui.CloseDropdown()) {
+                selectItem(null);
+            }
+
+            if (list.Count > options.MaxCount && gui.BuildButton(LSs.SeeFullListButton) && gui.CloseDropdown()) {
+                SelectSingleObjectPanel.SelectQualityWithNone(list, options, selectItem);
             }
         }
     }
@@ -324,14 +361,14 @@ public static class ImmediateWidgets {
     /// <param name="selectQuality">If not <see langword="null"/>, this will be called, and the dropdown will be closed, when the user selects a quality.
     /// In general, set this parameter when modifying an existing object, and leave it <see langword="null"/> when setting a new object.</param>
     /// <param name="width">Width of the popup. Make sure the header text fits!</param>
-    public static void BuildObjectQualitySelectDropDown<T>(this ImGui gui, ICollection<T> list, Action<IObjectWithQuality<T>> selectItem, ObjectSelectOptions<T> options,
-        Quality quality, Action<Quality>? selectQuality = null, float width = 20f) where T : FactorioObject
+    public static void BuildObjectQualitySelectDropDown<T>(this ImGui gui, ICollection<T> list, Action<IObjectWithQuality<T>> selectItem, QualitySelectOptions<T> options,
+        Action<Quality>? selectQuality = null, float width = 20f) where T : FactorioObject
 
         => gui.ShowDropDown(gui => {
-            if (gui.BuildQualityList(quality, out quality) && selectQuality != null && gui.CloseDropdown()) {
-                selectQuality(quality);
+            if (gui.BuildQualityList(options) && selectQuality != null && gui.CloseDropdown()) {
+                selectQuality(options.SelectedQuality!);
             }
-            gui.BuildInlineObjectListAndButton(list, i => selectItem(i.With(quality)), options);
+            gui.BuildInlineObjectListAndButton(list, selectItem, options);
         }, width);
 
     /// <summary>Shows a dropdown containing the (partial) <paramref name="list"/> of elements, with an action for when an element is selected.
@@ -344,14 +381,14 @@ public static class ImmediateWidgets {
     /// Also shows the available quality levels, and allows the user to select a quality.</summary>
     /// <param name="selectQuality">This will be called, and the dropdown will be closed, when the user selects a quality.</param>
     /// <param name="width">Width of the popup. Make sure the header text fits!</param>
-    public static void BuildObjectQualitySelectDropDownWithNone<T>(this ImGui gui, ICollection<T> list, Action<IObjectWithQuality<T>?> selectItem, ObjectSelectOptions<T> options,
-        Quality quality, Action<Quality> selectQuality, float width = 20f) where T : FactorioObject
+    public static void BuildObjectQualitySelectDropDownWithNone<T>(this ImGui gui, ICollection<T> list, Action<IObjectWithQuality<T>?> selectItem, QualitySelectOptions<T> options,
+        Action<Quality> selectQuality, float width = 20f) where T : FactorioObject
 
         => gui.ShowDropDown(gui => {
-            if (gui.BuildQualityList(quality, out quality) && gui.CloseDropdown()) {
-                selectQuality(quality);
+            if (gui.BuildQualityList(options) && options.SelectedQuality != null && gui.CloseDropdown()) {
+                selectQuality(options.SelectedQuality);
             }
-            gui.BuildInlineObjectListAndButtonWithNone(list, i => selectItem(i.With(quality)), options);
+            gui.BuildInlineObjectListAndButtonWithNone(list, selectItem, options);
         }, width);
 
     /// <summary>Draws a button displaying the icon belonging to a <see cref="FactorioObject"/>, or an empty box as a placeholder if no object is available.
@@ -384,49 +421,75 @@ public static class ImmediateWidgets {
     /// <summary>
     /// Builds a selection list for the available qualities, assuming multiple qualities are available.
     /// </summary>
-    /// <param name="quality">The <see cref="Quality"/> to initially display selected, if any.</param>
-    /// <param name="newQuality">The <see cref="Quality"/> selected by the user.</param>
-    /// <param name="header">The localizable string for the text to draw, defaults to <see cref="LSs.SelectQuality"/></param>
-    /// <returns><see langword="true"/> if the user selected a quality. <see langword="false"/> if they did not, or if the loaded mods do not provide multiple qualities.</returns>
-    public static bool BuildQualityList(this ImGui gui, Quality? quality, [NotNullWhen(true), NotNullIfNotNull(nameof(quality))] out Quality? newQuality, LocalizableString0? headerKey = null, bool drawCentered = false) {
-        newQuality = quality;
-        if (Quality.Normal.nextQuality == null) {
-            return false; // Nothing to do; normal quality is the only one defined.
+    /// <param name="options">The <see cref="QualitySelectOptions{T}"/> for this selection.</param>
+    /// <returns><see langword="true"/> if the user selected a quality. <see langword="false"/> if they did not, or if the loaded mods do not
+    /// provide multiple qualities.</returns>
+    public static bool BuildQualityList<T>(this ImGui gui, QualitySelectOptions<T> options, bool drawCentered = false)
+        where T : class, IFactorioObjectWrapper {
+
+        Quality? nextQuality = Quality.Normal;
+        int qualityCount = 0;
+        do {
+            qualityCount++;
+            nextQuality = nextQuality.nextQuality;
+        } while (nextQuality != null);
+
+        if (qualityCount == 1) {
+            return false; // Nothing to do; normal quality is the only available option.
         }
 
-        headerKey ??= LSs.SelectQuality;
+        int pluralCount = options.Multiple ? qualityCount : 1;
 
         if (drawCentered) {
-            gui.BuildText(headerKey, TextBlockDisplayStyle.Centered with { Font = Font.productionTableHeader });
+            gui.BuildText(options.QualityHeader.Localize(pluralCount), TextBlockDisplayStyle.Centered with { Font = Font.productionTableHeader });
         }
         else {
-            gui.BuildText(headerKey, Font.productionTableHeader);
+            gui.BuildText(options.QualityHeader.Localize(pluralCount), Font.productionTableHeader);
         }
 
         using ImGui.OverlappingAllocations controller = gui.StartOverlappingAllocations(false);
-        drawGrid(gui, ref newQuality, out bool addSpacing);
+        drawGrid(gui, options, out bool addSpacing);
         float width = gui.lastRect.Width;
         controller.StartNextAllocatePass(true);
+        bool result;
         using (gui.EnterRow(0)) {
             if (drawCentered && addSpacing) {
                 gui.AllocateRect((gui.statePosition.Width - width) / 2, 0);
             }
-            return drawGrid(gui, ref newQuality, out _);
+            result = drawGrid(gui, options, out _);
         }
 
-        static bool drawGrid(ImGui gui, ref Quality? newQuality, out bool addSpacing) {
+        if (options.Multiple && !options.AllowMultipleWithoutControl) {
+            if (drawCentered) {
+                gui.BuildText(LSs.SelectMultipleObjectsHint, TextBlockDisplayStyle.HintText with { Alignment = RectAlignment.Middle });
+            }
+            else {
+                gui.BuildText(LSs.SelectMultipleObjectsHint, TextBlockDisplayStyle.HintText);
+            }
+        }
+
+        return result;
+
+        static bool drawGrid(ImGui gui, QualitySelectOptions<T> options, out bool addSpacing) {
             addSpacing = false;
             using ImGuiUtils.InlineGridBuilder grid = gui.EnterInlineGrid(2, .5f);
             Quality? drawQuality = Quality.Normal;
             int qualityCount = 0;
             while (drawQuality != null) {
                 grid.Next();
-                if (newQuality == drawQuality) {
-                    _ = gui.BuildFactorioObjectButton(drawQuality, ButtonDisplayStyle.Default with { BackgroundColor = SchemeColor.Primary });
+                if (options.SelectedQualities.Contains(drawQuality)) {
+                    if (gui.BuildFactorioObjectButton(drawQuality, ButtonDisplayStyle.Default with { BackgroundColor = SchemeColor.Primary }) == Click.Left
+                        && options.Multiple && (options.AllowMultipleWithoutControl || InputSystem.Instance.control)) {
+
+                        options.SelectedQualities.Remove(drawQuality);
+                        return true;
+                    }
                 }
                 else if (gui.BuildFactorioObjectButton(drawQuality, ButtonDisplayStyle.Default) == Click.Left) {
-                    newQuality = drawQuality;
-                    addSpacing = false; // This has to be the second call, where the value doesn't matter.
+                    if (!options.Multiple || (!options.AllowMultipleWithoutControl && !InputSystem.Instance.control)) {
+                        options.SelectedQualities.Clear();
+                    }
+                    options.SelectedQualities.Add(drawQuality);
                     return true;
                 }
                 qualityCount++;
@@ -457,20 +520,92 @@ public record DisplayAmount(float Value, UnitOfMeasure Unit = UnitOfMeasure.None
 }
 
 /// <summary>
-/// Encapsulates the options for drawing an object selection list. 
+/// Encapsulates the options for drawing an object selection list, which may be a dropdown, a <see cref="SelectObjectPanel{TResult, TDisplay}"/>,
+/// or both with the dropdown displayed first.
 /// </summary>
 /// <typeparam name="T">The type of <see cref="FactorioObject"/> to be selected</typeparam>
-/// <param name="Header">The header text to display</param>
+/// <param name="Header">The header text to display, or <see langword="null"/> to display no header text.</param>
 /// <param name="Ordering">The sort order to use when displaying the items. Defaults to <see cref="DataUtils.DefaultOrdering"/>.</param>
-/// <param name="MaxCount">Maximum number of elements in the list. If there are more, another popup can be opened by the user to show the full list.</param>
-/// <param name="Multiple">If <see langword="true"/>, this popup (and its subsequent <see cref="SelectObjectPanel{T}"/>, if applicable) allow selection of multiple items.
-/// Not used (treated as <see langword="false"/>) when selecting with a 'None' item.</param>
+/// <param name="MaxCount">The maximum number of elements in a dropdown list. If there are more, and a dropdown is being displayed, a
+/// <see cref="SelectObjectPanel{TResult, TDisplay}"/> can be opened by the user to show the full list.</param>
+/// <param name="Multiple">If <see langword="true"/>, the user will be allowed to select multiple items.<br/>
+/// Must be <see langword="false"/> when selecting with a 'None' item.</param>
 /// <param name="Checkmark">If not <see langword="null"/>, this will be called to determine if a checkmark should be drawn on the item.
-/// Not used when selecting with a 'None' item or when <paramref name="Multiple"/> is <see langword="false"/>.</param>
+/// Not used when <paramref name="Multiple"/> is <see langword="false"/>.</param>
 /// <param name="YellowMark">If Checkmark is not set, draw a less distinct checkmark instead.</param>
-/// <param name="ExtraText">If not <see langword="null"/>, this will be called to get extra text to be displayed right-justified after the item's name.</param>
-public sealed record ObjectSelectOptions<T>(string? Header, [AllowNull] IComparer<T> Ordering = null, int MaxCount = 6, bool Multiple = false, Predicate<T>? Checkmark = null,
+/// <param name="ExtraText">If not <see langword="null"/>, this will be called to get extra text to be displayed right-justified in a dropdown
+/// list, after the item's name. Not used when displaying <see cref="SelectObjectPanel{TResult, TDisplay}"/>s.</param>
+public record ObjectSelectOptions<T>(string? Header, [AllowNull] IComparer<T> Ordering = null, int MaxCount = 6, bool Multiple = false, Predicate<T>? Checkmark = null,
     Predicate<T>? YellowMark = null, Func<T, string>? ExtraText = null) where T : class, IFactorioObjectWrapper {
 
     public IComparer<T> Ordering { get; init; } = Ordering ?? DataUtils.DefaultOrdering;
+}
+
+/// <summary>
+/// Encapsulates the options for drawing an object selection list, which may be a dropdown, a <see cref="SelectObjectPanel{TResult, TDisplay}"/>,
+/// or both with the dropdown displayed first, along with options to select the quality.
+/// </summary>
+/// <typeparam name="T"><inheritdoc/></typeparam>
+/// <param name="Header">The header text to display, or <see langword="null"/> to display no header text.</param>
+/// <param name="Ordering">The sort order to use when displaying the items. Defaults to <see cref="DataUtils.DefaultOrdering"/>.</param>
+/// <param name="MaxCount">The maximum number of elements in a dropdown list. If there are more and a dropdown is being displayed, a
+/// <see cref="SelectObjectPanel{TResult, TDisplay}"/> can be opened by the user to show the full list.</param>
+/// <param name="Multiple">If <see langword="true"/>, the user will be allowed to select multiple items and multiple qualities. The result will
+/// be all combinations of a selected <typeparamref name="T"/> and a selected <see cref="Quality"/> (the Cartesian product).<br/>
+/// Must be <see langword="false"/> when selecting with a 'None' item.</param>
+/// <param name="Checkmark">If not <see langword="null"/>, this will be called to determine if a checkmark should be drawn on the item.
+/// Not used when <paramref name="Multiple"/> is <see langword="false"/>.</param>
+/// <param name="YellowMark">If Checkmark is not set, draw a less distinct checkmark instead.</param>
+/// <param name="ExtraText">If not <see langword="null"/>, this will be called to get extra text to be displayed right-justified in a dropdown
+/// list, after the item's name. Not used when displaying <see cref="SelectObjectPanel{TResult, TDisplay}"/>s.</param>
+/// <param name="AllowMultipleWithoutControl">When this and <paramref name="Multiple"/> are both <see langword="true"/>, the quality icons in the
+/// selection list will always behave like checkboxes. When <paramref name="Multiple"/> is <see langword="true"/> and this is
+/// <see langword="false"/>, the quality icons will behave like checkboxes when ctrl-clicking, and like radio buttons when clicking without
+/// control. When <paramref name="Multiple"/> is <see langword="false"/>, the quality icons will always behave like radio buttons.</param>
+/// <param name="SelectedQuality">The initially selected <see cref="Quality"/>. If this parameter is <see langword="null"/> and
+/// <paramref name="Multiple"/> is <see langword="false"/>, <see cref="SelectedQuality"/> will be initialized to <see cref="Quality.Normal"/>.
+/// </param>
+public record QualitySelectOptions<T>(string? Header, [AllowNull] IComparer<T> Ordering = null, int MaxCount = 6, bool Multiple = false,
+    Predicate<T>? Checkmark = null, Predicate<T>? YellowMark = null, Func<T, string>? ExtraText = null, bool AllowMultipleWithoutControl = false,
+    Quality? SelectedQuality = null)
+    : ObjectSelectOptions<T>(Header, Ordering, MaxCount, Multiple, Checkmark, YellowMark, ExtraText) where T : class, IFactorioObjectWrapper {
+
+    /// <summary>
+    /// Creates a new <see cref="QualitySelectOptions{T}"/> using just the header text and selected quality.
+    /// </summary>
+    /// <param name="header">The header text to display, or <see langword="null"/> to display no header text.</param>
+    /// <param name="selectedQuality">The initially selected <see cref="Quality"/>. If this parameter is <see langword="null"/>,
+    /// <see cref="SelectedQuality"/> will be initialized to <see cref="Quality.Normal"/>.</param>
+    // (Seven of the seventeen constructor calls use only these two parameters.)
+    public QualitySelectOptions(string? header, Quality? selectedQuality) : this(header, null, SelectedQuality: selectedQuality) { }
+
+    /// <summary>
+    /// The translation key for text to draw above the quality icons. By default this is <see cref="LSs.SelectQuality"/>, which will be
+    /// pluralized as appropriate based on <see cref="ObjectSelectOptions{T}.Multiple"/>.
+    /// </summary>
+    public LocalizableString QualityHeader { get; init; } = LSs.SelectQuality;
+
+    /// <summary>
+    /// Gets the (first) quality selected and sets the only quality selected. Gets or sets <see langword="null"/> if no qualities are (or should
+    /// be) selected. If the constructor parameter Multiple is <see langword="false"/> and the constructor parameter SelectedQuality is
+    /// <see langword="null"/>, this property's initial value is <see cref="Quality.Normal"/>. Otherwise, its initial value is the same as the
+    /// constructor parameter SelectedQuality.<br/>
+    /// When <see cref="ObjectSelectOptions{T}.Multiple"/> is <see langword="false"/>, this cannot become <see langword="null"/> as a result of
+    /// user action, though it may be programmatically set to <see langword="null"/>.<br/>
+    /// </summary>
+    public Quality? SelectedQuality {
+        get => SelectedQualities.FirstOrDefault();
+        set {
+            SelectedQualities.Clear();
+            if (value != null) {
+                SelectedQualities.Add(value);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Gets all qualities selected by the user. If no qualities are selected (equivalently, if <see cref="SelectedQuality"/> is
+    /// <see langword="null"/>), this is an empty list.
+    /// </summary>
+    public List<Quality> SelectedQualities { get; } = SelectedQuality == null ? Multiple ? [] : [Quality.Normal] : [SelectedQuality];
 }
