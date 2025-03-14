@@ -277,7 +277,7 @@ goodsHaveNoProduction:;
 
         private void ExportIo(float multiplier) {
             List<(IObjectWithQuality<Goods>, int)> goods = [];
-            foreach (var link in view.model.links) {
+            foreach (var link in view.model.allLinks) {
                 int rounded = MathUtils.Round(link.amount * multiplier);
 
                 if (rounded == 0) {
@@ -840,7 +840,7 @@ goodsHaveNoProduction:;
     }
 
     private void CreateLink(ProductionTable table, IObjectWithQuality<Goods> goods) {
-        if (table.linkMap.ContainsKey(goods) || !goods.target.isLinkable) {
+        if (table.linkMap.GetValueOrDefault(goods) is ProductionLink || !goods.target.isLinkable) {
             return;
         }
 
@@ -850,7 +850,7 @@ goodsHaveNoProduction:;
     }
 
     private void DestroyLink(ProductionLink link) {
-        if (link.owner.links.Contains(link)) {
+        if (link.owner.allLinks.Contains(link)) {
             _ = link.owner.RecordUndo().links.Remove(link);
             Rebuild();
         }
@@ -864,7 +864,7 @@ goodsHaveNoProduction:;
         content.RebuildLinkMap();
     }
 
-    private void OpenProductDropdown(ImGui targetGui, Rect rect, ObjectWithQuality<Goods> goods, float amount, ProductionLink? link,
+    private void OpenProductDropdown(ImGui targetGui, Rect rect, ObjectWithQuality<Goods> goods, float amount, IProductionLink? iLink,
         ProductDropdownType type, RecipeRow? recipe, ProductionTable context, Goods[]? variants = null) {
 
         if (InputSystem.Instance.shift) {
@@ -973,8 +973,8 @@ goodsHaveNoProduction:;
                 gui.allocator = RectAllocator.Stretch;
             }
 
-            if (link != null) {
-                foreach (string warning in link.LinkWarnings) {
+            if (iLink != null) {
+                foreach (string warning in iLink.LinkWarnings) {
                     gui.BuildText(warning, TextBlockDisplayStyle.ErrorText);
                 }
             }
@@ -992,7 +992,7 @@ goodsHaveNoProduction:;
                 gui.BuildInlineObjectListAndButton(allProduction, addRecipe, new("Add production recipe", comparer, 6, true, recipeExists));
                 numberOfShownRecipes += allProduction.Length;
 
-                if (link == null) {
+                if (iLink == null) {
                     Rect iconRect = new Rect(gui.lastRect.Right - 2f, gui.lastRect.Top, 2f, 2f);
                     gui.DrawIcon(iconRect.Expand(-0.2f), Icon.OpenNew, gui.textColor);
                     var evt = gui.BuildButton(iconRect, SchemeColor.None, SchemeColor.Grey);
@@ -1060,12 +1060,14 @@ goodsHaveNoProduction:;
             #endregion
 
             #region Link management
+            ProductionLink? link = iLink as ProductionLink;
+
             if (link != null && gui.BuildCheckBox("Allow overproduction", link.algorithm == LinkAlgorithm.AllowOverProduction, out bool newValue)) {
                 link.RecordUndo().algorithm = newValue ? LinkAlgorithm.AllowOverProduction : LinkAlgorithm.Match;
             }
 
-            if (link != null && gui.BuildButton("View link summary") && gui.CloseDropdown()) {
-                ProductionLinkSummaryScreen.Show(link);
+            if (iLink != null && gui.BuildButton("View link summary") && gui.CloseDropdown()) {
+                ProductionLinkSummaryScreen.Show(iLink.DisplayLink);
             }
 
             if (link != null && link.owner == context) {
@@ -1095,6 +1097,15 @@ goodsHaveNoProduction:;
                     string goodsNestLinkMessage = goods.target.locName + " production is currently linked, but the link is outside this nested table. " +
                         "Nested tables can have its own separate set of links";
                     gui.BuildText(goodsNestLinkMessage, TextBlockDisplayStyle.WrappedText);
+                }
+                else if (iLink != null) {
+                    string implicitLink = goods.target.locName + $" ({goods.quality.locName}) production is implicitly linked. This means that YAFC will use it, " +
+                        $"along with all other available qualities, to produce {Database.science.target.locName}.\n" +
+                        $"You may add a regular link to replace this implicit link.";
+                    gui.BuildText(implicitLink, TextBlockDisplayStyle.WrappedText);
+                    if (gui.BuildButton("Create link").WithTooltip(gui, "Shortcut: right-click") && gui.CloseDropdown()) {
+                        CreateLink(context, goods);
+                    }
                 }
                 else if (goods.target.isLinkable) {
                     string notLinkedMessage = goods.target.locName + " production is currently NOT linked. This means that YAFC will make no attempt to match production with consumption.";
@@ -1230,10 +1241,11 @@ goodsHaveNoProduction:;
         base.Rebuild(visualOnly);
     }
 
-    private void BuildGoodsIcon(ImGui gui, IObjectWithQuality<Goods>? goods, ProductionLink? link, float amount, ProductDropdownType dropdownType,
+    private void BuildGoodsIcon(ImGui gui, IObjectWithQuality<Goods>? goods, IProductionLink? link, float amount, ProductDropdownType dropdownType,
         RecipeRow? recipe, ProductionTable context, ObjectTooltipOptions tooltipOptions, Goods[]? variants = null) {
 
         SchemeColor iconColor;
+        bool drawTransparent = false;
 
         if (link != null) {
             // The icon is part of a production link
@@ -1242,7 +1254,7 @@ goodsHaveNoProduction:;
                 iconColor = SchemeColor.Error;
             }
             // TODO (shpaass/yafc-ce/issues/269): refactor enum check into explicit instead of ordinal instructions
-            else if (dropdownType >= ProductDropdownType.Product && CheckPossibleOverproducing(link)) {
+            else if (dropdownType >= ProductDropdownType.Product && CheckPossibleOverproducing(link as ProductionLink)) {
                 // Actual overproduction occurred in the recipe
                 iconColor = SchemeColor.Magenta;
             }
@@ -1254,6 +1266,7 @@ goodsHaveNoProduction:;
                 // Regular (nothing going on) linked icon
                 iconColor = SchemeColor.Primary;
             }
+            drawTransparent = link is not ProductionLink;
         }
         else {
             // The icon is not part of a production link
@@ -1287,11 +1300,11 @@ goodsHaveNoProduction:;
             || (dropdownType == ProductDropdownType.Ingredient && recipe.fixedIngredient == goods)
             || (dropdownType == ProductDropdownType.Product && recipe.fixedProduct == goods))) {
 
-            evt = gui.BuildFactorioObjectWithEditableAmount(goods, displayAmount, ButtonDisplayStyle.ProductionTableScaled(iconColor), tooltipOptions: tooltipOptions,
+            evt = gui.BuildFactorioObjectWithEditableAmount(goods, displayAmount, ButtonDisplayStyle.ProductionTableScaled(iconColor, drawTransparent), tooltipOptions: tooltipOptions,
                 setKeyboardFocus: recipe.ShouldFocusFixedCountThisTime());
         }
         else {
-            evt = (GoodsWithAmountEvent)gui.BuildFactorioObjectWithAmount(goods, displayAmount, ButtonDisplayStyle.ProductionTableScaled(iconColor),
+            evt = (GoodsWithAmountEvent)gui.BuildFactorioObjectWithAmount(goods, displayAmount, ButtonDisplayStyle.ProductionTableScaled(iconColor, drawTransparent),
                 TextBlockDisplayStyle.Centered with { Color = textColor }, tooltipOptions: tooltipOptions);
         }
 
@@ -1299,11 +1312,11 @@ goodsHaveNoProduction:;
             case GoodsWithAmountEvent.LeftButtonClick when goods is not null:
                 OpenProductDropdown(gui, gui.lastRect, new(goods.target, goods.quality), amount, link, dropdownType, recipe, context, variants);
                 break;
-            case GoodsWithAmountEvent.RightButtonClick when goods is not null and not { target.isLinkable: false } && (link is null || link.owner != context):
+            case GoodsWithAmountEvent.RightButtonClick when goods is not null and { target.isLinkable: true } && (link is not ProductionLink || link.owner != context):
                 CreateLink(context, goods);
                 break;
-            case GoodsWithAmountEvent.RightButtonClick when link?.amount == 0 && link.owner == context:
-                DestroyLink(link);
+            case GoodsWithAmountEvent.RightButtonClick when link is ProductionLink { amount: 0 } && link.owner == context:
+                DestroyLink((link as ProductionLink)!);
                 break;
             case GoodsWithAmountEvent.TextEditing when displayAmount.Value >= 0:
                 // The amount is always stored in fixedBuildings. Scale it to match the requested change to this item.
@@ -1315,7 +1328,7 @@ goodsHaveNoProduction:;
     /// <summary>
     /// Checks some criteria that are necessary but not sufficient to consider something overproduced.
     /// </summary>
-    private static bool CheckPossibleOverproducing(ProductionLink link) => link.algorithm == LinkAlgorithm.AllowOverProduction && link.flags.HasFlag(ProductionLink.Flags.LinkNotMatched);
+    private static bool CheckPossibleOverproducing(ProductionLink? link) => link?.algorithm == LinkAlgorithm.AllowOverProduction && link.flags.HasFlag(ProductionLink.Flags.LinkNotMatched);
 
     /// <param name="isForSummary">If <see langword="true"/>, this call is for a summary box, at the top of a root-level or nested table.
     /// If <see langword="false"/>, this call is for collapsed recipe row.</param>
@@ -1360,8 +1373,8 @@ goodsHaveNoProduction:;
         }
     }
 
-    private static void FillLinkList(ProductionTable table, List<ProductionLink> list) {
-        list.AddRange(table.links);
+    private static void FillLinkList(ProductionTable table, List<IProductionLink> list) {
+        list.AddRange(table.allLinks);
         foreach (var recipe in table.recipes) {
             if (recipe.subgroup != null) {
                 FillLinkList(recipe.subgroup, list);
@@ -1480,7 +1493,7 @@ goodsHaveNoProduction:;
     }
 
     protected override void BuildPageTooltip(ImGui gui, ProductionTable contents) {
-        foreach (var link in contents.links) {
+        foreach (var link in contents.allLinks) {
             if (link.amount != 0f) {
                 using (gui.EnterRow()) {
                     gui.BuildFactorioObjectIcon(link.goods);
@@ -1557,12 +1570,12 @@ goodsHaveNoProduction:;
 
     private static void AddDesiredProductAtLevel(ProductionTable table) => SelectMultiObjectPanel.SelectWithQuality(
         Database.goods.all.Except(table.linkMap.Where(p => p.Value.amount != 0).Select(p => p.Key.target)).Where(g => g.isLinkable), "Add desired product", product => {
-            if (table.linkMap.TryGetValue(product, out var existing)) {
-                if (existing.amount != 0) {
+            if (table.linkMap.TryGetValue(product, out var existing) && existing is ProductionLink link) {
+                if (link.amount != 0) {
                     return;
                 }
 
-                existing.RecordUndo().amount = 1f;
+                link.RecordUndo().amount = 1f;
             }
             else {
                 table.RecordUndo().links.Add(new ProductionLink(table, new(product.target, product.quality)) { amount = 1f });

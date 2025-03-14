@@ -217,7 +217,6 @@ public class ModuleTemplateBuilder {
 
 // Stores collection on ProductionLink recipe was linked to the previous computation
 internal class RecipeLinks {
-    public required ObjectWithQuality<Goods>[] ingredientGoods;
     public required ProductionLink?[] ingredients;
     public ProductionQualityLink products = new();
     public ProductionLink? fuel;
@@ -229,16 +228,16 @@ internal class RecipeLinks {
 /// The index is the same value as the index into the old <c><see cref="ProductionLink"/>?[]</c> field.
 /// </summary>
 internal sealed class ProductionQualityLink {
-    private readonly Dictionary<(int, Quality), ProductionLink?> _links = [];
-    public ProductionLink? this[int idx, Quality quality] {
+    private readonly Dictionary<(int, Quality), IProductionLink?> _links = [];
+    public IProductionLink? this[int idx, Quality quality] {
         get {
-            _ = _links.TryGetValue((idx, quality), out ProductionLink? link);
+            _ = _links.TryGetValue((idx, quality), out IProductionLink? link);
             return link;
         }
         set => _links[(idx, quality)] = value;
     }
 
-    public IEnumerator<ProductionLink?> GetEnumerator() => _links.Values.GetEnumerator();
+    public IEnumerator<IProductionLink?> GetEnumerator() => _links.Values.GetEnumerator();
 }
 
 public interface IElementGroup<TElement> {
@@ -252,7 +251,59 @@ public interface IGroupedElement<TGroup> {
     bool visible { get; }
 }
 
-public class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<ProductionTable> {
+/// <summary>
+/// Represents an object that can be treated by the solver as one row from a production table.
+/// An <see cref="IRecipeRow"/> may or may not be visible to the user, and may or may not be saved in the project file.
+/// </summary>
+public interface IRecipeRow {
+    // Variable (user-configured, for RecipeRow) properties
+    ObjectWithQuality<EntityCrafter>? entity { get; }
+    ObjectWithQuality<Goods>? fuel { get; }
+    /// <summary>
+    /// If not zero, the fixed building count to be used by the solver.
+    /// </summary>
+    float fixedBuildings { get; }
+
+    // Fixed properties
+    /// <summary>
+    /// The ingredients, reported and scaled as required by the solver. This always reports non-zero values and real <see cref="Goods"/>, even if
+    /// the UI would show zero consumption and/or empty boxes.
+    /// </summary>
+    internal IEnumerable<SolverIngredient> IngredientsForSolver { get; }
+    /// <summary>
+    /// The products, reported and scaled as required by the solver. This always reports non-zero values and real <see cref="Goods"/>, even if
+    /// the UI would show zero production and/or empty boxes. It does not include spent fuel, since the solver gets that information from
+    /// <see cref="fuel"/> instead.
+    /// </summary>
+    internal IEnumerable<SolverProduct> ProductsForSolver { get; }
+    /// <summary>
+    /// A name the solver can use to identify this row
+    /// </summary>
+    internal string SolverName { get; }
+    internal float RecipeTime { get; }
+    internal double BaseCost { get; }
+    /// <summary>
+    /// The <see cref="Model.RecipeRow"/> that corresponds to this object, if applicable.
+    /// </summary>
+    RecipeRow? RecipeRow { get; }
+
+    // Properties computed (directly or indirectly) by ProductionTable.Solve
+    internal RecipeParameters parameters { get; set; }
+    internal double recipesPerSecond { get; set; }
+    /// <summary>
+    /// Storage for the <see cref="ProductionLink"/>s that affect each of this row's ingredients and products (including fuel)
+    /// </summary>
+    internal RecipeLinks links { get; }
+
+    // Helper methods used by ProductionTable.Solve
+    internal bool FindLink(IObjectWithQuality<Goods> goods, [MaybeNullWhen(false)] out IProductionLink link);
+    internal void GetModulesInfo((float recipeTime, float fuelUsagePerSecondPerBuilding) recipeParams, EntityCrafter entity, ref ModuleEffects effects, ref UsedModule used);
+}
+
+/// <summary>
+/// Represents a row in a production table that can be configured by the user.
+/// </summary>
+public class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<ProductionTable>, IRecipeRow {
     private ObjectWithQuality<EntityCrafter>? _entity;
     private ObjectWithQuality<Goods>? _fuel;
     private float _fixedBuildings;
@@ -432,22 +483,42 @@ public class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Productio
     public RecipeRowIngredient FuelInformation => new(fuel, fuelUsagePerSecond, links.fuel, (fuel?.target as Fluid)?.variants?.ToArray());
     public IEnumerable<RecipeRowIngredient> Ingredients {
         get {
-            return hierarchyEnabled ? @internal() : Enumerable.Repeat<RecipeRowIngredient>((null, 0, null, null), recipe.target.ingredients.Length);
-
-            IEnumerable<RecipeRowIngredient> @internal() {
-                for (int i = 0; i < recipe.target.ingredients.Length; i++) {
-                    Ingredient ingredient = recipe.target.ingredients[i];
-                    yield return (links.ingredientGoods[i], ingredient.amount * (float)recipesPerSecond, links.ingredients[i], ingredient.variants);
-                }
+            if (hierarchyEnabled) {
+                return BuildIngredients(false).Select(RecipeRowIngredient.FromSolver);
+            }
+            else {
+                return Enumerable.Repeat(new RecipeRowIngredient(null, 0, null, null), recipe.target.ingredients.Length);
             }
         }
     }
 
-    public IEnumerable<RecipeRowProduct> Products => BuildProducts(false);
-    public IEnumerable<RecipeRowProduct> ProductsForSolver => BuildProducts(true);
+    IEnumerable<SolverIngredient> IRecipeRow.IngredientsForSolver => BuildIngredients(true);
 
-    private IEnumerable<RecipeRowProduct> BuildProducts(bool forSolver) {
-        float factor = forSolver ? 1 : (float)recipesPerSecond; // recipesPerSecond can be 0 when running the solver, which would create useless results.
+    private IEnumerable<SolverIngredient> BuildIngredients(bool forSolver) {
+        float factor = forSolver ? 1 : (float)recipesPerSecond; // The solver needs the ingredients for one recipe, to produce recipesPerSecond.
+        for (int i = 0; i < recipe.target.ingredients.Length; i++) {
+            Ingredient ingredient = recipe.target.ingredients[i];
+            ObjectWithQuality<Goods> option = (ingredient.variants == null ? ingredient.goods : GetVariant(ingredient.variants)).With(recipe.quality);
+            yield return (option, ingredient.amount * factor, links.ingredients[i], i);
+        }
+    }
+
+    public IEnumerable<RecipeRowProduct> Products {
+        get {
+            if (hierarchyEnabled) {
+                return BuildProducts(false).Select(RecipeRowProduct.FromSolver);
+            }
+            else {
+                return Enumerable.Repeat(new RecipeRowProduct(null, 0, null, null), recipe.target.products.Length);
+            }
+        }
+    }
+
+    internal IEnumerable<SolverProduct> ProductsForSolver => BuildProducts(true);
+    IEnumerable<SolverProduct> IRecipeRow.ProductsForSolver => ProductsForSolver;
+
+    private IEnumerable<SolverProduct> BuildProducts(bool forSolver) {
+        float factor = forSolver ? 1 : (float)recipesPerSecond; // The solver needs the products for one recipe, to produce recipesPerSecond.
         IObjectWithQuality<Item>? spentFuel = fuel.FuelResult();
         bool handledFuel = spentFuel == null || forSolver; // If we're running the solver or there's no spent fuel, it's already handled.
 
@@ -470,37 +541,33 @@ public class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Productio
         for (int i = 0; i < recipe.target.products.Length; i++) {
             Product product = recipe.target.products[i];
 
-            if (hierarchyEnabled) {
-                Quality quality = recipe.quality;
-                float baseAmount = product.GetAmountPerRecipe(parameters.productivity);
-                if (product.goods is Fluid || product.goods == Database.science.target) {
-                    // Upgrade chances don't affect fluids or science
-                    yield return (product.goods.With(Quality.Normal), baseAmount * factor, links.products[i, Quality.Normal], product.percentSpoiled);
-                }
-                else {
-                    for (int j = 0; j < upgradeProbabilities.Count; j++) {
-                        // The result amount for this quality is the normal output amount times the probability of this quality,
-                        float amount = baseAmount * upgradeProbabilities[j];
-                        if (!handledFuel && product.goods.With(quality) == spentFuel) {
-                            // ... plus the spent fuel, if applicable.
-                            amount += parameters.fuelUsagePerSecondPerRecipe;
-                            handledFuel = true;
-                        }
-
-                        if (amount > 0) {
-                            yield return (product.goods.With(quality), amount * factor, links.products[i, quality], product.percentSpoiled);
-                        }
-                        quality = quality.nextQuality!;
-                    }
-                }
+            Quality quality = recipe.quality;
+            float baseAmount = product.GetAmountPerRecipe(parameters.productivity);
+            if (product.goods is Fluid || product.goods == Database.science.target) {
+                // Upgrade chances don't affect fluids or science
+                yield return (product.goods.With(Quality.Normal), baseAmount * factor, links.products[i, Quality.Normal], i, product.percentSpoiled);
             }
             else {
-                yield return (null, 0, null, null);
+                for (int j = 0; j < upgradeProbabilities.Count; j++) {
+                    // The result amount for this quality is the normal output amount times the probability of this quality,
+                    float amount = baseAmount * upgradeProbabilities[j];
+                    if (!handledFuel && product.goods.With(quality) == spentFuel) {
+                        // ... plus the spent fuel, if applicable.
+                        amount += parameters.fuelUsagePerSecondPerRecipe;
+                        handledFuel = true;
+                    }
+
+                    if (amount > 0) {
+                        yield return (product.goods.With(quality), amount * factor, links.products[i, quality], i, product.percentSpoiled);
+                    }
+                    quality = quality.nextQuality!; // null-forgiving: upgradeProbabilities does not contain values for null qualities.
+                }
             }
         }
 
         if (!handledFuel) {
-            yield return hierarchyEnabled ? ((spentFuel?.target, spentFuel?.quality!), fuelUsagePerSecond, links.spentFuel, null) : (null, 0, null, null);
+            // null-forgiving: handledFuel is always true if spentFuel is null.
+            yield return (new(spentFuel!.target, spentFuel.quality), parameters.fuelUsagePerSecondPerRecipe, links.spentFuel, 0, null);
         }
     }
 
@@ -539,7 +606,7 @@ public class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Productio
     internal float fuelUsagePerSecond => (float)(parameters.fuelUsagePerSecondPerRecipe * recipesPerSecond);
     public UsedModule usedModules => parameters.modules;
     public WarningFlags warningFlags => parameters.warningFlags;
-    public bool FindLink(IObjectWithQuality<Goods> goods, [MaybeNullWhen(false)] out ProductionLink link) => linkRoot.FindLink(goods, out link);
+    public bool FindLink(IObjectWithQuality<Goods> goods, [MaybeNullWhen(false)] out IProductionLink link) => linkRoot.FindLink(goods, out link);
 
     public T GetVariant<T>(T[] options) where T : FactorioObject {
         foreach (var option in options) {
@@ -566,7 +633,6 @@ public class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Productio
 
         links = new RecipeLinks {
             ingredients = new ProductionLink[recipe.target.ingredients.Length],
-            ingredientGoods = new ObjectWithQuality<Goods>[recipe.target.ingredients.Length],
         };
     }
 
@@ -687,6 +753,24 @@ public class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Productio
             }
         }
     }
+
+    // To avoid leaking these variables/methods (or just the setter, for recipesPerSecond) into public context,
+    // these explicit interface implementations connect to internal members, instead of using implicit implementation via public members
+    RecipeParameters IRecipeRow.parameters { get => parameters; set => parameters = value; }
+    double IRecipeRow.recipesPerSecond { get => recipesPerSecond; set => recipesPerSecond = value; }
+    RecipeLinks IRecipeRow.links => links;
+    float IRecipeRow.RecipeTime => recipe.target.time;
+    string IRecipeRow.SolverName => recipe.QualityName();
+    double IRecipeRow.BaseCost => (recipe.target as Recipe)?.RecipeBaseCost() ?? 0;
+    RecipeRow? IRecipeRow.RecipeRow => this;
+
+    void IRecipeRow.GetModulesInfo((float recipeTime, float fuelUsagePerSecondPerBuilding) recipeParams, EntityCrafter entity, ref ModuleEffects effects, ref UsedModule used)
+        => GetModulesInfo(recipeParams, entity, ref effects, ref used);
+    bool IRecipeRow.FindLink(IObjectWithQuality<Goods> goods, [MaybeNullWhen(false)] out IProductionLink link) {
+        bool result = linkRoot.FindLink(goods, out var concreteLink);
+        link = concreteLink;
+        return result;
+    }
 }
 
 public enum RowHighlighting {
@@ -704,9 +788,34 @@ public enum LinkAlgorithm {
 }
 
 /// <summary>
+/// Represents an object that can be treated by the solver as one link from a production table.
+/// An <see cref="IProductionLink"/> may or may not be visible to the user, and may or may not be saved in the project file.
+/// </summary>
+public interface IProductionLink {
+    internal LinkAlgorithm algorithm { get; }
+    ObjectWithQuality<Goods> goods { get; }
+    float amount { get; }
+    internal int solverIndex { get; set; }
+    ProductionLink.Flags flags { get; set; }
+    /// <summary>
+    /// The recipes belonging to this production link
+    /// </summary>
+    internal HashSet<IRecipeRow> capturedRecipes { get; }
+    internal float notMatchedFlow { get; set; }
+    ProductionTable owner { get; }
+    IEnumerable<string> LinkWarnings { get; }
+    internal float linkFlow { get; set; }
+
+    /// <summary>
+    /// The link that should be displayed when the user requests a link summary.
+    /// </summary>
+    ProductionLink DisplayLink { get; }
+}
+
+/// <summary>
 /// A Link is goods whose production and consumption is attempted to be balanced by YAFC across the sheet.
 /// </summary>
-public class ProductionLink(ProductionTable group, ObjectWithQuality<Goods> goods) : ModelObject<ProductionTable>(group) {
+public class ProductionLink(ProductionTable group, ObjectWithQuality<Goods> goods) : ModelObject<ProductionTable>(group), IProductionLink {
     [Flags]
     public enum Flags {
         // This enum uses powers of two to represent its state.
@@ -743,12 +852,17 @@ public class ProductionLink(ProductionTable group, ObjectWithQuality<Goods> good
     /// </summary>
     public float linkFlow { get; internal set; }
     public float notMatchedFlow { get; internal set; }
-    /// <summary>
-    /// List of recipes belonging to this production link
-    /// </summary>
-    [SkipSerialization] public HashSet<RecipeRow> capturedRecipes { get; } = [];
+    /// <inheritdoc/>
+    public HashSet<IRecipeRow> capturedRecipes { get; } = [];
     internal int solverIndex;
-    public float dualValue { get; internal set; }
+
+    // To avoid leaking these variables/methods (or just the setter, for recipesPerSecond) into public context,
+    // these explicit interface implementations connect to internal members, instead of using implicit implementation via public members
+    Flags IProductionLink.flags { get => flags; set => flags = value; }
+    float IProductionLink.notMatchedFlow { get => notMatchedFlow; set => notMatchedFlow = value; }
+    float IProductionLink.linkFlow { get => linkFlow; set => linkFlow = value; }
+    int IProductionLink.solverIndex { get => solverIndex; set => solverIndex = value; }
+    ProductionLink IProductionLink.DisplayLink => this;
 
     public IEnumerable<string> LinkWarnings {
         get {
@@ -780,16 +894,43 @@ public class ProductionLink(ProductionTable group, ObjectWithQuality<Goods> good
     }
 }
 
+/// <summary>
+/// An ingredient for a recipe row, as reported to the UI.
+/// </summary>
 public record RecipeRowIngredient(ObjectWithQuality<Goods>? Goods, float Amount, ProductionLink? Link, Goods[]? Variants) {
-    public static implicit operator (ObjectWithQuality<Goods>? Goods, float Amount, ProductionLink? Link, Goods[]? Variants)(RecipeRowIngredient value)
-        => (value.Goods, value.Amount, value.Link, value.Variants);
-    public static implicit operator RecipeRowIngredient((ObjectWithQuality<Goods>? Goods, float Amount, ProductionLink? Link, Goods[]? Variants) value)
-        => new(value.Goods, value.Amount, value.Link, value.Variants);
+    /// <summary>
+    /// Convert from a <see cref="SolverIngredient"/> (the form initially generated when reporting ingredients) to a
+    /// <see cref="RecipeRowIngredient"/>.
+    /// </summary>
+    internal static RecipeRowIngredient FromSolver(SolverIngredient value)
+        => new(value.Goods, value.Amount, value.Link as ProductionLink, value.Goods.target.fluid?.variants?.ToArray());
 }
 
-public record RecipeRowProduct(ObjectWithQuality<Goods>? Goods, float Amount, ProductionLink? Link, float? PercentSpoiled) {
-    public static implicit operator (ObjectWithQuality<Goods>? Goods, float Amount, ProductionLink? Link, float? PercentSpoiled)(RecipeRowProduct value)
-        => (value.Goods, value.Amount, value.Link, value.PercentSpoiled);
-    public static implicit operator RecipeRowProduct((ObjectWithQuality<Goods>? Goods, float Amount, ProductionLink? Link, float? PercentSpoiled) value)
+/// <summary>
+/// A product from a recipe row, as reported to the UI.
+/// </summary>
+public record RecipeRowProduct(ObjectWithQuality<Goods>? Goods, float Amount, IProductionLink? Link, float? PercentSpoiled) {
+    /// <summary>
+    /// Convert from a <see cref="SolverProduct"/> (the form initially generated when reporting products) to a <see cref="RecipeRowProduct"/>.
+    /// </summary>
+    internal static RecipeRowProduct FromSolver(SolverProduct value)
         => new(value.Goods, value.Amount, value.Link, value.PercentSpoiled);
+}
+
+/// <summary>
+/// An ingredient for a recipe row, as reported to the solver.
+/// Alternatively, an intermediate value that will be used by the UI after conversion using <see cref="RecipeRowIngredient.FromSolver"/>.
+/// </summary>
+internal record SolverIngredient(ObjectWithQuality<Goods> Goods, float Amount, IProductionLink? Link, int LinkIndex) {
+    public static implicit operator SolverIngredient((ObjectWithQuality<Goods> Goods, float Amount, IProductionLink? Link, int LinkIndex) value)
+        => new(value.Goods, value.Amount, value.Link, value.LinkIndex);
+}
+
+/// <summary>
+/// A product for a recipe row, as reported to the solver.
+/// Alternatively, an intermediate value that will be used by the UI after conversion using <see cref="RecipeRowProduct.FromSolver"/>.
+/// </summary>
+internal record SolverProduct(ObjectWithQuality<Goods> Goods, float Amount, IProductionLink? Link, int LinkIndex, float? PercentSpoiled) {
+    public static implicit operator SolverProduct((ObjectWithQuality<Goods> Goods, float Amount, IProductionLink? Link, int LinkIndex, float? PercentSpoiled) value)
+        => new(value.Goods, value.Amount, value.Link, value.LinkIndex, value.PercentSpoiled);
 }

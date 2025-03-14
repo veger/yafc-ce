@@ -11,19 +11,32 @@ using Yafc.UI;
 
 namespace Yafc.Model;
 
-public struct ProductionTableFlow(IObjectWithQuality<Goods> goods, float amount, ProductionLink? link) {
+public struct ProductionTableFlow(IObjectWithQuality<Goods> goods, float amount, IProductionLink? link) {
     public IObjectWithQuality<Goods> goods = goods;
     public float amount = amount;
-    public ProductionLink? link = link;
+    public IProductionLink? link = link;
 }
 
-public class ProductionTable : ProjectPageContents, IComparer<ProductionTableFlow>, IElementGroup<RecipeRow> {
+public sealed partial class ProductionTable : ProjectPageContents, IComparer<ProductionTableFlow>, IElementGroup<RecipeRow> {
     private static readonly ILogger logger = Logging.GetLogger<ProductionTable>();
-    [SkipSerialization] public Dictionary<IObjectWithQuality<Goods>, ProductionLink> linkMap { get; } = [];
+    [SkipSerialization] public Dictionary<IObjectWithQuality<Goods>, IProductionLink> linkMap { get; } = [];
     List<RecipeRow> IElementGroup<RecipeRow>.elements => recipes;
     [NoUndo]
     public bool expanded { get; set; } = true;
+    /// <summary>
+    /// Gets the serialized links in this production table, both those created explicitly by the user and those created automatically when adding
+    /// a production or consumption recipe.
+    /// </summary>
     public List<ProductionLink> links { get; } = [];
+    /// <summary>
+    /// Gets all links in this production table, containing both <see cref="links"/> and <see cref="implicitLinks"/>.
+    /// </summary>
+    public IEnumerable<IProductionLink> allLinks => links.UnionBy(implicitLinks, l => l.goods);
+    /// <summary>
+    /// Gets the implicit links in this production table, created to link quality science pack production to the corresponding
+    /// <see cref="ScienceDecomposition"/> recipes.
+    /// </summary>
+    internal List<IProductionLink> implicitLinks { get; } = [];
     public List<RecipeRow> recipes { get; } = [];
     public ProductionTableFlow[] flow { get; private set; } = [];
     public ModuleFillerParameters? modules { get; } // If you add a setter for this, ensure it calls RecipeRow.ModuleFillerParametersChanging().
@@ -48,20 +61,52 @@ public class ProductionTable : ProjectPageContents, IComparer<ProductionTableFlo
     public void RebuildLinkMap() {
         linkMap.Clear();
 
-        foreach (var link in links) {
+        foreach (var link in allLinks) {
             linkMap[link.goods] = link;
         }
     }
 
-    private void Setup(List<RecipeRow> allRecipes, List<ProductionLink> allLinks) {
+    /// <summary>
+    /// Prepares this <see cref="ProductionTable"/>, its header recipe (if not the root table), and its children for the solver.
+    /// </summary>
+    /// <param name="allRecipes">A list to be populated with all recipes (both implicit and explicit) in this production table. When
+    /// <see cref="ModelObject{TOwner}.owner"/> is a <see cref="RecipeRow"/>, it is processed as part of this table.</param>
+    /// <param name="allLinks">A list to be populated with all links (both implicit and explicit) in this production table.</param>
+    /// <param name="extraLinks">A collection to be populated with all implicit links created for this production table, for use when recipes
+    /// search for quality science pack links or other implicit links.</param>
+    /// <returns>A tuple containing (1) the normal science packs links for science recipes at this or a deeper level, and (2) the quality science
+    /// packs produced at this or a deeper level, but not linked.</returns>
+    private (Dictionary<Goods, IProductionLink> linkedConsumption, HashSet<IObjectWithQuality<Goods>> unlinkedProduction)
+        Setup(List<IRecipeRow> allRecipes, List<IProductionLink> allLinks,
+            Dictionary<(ProductionTable, IObjectWithQuality<Goods>), IProductionLink> extraLinks) {
+
         containsDesiredProducts = false;
-        foreach (var link in links) {
+        implicitLinks.Clear();
+        RebuildLinkMap();
+
+        // Science packs need special treatment:
+        // If the normal pack is consumed by research at this or a deeper level,
+        //   and unlinked quality packs are produced at this or a deeper level,
+        //   and there is a normal science pack link at this level,
+        // then create recipes decomposing the quality science packs,
+        //   and links for the quality packs.
+        // These track which science packs match the "if" condition:
+        Dictionary<Goods, IProductionLink> linkedConsumption = [], locallyLinkedConsumption = [];
+        HashSet<IObjectWithQuality<Goods>> unlinkedProduction = [], locallyLinkedGoods = [];
+
+        foreach (var link in this.allLinks) {
             if (link.amount != 0f) {
                 containsDesiredProducts = true;
             }
 
             allLinks.Add(link);
             link.capturedRecipes.Clear();
+            locallyLinkedGoods.Add(link.goods);
+        }
+
+        IEnumerable<RecipeRow> recipes = this.recipes;
+        if (owner is RecipeRow include) {
+            recipes = recipes.Prepend(include);
         }
 
         foreach (var recipe in recipes) {
@@ -70,10 +115,68 @@ public class ProductionTable : ProjectPageContents, IComparer<ProductionTableFlo
                 continue;
             }
 
+            recipe.parameters = RecipeParameters.CalculateParameters(recipe);
+
             recipe.hierarchyEnabled = true;
-            allRecipes.Add(recipe);
-            recipe.subgroup?.Setup(allRecipes, allLinks);
+            if (recipe.subgroup != null && recipe != owner) {
+                // This recipe is the header for a nested table. Analyze it with its children, instead of with its siblings.
+                var (nestedConsumption, nestedProduction) = recipe.subgroup.Setup(allRecipes, allLinks, extraLinks);
+                foreach (var (goods, link) in nestedConsumption) {
+                    linkedConsumption[goods] = link;
+                }
+                unlinkedProduction.UnionWith(nestedProduction);
+            }
+            else {
+                // The header recipe for this table, and all recipes that are not part of a nested table.
+                recipe.parameters = RecipeParameters.CalculateParameters(recipe);
+                allRecipes.Add(new GenuineRecipe(recipe, extraLinks));
+
+                if (recipe.recipe.Is<Technology>()) {
+                    foreach (Ingredient scienceIngredient in recipe.recipe.target.ingredients) {
+                        if (Database.allSciencePacks.Contains(scienceIngredient.goods)
+                            && recipe.FindLink(scienceIngredient.goods.With(Quality.Normal), out var link)) {
+
+                            locallyLinkedConsumption[scienceIngredient.goods] = link;
+                        }
+                    }
+                }
+
+                foreach (var product in recipe.ProductsForSolver) {
+                    if (Database.allSciencePacks.Contains(product.Goods.target)) {
+                        unlinkedProduction.Add(product.Goods);
+                    }
+                }
+            }
         }
+
+        foreach (var (goods, link) in locallyLinkedConsumption) {
+            // The local (normal quality) link overrides any nested links, regardless of walk order
+            linkedConsumption[goods] = link;
+        }
+
+        // Remove quality packs that were unlinked in nested tables but are now linked.
+        unlinkedProduction.RemoveWhere(locallyLinkedGoods.Contains);
+
+        foreach (var (goods, link) in linkedConsumption) {
+            // If the link is at the current level,
+            if (link.owner == this) {
+                foreach (var quality in Database.qualities.all) {
+                    ObjectWithQuality<Goods> pack = goods.With(quality);
+                    // and there is unlinked production here or anywhere deeper: (This test only succeeds for non-normal qualities)
+                    if (unlinkedProduction.Remove(pack)) { // Remove the quality pack, since it's about to be linked,
+                        // and create the decomposition.
+                        ImplicitLink implicitLink = new(pack, this, (ProductionLink)link);
+                        allLinks.Add(implicitLink);
+                        extraLinks[(this, pack)] = implicitLink;
+                        implicitLinks.Add(implicitLink);
+                        linkMap[pack] = implicitLink;
+                        allRecipes.Add(new ScienceDecomposition(goods, quality, link, implicitLink));
+                    }
+                }
+            }
+        }
+
+        return (linkedConsumption, unlinkedProduction);
     }
 
     private static void ClearDisabledRecipeContents(RecipeRow recipe) {
@@ -85,7 +188,7 @@ public class ProductionTable : ProjectPageContents, IComparer<ProductionTableFlo
         if (subgroup != null) {
             subgroup.flow = [];
 
-            foreach (var link in subgroup.links) {
+            foreach (var link in subgroup.allLinks) {
                 link.flags = 0;
                 link.linkFlow = 0;
             }
@@ -131,7 +234,7 @@ match:
             return true;
         }
 
-        foreach (var link in links) {
+        foreach (var link in allLinks) {
             if (link.goods.Match(query)) {
                 return true;
             }
@@ -215,9 +318,8 @@ match:
             summer[product.Goods!] = prev;
         }
 
-        int i = 0;
         foreach (var ingredient in recipe.Ingredients) {
-            var linkedGoods = recipe.links.ingredientGoods[i++];
+            var linkedGoods = ingredient.Goods;
 
             if (linkedGoods is not null) {
                 _ = summer.TryGetValue(linkedGoods, out var prev);
@@ -269,7 +371,7 @@ match:
             }
         }
 
-        foreach (ProductionLink link in links) {
+        foreach (IProductionLink link in allLinks) {
             (double prod, double cons) flowParams;
 
             if (!link.flags.HasFlagAny(ProductionLink.Flags.LinkNotMatched)) {
@@ -301,10 +403,12 @@ match:
     /// Add/update the variable value for the constraint with the given amount, and store the recipe to the production link.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static void AddLinkCoefficient(Constraint cst, Variable var, ProductionLink link, RecipeRow recipe, float amount) {
+    private static void AddLinkCoefficient(Constraint cst, Variable var, IProductionLink link, IRecipeRow recipe, float amount) {
         // GetCoefficient will return 0 when the variable is not available in the constraint
         amount += (float)cst.GetCoefficient(var);
-        _ = link.capturedRecipes.Add(recipe);
+        // To avoid false negatives when testing "iRecipeRow is RecipeRow" or otherwise inspecting the content of capturedRecipes,
+        // store the underlying RecipeRow if available.
+        _ = link.capturedRecipes.Add(recipe.RecipeRow ?? recipe);
         cst.SetCoefficient(var, amount);
     }
 
@@ -312,16 +416,15 @@ match:
         using var productionTableSolver = DataUtils.CreateSolver();
         var objective = productionTableSolver.Objective();
         objective.SetMinimization();
-        List<RecipeRow> allRecipes = [];
-        List<ProductionLink> allLinks = [];
-        Setup(allRecipes, allLinks);
+        List<IRecipeRow> allRecipes = [];
+        List<IProductionLink> allLinks = [];
+        Setup(allRecipes, allLinks, []);
         Variable[] vars = new Variable[allRecipes.Count];
         float[] objCoefficients = new float[allRecipes.Count];
 
         for (int i = 0; i < allRecipes.Count; i++) {
             var recipe = allRecipes[i];
-            recipe.parameters = RecipeParameters.CalculateParameters(recipe);
-            var variable = productionTableSolver.MakeNumVar(0f, double.PositiveInfinity, recipe.recipe.QualityName());
+            var variable = productionTableSolver.MakeNumVar(0f, double.PositiveInfinity, recipe.SolverName);
 
             if (recipe.fixedBuildings > 0f) {
                 double fixedRps = (double)recipe.fixedBuildings / recipe.parameters.recipeTime;
@@ -352,33 +455,27 @@ match:
                     continue;
                 }
 
-                int j = Array.FindIndex(recipe.recipe.target.products, p => p.goods == product.Goods!.target);
-
-                if (recipe.FindLink(product.Goods!, out var link)) {
+                if (recipe.FindLink(product.Goods, out var link)) {
                     link.flags |= ProductionLink.Flags.HasProduction;
                     float added = product.Amount;
                     AddLinkCoefficient(constraints[link.solverIndex], recipeVar, link, recipe, added);
-                    float cost = product.Goods!.target.Cost();
+                    float cost = product.Goods.target.Cost();
 
                     if (cost > 0f) {
                         objCoefficients[i] += added * cost;
                     }
                 }
 
-                links.products[j, product.Goods!.quality] = link;
+                links.products[product.LinkIndex, product.Goods.quality] = link;
             }
 
-            for (int j = 0; j < recipe.recipe.target.ingredients.Length; j++) {
-                var ingredient = recipe.recipe.target.ingredients[j];
-                var option = (ingredient.variants == null ? ingredient.goods : recipe.GetVariant(ingredient.variants)).With(recipe.recipe.quality);
-
-                if (recipe.FindLink(option, out var link)) {
+            foreach (var ingredient in recipe.IngredientsForSolver) {
+                if (recipe.FindLink(ingredient.Goods, out var link)) {
                     link.flags |= ProductionLink.Flags.HasConsumption;
-                    AddLinkCoefficient(constraints[link.solverIndex], recipeVar, link, recipe, -ingredient.amount);
+                    AddLinkCoefficient(constraints[link.solverIndex], recipeVar, link, recipe, -ingredient.Amount);
                 }
 
-                links.ingredients[j] = link;
-                links.ingredientGoods[j] = option;
+                links.ingredients[ingredient.LinkIndex] = link as ProductionLink;
             }
 
             links.fuel = links.spentFuel = null;
@@ -387,13 +484,13 @@ match:
                 float fuelAmount = recipe.parameters.fuelUsagePerSecondPerRecipe;
 
                 if (recipe.FindLink(recipe.fuel, out var link)) {
-                    links.fuel = link;
+                    links.fuel = link as ProductionLink;
                     link.flags |= ProductionLink.Flags.HasConsumption;
                     AddLinkCoefficient(constraints[link.solverIndex], recipeVar, link, recipe, -fuelAmount);
                 }
 
                 if (recipe.fuel.FuelResult() is IObjectWithQuality<Item> spentFuel && recipe.FindLink(spentFuel, out link)) {
-                    links.spentFuel = link;
+                    links.spentFuel = link as ProductionLink;
                     link.flags |= ProductionLink.Flags.HasProduction;
                     AddLinkCoefficient(constraints[link.solverIndex], recipeVar, link, recipe, fuelAmount);
 
@@ -409,7 +506,7 @@ match:
 
             if (!link.flags.HasFlags(ProductionLink.Flags.HasProductionAndConsumption)) {
                 if (!link.flags.HasFlagAny(ProductionLink.Flags.HasProductionAndConsumption) && !link.owner.HasDisabledRecipeReferencing(link.goods)) {
-                    _ = link.owner.RecordUndo(true).links.Remove(link);
+                    _ = link.owner.RecordUndo(true).links.Remove((link as ProductionLink)!); // null-forgiving: removing null from a non-null collection is a no-op.
                 }
 
                 link.flags |= ProductionLink.Flags.LinkNotMatched;
@@ -420,7 +517,7 @@ match:
         await Ui.ExitMainThread();
 
         for (int i = 0; i < allRecipes.Count; i++) {
-            objective.SetCoefficient(vars[i], (allRecipes[i].recipe.target as Recipe)?.RecipeBaseCost() ?? 0);
+            objective.SetCoefficient(vars[i], allRecipes[i].BaseCost);
         }
 
         var result = productionTableSolver.Solve();
@@ -457,7 +554,7 @@ match:
             await Ui.EnterMainThread();
 
             if (result is Solver.ResultStatus.OPTIMAL or Solver.ResultStatus.FEASIBLE) {
-                List<ProductionLink> linkList = [];
+                List<IProductionLink> linkList = [];
 
                 for (int i = 0; i < allLinks.Count; i++) {
                     var (posSlack, negSlack) = slackVars[i];
@@ -524,7 +621,6 @@ match:
         for (int i = 0; i < allLinks.Count; i++) {
             var link = allLinks[i];
             var constraint = constraints[i];
-            link.dualValue = (float)constraint.DualValue();
 
             if (constraint == null) {
                 continue;
@@ -580,7 +676,7 @@ match:
         return builtCountExceeded;
     }
 
-    private static void FindAllRecipeLinks(RecipeRow recipe, List<ProductionLink> sources, List<ProductionLink> targets) {
+    private static void FindAllRecipeLinks(IRecipeRow recipe, List<IProductionLink> sources, List<IProductionLink> targets) {
         sources.Clear();
         targets.Clear();
 
@@ -605,11 +701,11 @@ match:
         }
     }
 
-    private static (List<ProductionLink> merges, List<ProductionLink> splits) GetInfeasibilityCandidates(List<RecipeRow> recipes) {
-        Graph<ProductionLink> graph = new Graph<ProductionLink>();
-        List<ProductionLink> sources = [];
-        List<ProductionLink> targets = [];
-        List<ProductionLink> splits = [];
+    private static (List<IProductionLink> merges, List<IProductionLink> splits) GetInfeasibilityCandidates(List<IRecipeRow> recipes) {
+        Graph<IProductionLink> graph = new Graph<IProductionLink>();
+        List<IProductionLink> sources = [];
+        List<IProductionLink> targets = [];
+        List<IProductionLink> splits = [];
 
         foreach (var recipe in recipes) {
             FindAllRecipeLinks(recipe, sources, targets);
@@ -648,7 +744,7 @@ match:
         return (sources, splits);
     }
 
-    public bool FindLink(IObjectWithQuality<Goods> goods, [MaybeNullWhen(false)] out ProductionLink link) {
+    public bool FindLink(IObjectWithQuality<Goods> goods, [MaybeNullWhen(false)] out IProductionLink link) {
         if (goods == null) {
             link = null;
             return false;

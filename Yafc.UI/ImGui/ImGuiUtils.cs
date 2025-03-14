@@ -38,7 +38,8 @@ public static class ImGuiUtils {
     /// <summary>Returns true when the clipboard holds content</summary>
     public static bool HasClipboardText() => SDL.SDL_HasClipboardText() == SDL.SDL_bool.SDL_TRUE;
 
-    public static ButtonEvent BuildButton(this ImGui gui, Rect rect, SchemeColor normal, SchemeColor over, SchemeColor down = SchemeColor.None, uint button = SDL.SDL_BUTTON_LEFT) {
+    public static ButtonEvent BuildButton(this ImGui gui, Rect rect, SchemeColor normal, SchemeColor over, SchemeColor down = SchemeColor.None,
+        uint button = SDL.SDL_BUTTON_LEFT, bool drawTransparent = false) {
         if (button == 0) {
             button = (uint)InputSystem.Instance.mouseDownButton;
         }
@@ -56,7 +57,7 @@ public static class ImGuiUtils {
                 return gui.actionParameter == button && gui.ConsumeMouseUp(rect) ? ButtonEvent.Click : ButtonEvent.None;
             case ImGuiAction.Build:
                 var color = gui.IsMouseOver(rect) ? (down != SchemeColor.None && gui.IsMouseDown(rect, button)) ? down : over : normal;
-                gui.DrawRectangle(rect, color);
+                gui.DrawRectangle(rect, color, drawTransparent: drawTransparent);
                 return ButtonEvent.None;
             default:
                 return ButtonEvent.None;

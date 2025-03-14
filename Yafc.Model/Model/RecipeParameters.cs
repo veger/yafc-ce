@@ -48,21 +48,21 @@ internal class RecipeParameters(float recipeTime, float fuelUsagePerSecondPerBui
 
     public float fuelUsagePerSecondPerRecipe => recipeTime * fuelUsagePerSecondPerBuilding;
 
-    public static RecipeParameters CalculateParameters(RecipeRow row) {
+    public static RecipeParameters CalculateParameters(IRecipeRow row) {
         WarningFlags warningFlags = 0;
         ObjectWithQuality<EntityCrafter>? entity = row.entity;
-        ObjectWithQuality<RecipeOrTechnology> recipe = row.recipe;
+        ObjectWithQuality<RecipeOrTechnology>? recipe = row.RecipeRow?.recipe;
         ObjectWithQuality<Goods>? fuel = row.fuel;
         float recipeTime, fuelUsagePerSecondPerBuilding = 0, productivity, speed, consumption;
         ModuleEffects activeEffects = default;
         UsedModule modules = default;
 
-        if (entity == null) {
+        if (entity == null || recipe == null) {
             warningFlags |= WarningFlags.EntityNotSpecified;
-            recipeTime = recipe.target.time;
+            recipeTime = row.RecipeTime;
         }
         else {
-            recipeTime = recipe.target.time / entity.GetCraftingSpeed();
+            recipeTime = row.RecipeTime / entity.GetCraftingSpeed();
             productivity = entity.target.effectReceiver.baseEffect.productivity;
             speed = entity.target.effectReceiver.baseEffect.speed;
             consumption = entity.target.effectReceiver.baseEffect.consumption;
