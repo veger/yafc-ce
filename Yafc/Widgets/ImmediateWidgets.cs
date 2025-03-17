@@ -219,6 +219,9 @@ public static class ImmediateWidgets {
             if (gui.isBuilding && (options.Checkmark?.Invoke(elem) ?? false)) {
                 gui.DrawIcon(Rect.Square(gui.lastRect.Right - 1f, gui.lastRect.Center.Y, 1.5f), Icon.Check, SchemeColor.Green);
             }
+            else if (gui.isBuilding && (options.YellowMark?.Invoke(elem) ?? false)) {
+                gui.DrawIcon(Rect.Square(gui.lastRect.Right - 1f, gui.lastRect.Center.Y, 1.5f), Icon.Check, SchemeColor.TagColorYellowText);
+            }
         }
 
         return selected != null;
@@ -235,7 +238,7 @@ public static class ImmediateWidgets {
 
             if (list.Count > options.MaxCount && gui.BuildButton("See full list") && gui.CloseDropdown()) {
                 if (options.Multiple) {
-                    SelectMultiObjectPanel.Select(list, options.Header, selectItem, options.Ordering, options.Checkmark);
+                    SelectMultiObjectPanel.Select(list, options.Header, selectItem, options.Ordering, options.Checkmark, options.YellowMark);
                 }
                 else {
                     SelectSingleObjectPanel.Select(list, options.Header, selectItem, options.Ordering);
@@ -461,9 +464,10 @@ public record DisplayAmount(float Value, UnitOfMeasure Unit = UnitOfMeasure.None
 /// Not used (treated as <see langword="false"/>) when selecting with a 'None' item.</param>
 /// <param name="Checkmark">If not <see langword="null"/>, this will be called to determine if a checkmark should be drawn on the item.
 /// Not used when selecting with a 'None' item or when <paramref name="Multiple"/> is <see langword="false"/>.</param>
+/// <param name="YellowMark">If Checkmark is not set, draw a less distinct checkmark instead.</param>
 /// <param name="ExtraText">If not <see langword="null"/>, this will be called to get extra text to be displayed right-justified after the item's name.</param>
 public sealed record ObjectSelectOptions<T>(string? Header, [AllowNull] IComparer<T> Ordering = null, int MaxCount = 6, bool Multiple = false, Predicate<T>? Checkmark = null,
-    Func<T, string>? ExtraText = null) where T : IFactorioObjectWrapper {
+    Predicate<T>? YellowMark = null, Func<T, string>? ExtraText = null) where T : IFactorioObjectWrapper {
 
     public IComparer<T> Ordering { get; init; } = Ordering ?? (IComparer<T>)DataUtils.DefaultOrdering;
 }
