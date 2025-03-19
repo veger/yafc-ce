@@ -88,7 +88,7 @@ internal static class LuaDependentTestHelper {
         DataUtils.SetupForProject(project);
         project.undo.Suspend(); // The undo system relies on SDL.
 
-        return project;
+        return Project.current = project;
     }
 
     // Get the stream named either "Yafc.Model.Tests.TestClass.TestMethod.lua" (primary) or "Yafc.Model.Tests.TestClass.lua" (secondary)
