@@ -24,6 +24,7 @@ Date:
     Fixes:
         - Fix export of blueprint chests from shopping list (broken in factorio >= 2.0.35)
         - (regression) The total sushi-input/-output items display belt counts again, and allow them as input.
+        - (regression) Spent fuel amounts could be displayed with wrong value.
 ----------------------------------------------------------------------------------------------------------------------
 Version: 2.10.0
 Date: March 5th 2025

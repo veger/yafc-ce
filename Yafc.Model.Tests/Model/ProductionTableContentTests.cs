@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace Yafc.Model.Tests.Model;
@@ -103,7 +104,100 @@ public class ProductionTableContentTests {
     }
 
     /// <summary>
-    /// Run the preceding tests for fixed buildings, fuel, ingredients, and products.
+    /// Test many combinations of buildings and fuels to make sure products (especially spent fuels) display the appropriate amounts.
+    /// </summary>
+    [Fact]
+    public async Task AllCombinationsWithVariousFixedCounts_DisplayedProductsMatchScaledSolverProducts() {
+        Project project = LuaDependentTestHelper.GetProjectForLua();
+        ProjectPage page = new ProjectPage(project, typeof(ProductionTable));
+        ProductionTable table = (ProductionTable)page.content;
+
+        // Generate random but repeatable building counts
+        Random r = new Random(0);
+        int testCount = 0;
+
+        // Run through all combinations of recipe, crafter, fuel, and fixed module, including all qualities.
+        foreach (ObjectWithQuality<RecipeOrTechnology> recipe in Database.recipes.all.WithAllQualities<RecipeOrTechnology>()) {
+            table.AddRecipe(recipe, DataUtils.DeterministicComparer);
+            RecipeRow row = table.GetAllRecipes().Last();
+
+            foreach (ObjectWithQuality<EntityCrafter> crafter in Database.allCrafters.WithAllQualities()) {
+                row.entity = crafter;
+
+                foreach (ObjectWithQuality<Goods> fuel in crafter.target.energy.fuels.WithAllQualities()) {
+                    row.fuel = fuel;
+
+                    foreach (ObjectWithQuality<Module> module in Database.allModules.WithAllQualities().Prepend(null)) {
+                        row.modules = module == null ? null : new ModuleTemplateBuilder { list = { (module, 0) } }.Build(row);
+                        do {
+                            // r.NextDouble could (at least in theory) return 0 or a value that rounds to 0.
+                            // Discard such values and try again.
+                            row.fixedBuildings = (float)r.NextDouble();
+                        } while (row.fixedBuildings == 0);
+
+                        await table.Solve(page);
+
+                        foreach (var (display, solver) in row.Ingredients.Zip(((IRecipeRow)row).IngredientsForSolver)) {
+                            var (solverGoods, solverAmount, _, _) = solver;
+                            var (displayGoods, displayAmount, _, _) = display;
+
+                            try {
+                                // If this fails, something weird went wrong
+                                Assert.Equal(solverGoods, displayGoods);
+                                // This tests for a failure related to https://github.com/shpaass/yafc-ce/issues/441, but for ingredients instead
+                                Assert.Equal(solverAmount * row.recipesPerSecond, displayAmount, solverAmount * .0001);
+                            }
+                            catch {
+                                // XUnit wants us to use async/await instead of calling Solve().Wait()
+                                // If we do that, VS does not break when an Assert throws. Set a breakpoint here instead.
+                                throw;
+                            }
+                        }
+
+                        foreach (var (display, solver) in row.Products.Zip(((IRecipeRow)row).ProductsForSolver
+                            // ProductsForSolver doesn't include the spent fuel. Append an entry for the spent fuel, in the case that the spent
+                            // fuel is not a recipe product.
+                            // If the spent fuel is also a recipe product, this value will ignored in favor of the recipe-product value.
+                            .Append(new(row.fuel.FuelResult()?.target.With<Goods>(row.fuel.FuelResult().quality), 0, null, 0, null)))) {
+
+                            var (solverGoods, solverAmount, _, _, _) = solver;
+                            var (displayGoods, displayAmount, _, _) = display;
+
+                            if (solverGoods == row.fuel.FuelResult()) {
+                                // ProductsForSolver doesn't include the spent fuel (in either the real or test-specific result)
+                                // Add the spent fuel amount to the value given to the solver.
+                                solverAmount += row.parameters.fuelUsagePerSecondPerRecipe;
+                            }
+
+                            try {
+                                // If this fails, something weird went wrong
+                                Assert.Equal(solverGoods, displayGoods);
+                                // This tests for actual failure observed in https://github.com/shpaass/yafc-ce/issues/441
+                                Assert.Equal(solverAmount * row.recipesPerSecond, displayAmount, solverAmount * .0001);
+                            }
+                            catch {
+                                // XUnit wants us to use async/await instead of calling Solve().Wait()
+                                // If we do that, VS does not break when an Assert throws. Set a breakpoint here instead.
+                                throw;
+                            }
+                        }
+
+                        testCount++;
+                    }
+                }
+            }
+        }
+
+        // Ignoring quality, we have:
+        // 2 recipes, 2 mechanics, 3 electric crafters and 3 burner crafters (with 3 fuels), and 9 modules (plus no modules)
+        // Considering quality, we have:
+        // 4 recipes, 2 mechanics, 6 electric crafters and 6 burner crafters (with 6 fuels), and 18 modules (plus no modules)
+        // All combinations should be tested
+        Assert.Equal((4 + 2) * (6 + 6 * 6) * (18 + 1), testCount);
+    }
+
+    /// <summary>
+    /// Run the <c>Change..._ShouldPreserve...</c> tests for fixed buildings, fuel, ingredients, and products.
     /// </summary>
     /// <param name="row">The row containing the recipe to test with fixed amounts.</param>
     /// <param name="testCombinations">An action that loops through the various combinations of entities, beacons, etc, and calls its third parameter for each combination.</param>

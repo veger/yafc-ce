@@ -567,7 +567,7 @@ public class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Productio
 
         if (!handledFuel) {
             // null-forgiving: handledFuel is always true if spentFuel is null.
-            yield return (new(spentFuel!.target, spentFuel.quality), parameters.fuelUsagePerSecondPerRecipe, links.spentFuel, 0, null);
+            yield return (new(spentFuel!.target, spentFuel.quality), parameters.fuelUsagePerSecondPerRecipe * factor, links.spentFuel, 0, null);
         }
     }
 
