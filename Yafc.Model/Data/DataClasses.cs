@@ -817,6 +817,9 @@ public interface IObjectWithQuality<out T> : IFactorioObjectWrapper where T : Fa
 /// <param name="quality">The quality for this object.</param>
 [Serializable]
 public sealed class ObjectWithQuality<T>(T target, Quality quality) : IObjectWithQuality<T>, ICustomJsonDeserializer<ObjectWithQuality<T>> where T : FactorioObject {
+    // These items do not support quality:
+    private static readonly HashSet<string> nonQualityItemNames = ["science", "item-total-input", "item-total-output"];
+
     /// <inheritdoc/>
     public T target { get; } = target ?? throw new ArgumentNullException(nameof(target));
     /// <inheritdoc/>
@@ -826,9 +829,9 @@ public sealed class ObjectWithQuality<T>(T target, Quality quality) : IObjectWit
         // Things that don't support quality:
         Fluid or Location or Mechanics { source: Entity } or Quality or Special or Technology or Tile => Quality.Normal,
         Recipe r when r.ingredients.All(i => i.goods is Fluid) => Quality.Normal,
-        // Everything else supports quality (except science):
-        // null-checking: Database.science is null when constructing the object that is stored in Database.science.
-        _ => target == Database.science?.target ? Quality.Normal : quality
+        // Most other things support quality, but a few items are excluded:
+        Item when nonQualityItemNames.Contains(target.name) => Quality.Normal,
+        _ => quality
     };
 
     /// <summary>
