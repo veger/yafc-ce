@@ -303,6 +303,30 @@ data = {
           { type = "item", name = "ash", amount = 3 },
         },
       },
+      recipe2 = {
+        type = "recipe",
+        name = "recipe2",
+        ingredients = {
+          { type = "item", name = "dummy_1", amount = 5 },
+          { type = "item", name = "dummy_2", amount = 10 },
+        },
+        energy_required = 5,
+        results = {
+          { type = "item", name = "dummy_3", amount = 5 },
+        },
+      },
+    },
+    quality = {
+      normal = {
+        name = "normal",
+        type = "quality",
+        level = 0,
+      },
+      uncommon = {
+        name = "uncommon",
+        type = "quality",
+        level = 1,
+      },
     },
   },
 }
