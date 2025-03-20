@@ -25,7 +25,6 @@ The main idea is to keep the code maintainable and readable.
     * `chore` is only for the changes that do not belong to any other prefix.
 
 ### Code
-* In the programmers' haven, there is always a free spot for those who write tests.
 * If you add a TODO, then please describe the details in the commit message, or ideally in a github issue. That increases the chances of the TODOs being addressed.
 
 #### Blank lines
