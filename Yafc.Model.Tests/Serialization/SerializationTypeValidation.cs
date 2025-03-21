@@ -9,46 +9,45 @@ using Xunit;
 namespace Yafc.Model.Serialization.Tests;
 
 public class SerializationTypeValidation {
-    [Fact]
+    [Theory]
+    [MemberData(nameof(ModelObjectTypes))]
     // Ensure that all concrete types derived from ModelObject obey the serialization rules.
-    public void ModelObjects_AreSerializable() {
-        var types = AppDomain.CurrentDomain.GetAssemblies().SelectMany(a => a.GetTypes())
-            .Where(t => typeof(ModelObject).IsAssignableFrom(t) && !t.IsAbstract);
+    public void ModelObjects_AreSerializable(Type modelObjectType) {
+        ConstructorInfo constructor = FindConstructor(modelObjectType);
 
-        foreach (Type type in types) {
-            ConstructorInfo constructor = FindConstructor(type);
-
-            PropertyInfo ownerProperty = type.GetProperty("owner");
-            if (ownerProperty != null) {
-                // If derived from ModelObject<T> (as tested by "There's an 'owner' property"), the first constructor parameter must be T.
-                Assert.True(constructor.GetParameters().Length > 0, $"The first constructor parameter for type {MakeTypeName(type)} should be the parent object.");
-                Type baseType = typeof(ModelObject<>).MakeGenericType(ownerProperty.PropertyType);
-                Assert.True(baseType.IsAssignableFrom(type), $"The first constructor parameter for type {MakeTypeName(type)} is not the parent type.");
-            }
-
-            // Cheating a bit here: Project is the only ModelObject that is not a ModelObject<T>, and its constructor has no parameters.
-            // So we're just skipping a parameter that doesn't exist.
-            AssertConstructorParameters(type, constructor.GetParameters().Skip(1));
-            AssertSettableProperties(type);
-            AssertDictionaryKeys(type);
+        PropertyInfo ownerProperty = modelObjectType.GetProperty("owner");
+        if (ownerProperty != null) {
+            // If derived from ModelObject<T> (as tested by "There's an 'owner' property"), the first constructor parameter must be T.
+            Assert.True(constructor.GetParameters().Length > 0, $"The first constructor parameter for type {MakeTypeName(modelObjectType)} should be the parent object.");
+            Type baseType = typeof(ModelObject<>).MakeGenericType(ownerProperty.PropertyType);
+            Assert.True(baseType.IsAssignableFrom(modelObjectType), $"The first constructor parameter for type {MakeTypeName(modelObjectType)} is not the parent type.");
         }
+
+        // Cheating a bit here: Project is the only ModelObject that is not a ModelObject<T>, and its constructor has no parameters.
+        // So we're just skipping a parameter that doesn't exist.
+        AssertConstructorParameters(modelObjectType, constructor.GetParameters().Skip(1));
+        AssertSettableProperties(modelObjectType);
+        AssertDictionaryKeys(modelObjectType);
     }
 
-    [Fact]
+    public static TheoryData<Type> ModelObjectTypes => [.. AppDomain.CurrentDomain.GetAssemblies().SelectMany(a => a.GetTypes())
+        .Where(t => typeof(ModelObject).IsAssignableFrom(t) && !t.IsAbstract)];
+
+    [Theory]
+    [MemberData(nameof(SerializableTypes))]
     // Ensure that all [Serializable] types in the Yafc namespace obey the serialization rules,
     // except compiler-generated types and those in Yafc.Blueprints.
-    public void Serializables_AreSerializable() {
-        var types = AppDomain.CurrentDomain.GetAssemblies().SelectMany(a => a.GetTypes())
-            .Where(t => t.GetCustomAttribute<SerializableAttribute>() != null && t.FullName.StartsWith("Yafc.") && !t.FullName.StartsWith("Yafc.Blueprints"));
+    public void Serializables_AreSerializable(Type serializableType) {
+        ConstructorInfo constructor = FindConstructor(serializableType);
 
-        foreach (Type type in types.Where(type => type.GetCustomAttribute<CompilerGeneratedAttribute>() == null)) {
-            ConstructorInfo constructor = FindConstructor(type);
-
-            AssertConstructorParameters(type, constructor.GetParameters());
-            AssertSettableProperties(type);
-            AssertDictionaryKeys(type);
-        }
+        AssertConstructorParameters(serializableType, constructor.GetParameters());
+        AssertSettableProperties(serializableType);
+        AssertDictionaryKeys(serializableType);
     }
+
+    public static TheoryData<Type> SerializableTypes => [.. AppDomain.CurrentDomain.GetAssemblies().SelectMany(a => a.GetTypes())
+        .Where(t => t.FullName.StartsWith("Yafc.") && !t.FullName.StartsWith("Yafc.Blueprints")
+            && t.GetCustomAttribute<SerializableAttribute>() != null && t.GetCustomAttribute<CompilerGeneratedAttribute>() == null)];
 
     internal static ConstructorInfo FindConstructor(Type type) {
         BindingFlags flags = BindingFlags.Instance;
