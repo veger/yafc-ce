@@ -51,24 +51,14 @@ public class ProductionLinkSummaryScreen : PseudoScreen, IComparer<(RecipeRow ro
     }
 
     private void ShowRelatedLinks(ImGui gui) {
-        ModelObject o = link;
-        List<ModelObject> parents = [];
-        while (o.ownerObject is not ProjectPage) {
-            var t = o.ownerObject;
-            if (t is null) {
-                break;
-            }
-            o = t;
-            if (t == o.ownerObject) continue;
-            parents.Add(t);
-        }
-        if (o is ProductionTable page) {
-            Dictionary<IProductionLink, List<(RecipeRow row, float flow)>> childLinks = [], parentLinks = [], otherLinks = [];
-            List<(RecipeRow row, float flow)> unlinked = [], table;
+        var prodTable = FindProductionTable(link, out List<ModelObject> parents);
+        Dictionary<IProductionLink, List<(RecipeRow row, float flow)>> childLinks = [], parentLinks = [], otherLinks = [];
+        List<(RecipeRow row, float flow)> unlinked = [], table;
+        if (prodTable is not null) {
             foreach (var (row, relationLinks) in
-                page.GetAllRecipes(link.owner)
-                .Select(e => (e, IsLinkParent(e, parents) ? parentLinks : otherLinks))
-                .Concat(link.owner.GetAllRecipes().Select(e => (e, childLinks)))) {
+                    prodTable.GetAllRecipes(link.owner)
+                        .Select(e => (e, IsLinkParent(e, parents) ? parentLinks : otherLinks))
+                        .Concat(link.owner.GetAllRecipes().Select(e => (e, childLinks)))) {
                 if (isPartOfCurrentLink(row)
                     || isNotRelatedToCurrentLink(row)) {
                     continue;
@@ -87,31 +77,46 @@ public class ProductionLinkSummaryScreen : PseudoScreen, IComparer<(RecipeRow ro
 
                 table.Add((row, localFlow));
             }
-            var color = 1;
-            gui.spacing = 0.75f;
-            if (childLinks.Values.Any(e => e.Any())) {
-                gui.BuildText("Child links: ", Font.productionTableHeader);
-                foreach (var relTable in childLinks.Values) {
-                    BuildFlow(gui, relTable, relTable.Sum(e => Math.Abs(e.flow)), false, color++);
-                }
-            }
-            if (parentLinks.Values.Any(e => e.Any())) {
-                gui.BuildText("Parent links: ", Font.productionTableHeader);
-                foreach (var relTable in parentLinks.Values) {
-                    BuildFlow(gui, relTable, relTable.Sum(e => Math.Abs(e.flow)), false, color++);
-                }
-            }
-            if (otherLinks.Values.Any(e => e.Any())) {
-                gui.BuildText("Unrelated links: ", Font.productionTableHeader);
-                foreach (var relTable in otherLinks.Values) {
-                    BuildFlow(gui, relTable, relTable.Sum(e => Math.Abs(e.flow)), false, color++);
-                }
-            }
-            if (unlinked.Any()) {
-                gui.BuildText("Unlinked: ", Font.subheader);
-                BuildFlow(gui, unlinked, 0, false);
+        }
+        var color = 1;
+        gui.spacing = 0.75f;
+        if (childLinks.Values.Any(e => e.Any())) {
+            gui.BuildText("Child links: ", Font.productionTableHeader);
+            foreach (var relTable in childLinks.Values) {
+                BuildFlow(gui, relTable, relTable.Sum(e => Math.Abs(e.flow)), false, color++);
             }
         }
+        if (parentLinks.Values.Any(e => e.Any())) {
+            gui.BuildText("Parent links: ", Font.productionTableHeader);
+            foreach (var relTable in parentLinks.Values) {
+                BuildFlow(gui, relTable, relTable.Sum(e => Math.Abs(e.flow)), false, color++);
+            }
+        }
+        if (otherLinks.Values.Any(e => e.Any())) {
+            gui.BuildText("Unrelated links: ", Font.productionTableHeader);
+            foreach (var relTable in otherLinks.Values) {
+                BuildFlow(gui, relTable, relTable.Sum(e => Math.Abs(e.flow)), false, color++);
+            }
+        }
+        if (unlinked.Any()) {
+            gui.BuildText("Unlinked: ", Font.subheader);
+            BuildFlow(gui, unlinked, 0, false);
+        }
+    }
+
+    public static ProductionTable? FindProductionTable(ModelObject link, out List<ModelObject> parents) {
+        ModelObject table = link;
+        parents = [];
+        while (table.ownerObject is not ProjectPage) {
+            var t = table.ownerObject;
+            if (t is null) {
+                break;
+            }
+            table = t;
+            if (t == table.ownerObject) continue;
+            parents.Add(t);
+        }
+        return table as ProductionTable;
     }
 
     private bool isNotRelatedToCurrentLink(RecipeRow? row) => (!row.Ingredients.Any(e => e.Goods == link.goods)

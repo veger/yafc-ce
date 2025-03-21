@@ -6,6 +6,7 @@ using SDL2;
 using Yafc.Blueprints;
 using Yafc.Model;
 using Yafc.UI;
+using static Yafc.UI.ImGui;
 
 namespace Yafc;
 
@@ -266,11 +267,12 @@ goodsHaveNoProduction:;
             if (gui.BuildButton("Add raw recipe").WithTooltip(gui, "Ctrl-click to add a technology instead") && gui.CloseDropdown()) {
                 if (InputSystem.Instance.control) {
                     SelectMultiObjectPanel.Select(Database.technologies.all, "Select technology",
-                        r => table.AddRecipe(new(r, Quality.Normal), DefaultVariantOrdering), checkMark: r => table.recipes.Any(rr => rr.recipe.target == r));
+                        r => table.AddRecipe(new(r, Quality.Normal), DefaultVariantOrdering), checkMark: r => table.recipes.Any(rr => rr.recipe.target == r), yellowMark: r => table.GetAllRecipes().Any(rr => rr.recipe.target == r));
                 }
                 else {
+                    var prodTable = ProductionLinkSummaryScreen.FindProductionTable(table, out List<ModelObject> parents);
                     SelectMultiObjectPanel.SelectWithQuality(Database.recipes.explorable.AsEnumerable<RecipeOrTechnology>(), "Select raw recipe",
-                        r => table.AddRecipe(r, DefaultVariantOrdering), Quality.Normal, checkMark: r => table.recipes.Any(rr => rr.recipe.target == r));
+                        r => table.AddRecipe(r, DefaultVariantOrdering), Quality.Normal, checkMark: r => table.recipes.Any(rr => rr.recipe.target == r), yellowMark: r => prodTable?.GetAllRecipes().Any(rr => rr.recipe.target == r) ?? false);
                 }
             }
         }
@@ -874,9 +876,12 @@ goodsHaveNoProduction:;
         }
 
         var comparer = DataUtils.GetRecipeComparerFor(goods.target);
-        HashSet<IObjectWithQuality<RecipeOrTechnology>> allRecipes = [.. context.recipes.Select(x => x.recipe)];
+        HashSet<IObjectWithQuality<RecipeOrTechnology>> curLevelRecipes = [.. context.recipes.Select(x => x.recipe)];
+        var prodTable = ProductionLinkSummaryScreen.FindProductionTable(context, out List<ModelObject> parents);
+        HashSet<IObjectWithQuality<RecipeOrTechnology>> allRecipes = [.. prodTable?.GetAllRecipes().Select(x => x.recipe) ?? []];
 
-        bool recipeExists(RecipeOrTechnology rec) => allRecipes.Contains(rec.With(goods.quality));
+        bool recipeExists(RecipeOrTechnology rec) => curLevelRecipes.Contains(rec.With(goods.quality));
+        bool recipeExistsAnywhere(RecipeOrTechnology rec) => allRecipes.Contains(rec.With(goods.quality));
 
         ObjectWithQuality<Goods>? selectedFuel = null;
         ObjectWithQuality<Goods>? spentFuel = null;
@@ -902,7 +907,7 @@ goodsHaveNoProduction:;
                 }
             }
 
-            if (!allRecipes.Contains(qualityRecipe) || (await MessageBox.Show("Recipe already exists", $"Add a second copy of {rec.locName}?", "Add a copy", "Cancel")).choice) {
+            if (!curLevelRecipes.Contains(qualityRecipe) || (await MessageBox.Show("Recipe already exists", $"Add a second copy of {rec.locName}?", "Add a copy", "Cancel")).choice) {
                 context.AddRecipe(qualityRecipe, DefaultVariantOrdering, selectedFuel, spentFuel);
             }
         }
@@ -989,7 +994,7 @@ goodsHaveNoProduction:;
                 }
             }
             else if (type <= ProductDropdownType.Ingredient && allProduction.Length > 0) {
-                gui.BuildInlineObjectListAndButton(allProduction, addRecipe, new("Add production recipe", comparer, 6, true, recipeExists));
+                gui.BuildInlineObjectListAndButton(allProduction, addRecipe, new("Add production recipe", comparer, 6, true, recipeExists, recipeExistsAnywhere));
                 numberOfShownRecipes += allProduction.Length;
 
                 if (iLink == null) {
@@ -1014,7 +1019,8 @@ goodsHaveNoProduction:;
                     DataUtils.AlreadySortedRecipe,
                     3,
                     true,
-                    recipeExists));
+                    recipeExists,
+                    recipeExistsAnywhere));
                 numberOfShownRecipes += spentFuelRecipes.Length;
             }
 
@@ -1026,7 +1032,8 @@ goodsHaveNoProduction:;
                     DataUtils.DefaultRecipeOrdering,
                     6,
                     true,
-                    recipeExists));
+                    recipeExists,
+                    recipeExistsAnywhere));
                 numberOfShownRecipes += goods.target.usages.Length;
             }
 
@@ -1038,7 +1045,8 @@ goodsHaveNoProduction:;
                     DataUtils.AlreadySortedRecipe,
                     6,
                     true,
-                    recipeExists));
+                    recipeExists,
+                    recipeExistsAnywhere));
                 numberOfShownRecipes += fuelUseList.Length;
             }
 
@@ -1046,11 +1054,11 @@ goodsHaveNoProduction:;
                 && gui.BuildButton("Add consumption technology") && gui.CloseDropdown()) {
                 // Select from the technologies that consume this science pack.
                 SelectMultiObjectPanel.Select(Database.technologies.all.Where(t => t.ingredients.Select(i => i.goods).Contains(goods.target)),
-                    "Add technology", addRecipe, checkMark: recipeExists);
+                    "Add technology", addRecipe, checkMark: recipeExists, yellowMark: recipeExistsAnywhere);
             }
 
             if (type >= ProductDropdownType.Product && allProduction.Length > 0) {
-                gui.BuildInlineObjectListAndButton(allProduction, addRecipe, new("Add production recipe", comparer, 1, true, recipeExists));
+                gui.BuildInlineObjectListAndButton(allProduction, addRecipe, new("Add production recipe", comparer, 1, true, recipeExists, recipeExistsAnywhere));
                 numberOfShownRecipes += allProduction.Length;
             }
 
