@@ -295,6 +295,7 @@ public class VirtualScrollList<TData>(float height, Vector2 elementSize, Virtual
     private int elementsPerRow;
     private IReadOnlyList<TData> _data = [];
     private readonly int maxRowsVisible = MathUtils.Ceil(height / elementSize.Y) + BufferRows + 1;
+    private readonly Vector2 elementSize = elementSize.X > 0 && elementSize.Y > 0 ? elementSize : throw new ArgumentException("Both element size dimensions must be positive", nameof(elementSize));
     private float _spacing;
 
     public float spacing {
