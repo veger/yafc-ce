@@ -78,47 +78,62 @@ public class Project : ModelObject {
     }
 
     public static Project ReadFromFile(string path, ErrorCollector collector, bool useMostRecent) {
-        Project? project;
+        if (string.IsNullOrWhiteSpace(path)) {
+            // Empty paths don't have autosaves.
+            useMostRecent = false;
+        }
 
-        var highestAutosaveIndex = 0;
+        try {
+            return read(path, collector, useMostRecent);
+        }
+        catch when (useMostRecent) {
+            collector.Error("Fatal error reading the latest autosave. Loading the base file instead.", ErrorSeverity.Important);
+            return read(path, collector, false);
+        }
 
-        // Check whether there is an autosave that is saved at a later time than the current save.
-        if (useMostRecent) {
-            var savetime = File.GetLastWriteTimeUtc(path);
-            var highestAutosave = Enumerable
-                .Range(1, AutosaveRollingLimit)
-                .Select(i => new {
-                    Path = GenerateAutosavePath(path, i),
-                    Index = i,
-                    LastWriteTimeUtc = File.GetLastWriteTimeUtc(GenerateAutosavePath(path, i))
-                })
-                .MaxBy(s => s.LastWriteTimeUtc);
+        static Project read(string path, ErrorCollector collector, bool useMostRecent) {
+            Project? project;
 
-            if (highestAutosave != null && highestAutosave.LastWriteTimeUtc > savetime) {
-                highestAutosaveIndex = highestAutosave.Index;
-                path = highestAutosave.Path;
+            var highestAutosaveIndex = 0;
+
+            // Check whether there is an autosave that is saved at a later time than the current save.
+            if (useMostRecent) {
+                var savetime = File.GetLastWriteTimeUtc(path);
+                var highestAutosave = Enumerable
+                    .Range(1, AutosaveRollingLimit)
+                    .Select(i => new {
+                        Path = GenerateAutosavePath(path, i),
+                        Index = i,
+                        LastWriteTimeUtc = File.GetLastWriteTimeUtc(GenerateAutosavePath(path, i))
+                    })
+                    .MaxBy(s => s.LastWriteTimeUtc);
+
+                if (highestAutosave != null && highestAutosave.LastWriteTimeUtc > savetime) {
+                    highestAutosaveIndex = highestAutosave.Index;
+                    path = highestAutosave.Path;
+                }
             }
-        }
 
-        if (!string.IsNullOrEmpty(path) && File.Exists(path)) {
-            project = Read(File.ReadAllBytes(path), collector);
-        }
-        else {
-            project = new Project();
-        }
+            if (!string.IsNullOrEmpty(path) && File.Exists(path)) {
+                project = Read(File.ReadAllBytes(path), collector);
+            }
+            else {
+                project = new Project();
+            }
 
-        // If an Auto Save is used to open the project we want remove the 'autosave' part so when the user
-        // manually saves the file next time it saves the 'main' save instead of the generated save file.
-        if (path != null) {
-            var autosaveRegex = new Regex("-autosave-[0-9].yafc$");
-            path = autosaveRegex.Replace(path, ".yafc");
+            // If an Auto Save is used to open the project we want remove the 'autosave' part so when the user
+            // manually saves the file next time it saves the 'main' save instead of the generated save file.
+            if (path != null) {
+                var autosaveRegex = new Regex("-autosave-[0-9].yafc$");
+                path = autosaveRegex.Replace(path, ".yafc");
+            }
+
+            project.attachedFileName = path;
+            project.lastSavedVersion = project.projectVersion;
+            project.autosaveIndex = highestAutosaveIndex;
+
+            return project;
         }
-
-        project.attachedFileName = path;
-        project.lastSavedVersion = project.projectVersion;
-        project.autosaveIndex = highestAutosaveIndex;
-
-        return project;
     }
 
     public static Project Read(byte[] bytes, ErrorCollector collector) {
@@ -171,7 +186,7 @@ public class Project : ModelObject {
     }
 
     public void PerformAutoSave() {
-        if (attachedFileName != null && lastAutoSavedVersion != projectVersion) {
+        if (!string.IsNullOrWhiteSpace(attachedFileName) && lastAutoSavedVersion != projectVersion) {
             autosaveIndex = (autosaveIndex % AutosaveRollingLimit) + 1;
             var fileName = GenerateAutosavePath(attachedFileName, autosaveIndex);
 
