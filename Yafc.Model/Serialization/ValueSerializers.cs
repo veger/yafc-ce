@@ -59,8 +59,8 @@ internal static class ValueSerializer {
 }
 
 /// <summary>
-/// The base class for serializing property values that are [<see cref="SerializableAttribute">Serializable</see>], native
-/// (e.g. <see langword="int"/>, <see langword="float"/>), or native-like (e.g. <see cref="PageReference"/>).
+/// The base class for serializing values that are [<see cref="SerializableAttribute">Serializable</see>], native (e.g. <see langword="int"/>,
+/// <see langword="float"/>), or native-like (e.g. <see cref="PageReference"/>).
 /// </summary>
 /// <typeparam name="T">The type to be serialized/deserialized by this instance.</typeparam>
 internal abstract class ValueSerializer<T> {

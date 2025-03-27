@@ -27,7 +27,7 @@ Properties are handled as described here:
 |Other types|Error|Ignored|
 
 Notes:
-* The constructor must initialize non-writable serialized properties to a non-`null` value.
+* The constructor must initialize serialized collections to a non-`null` value.
 The property may be declared to return any type that matches the _Property type_ column above.
 * Value types are only supported if they appear in the list of [supported native types](#native-types).
 * `[Obsolete]` properties must follow all the same rules, except that they do not need a getter if they are writable.
@@ -47,7 +47,9 @@ Parameters may match either directly owned properties or properties inherited fr
 
 Writable properties that are not one of the supported types must have the `[SkipSerialization]` attribute.
 
-Non-writable serialized properties must be initialized by the constructor to a non-`null` value.
+Collection properties (always non-writable) must be initialized by the constructor to a non-`null` value.
+The constructor is not required to initialize non-writable `ModelObject` properties.
+If it does not, the serialization system will discard non-`null` values encountered in the project file.
 
 ### Collections
 Collection values must be stored in non-writable properties, must not be passed to the constructor, and must be initialized to an empty collection.
