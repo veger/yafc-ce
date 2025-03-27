@@ -59,7 +59,7 @@ public class ShoppingListScreen : PseudoScreen {
         Dictionary<IObjectWithQuality<FactorioObject>, int> counts = [];
         foreach (RecipeRow recipe in recipes) {
             if (recipe.entity != null) {
-                ObjectWithQuality<FactorioObject> shopItem = new(recipe.entity.target.itemsToPlace?.FirstOrDefault() ?? (FactorioObject)recipe.entity.target, recipe.entity.quality);
+                IObjectWithQuality<FactorioObject> shopItem = (recipe.entity.target.itemsToPlace?.FirstOrDefault() ?? (FactorioObject)recipe.entity.target).With(recipe.entity.quality);
                 _ = counts.TryGetValue(shopItem, out int prev);
                 int builtCount = recipe.builtBuildings ?? (assumeAdequate ? MathUtils.Ceil(recipe.buildingCount) : 0);
                 int displayCount = displayState switch {
@@ -71,7 +71,7 @@ public class ShoppingListScreen : PseudoScreen {
                 totalHeat += recipe.entity.target.heatingPower * displayCount;
                 counts[shopItem] = prev + displayCount;
                 if (recipe.usedModules.modules != null) {
-                    foreach ((ObjectWithQuality<Module> module, int moduleCount, bool beacon) in recipe.usedModules.modules) {
+                    foreach ((IObjectWithQuality<Module> module, int moduleCount, bool beacon) in recipe.usedModules.modules) {
                         if (!beacon) {
                             _ = counts.TryGetValue(module, out prev);
                             counts[module] = prev + displayCount * moduleCount;
@@ -191,11 +191,11 @@ public class ShoppingListScreen : PseudoScreen {
                 continue;
             }
 
-            if (element.Is(out IObjectWithQuality<T>? g)) {
+            if (element is IObjectWithQuality<T> g) {
                 items.Add((g, rounded));
             }
-            else if (element.Is(out IObjectWithQuality<Entity>? e) && e.target.itemsToPlace.Length > 0) {
-                items.Add((new ObjectWithQuality<T>((T)(object)e.target.itemsToPlace[0], e.quality), rounded));
+            else if (element is IObjectWithQuality<Entity> e && e.target.itemsToPlace.Length > 0) {
+                items.Add((((T)(object)e.target.itemsToPlace[0]).With(e.quality), rounded));
             }
         }
 
@@ -238,7 +238,7 @@ public class ShoppingListScreen : PseudoScreen {
         Dictionary<IObjectWithQuality<FactorioObject>, float> decomposeResult = [];
 
         void addDecomposition(FactorioObject obj, Quality quality, float amount) {
-            ObjectWithQuality<FactorioObject> key = new(obj, quality);
+            IObjectWithQuality<FactorioObject> key = obj.With(quality);
             if (!decomposeResult.TryGetValue(key, out float prev)) {
                 decompositionQueue.Enqueue(key);
             }

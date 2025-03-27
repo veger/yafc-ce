@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
@@ -165,12 +166,12 @@ public class ProjectPageSettingsPanel : PseudoScreen {
 
         public ExportRecipe(RecipeRow row) {
             Recipe = row.recipe.QualityName();
-            Building = row.entity;
+            Building = ObjectWithQuality.Get(row.entity);
             BuildingCount = row.buildingCount;
             Fuel = new ExportMaterial(row.fuel?.QualityName() ?? "<No fuel selected>", row.FuelInformation.Amount);
             Inputs = row.Ingredients.Select(i => new ExportMaterial(i.Goods?.QualityName() ?? "Recipe disabled", i.Amount));
             Outputs = row.Products.Select(p => new ExportMaterial(p.Goods?.QualityName() ?? "Recipe disabled", p.Amount));
-            Beacon = row.usedModules.beacon;
+            Beacon = ObjectWithQuality.Get(row.usedModules.beacon);
             BeaconCount = row.usedModules.beaconCount;
 
             if (row.usedModules.modules is null) {
@@ -182,10 +183,10 @@ public class ProjectPageSettingsPanel : PseudoScreen {
 
                 foreach (var (module, count, isBeacon) in row.usedModules.modules) {
                     if (isBeacon) {
-                        beaconModules.AddRange(Enumerable.Repeat<ObjectWithQuality>(module, count));
+                        beaconModules.AddRange(Enumerable.Repeat(ObjectWithQuality.Get(module).Value, count));
                     }
                     else {
-                        modules.AddRange(Enumerable.Repeat<ObjectWithQuality>(module, count));
+                        modules.AddRange(Enumerable.Repeat(ObjectWithQuality.Get(module).Value, count));
                     }
                 }
 
@@ -277,8 +278,8 @@ public class ProjectPageSettingsPanel : PseudoScreen {
     }
 
     private record struct ObjectWithQuality(string Name, string Quality) {
-        public static implicit operator ObjectWithQuality?(ObjectWithQuality<EntityCrafter>? value) => value == null ? default(ObjectWithQuality?) : new ObjectWithQuality(value.target.name, value.quality.name);
-        public static implicit operator ObjectWithQuality(ObjectWithQuality<Module> value) => new ObjectWithQuality(value.target.name, value.quality.name);
-        public static implicit operator ObjectWithQuality?(ObjectWithQuality<EntityBeacon>? value) => value == null ? default(ObjectWithQuality?) : new ObjectWithQuality(value.target.name, value.quality.name);
+        [return: NotNullIfNotNull(nameof(objectWithQuality))]
+        public static ObjectWithQuality? Get(IObjectWithQuality<FactorioObject>? objectWithQuality)
+            => objectWithQuality == null ? default : new(objectWithQuality.target.name, objectWithQuality.quality.name);
     }
 }

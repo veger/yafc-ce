@@ -158,7 +158,7 @@ public class ProductionLinkSummaryScreen : PseudoScreen, IComparer<(RecipeRow ro
             if (gui.BuildFactorioObjectButtonWithText(row.recipe, amount, tooltipOptions: DrawParentRecipes(row.owner, "recipe")) == Click.Left) {
                 // Find the corresponding links associated with the clicked recipe,
                 IEnumerable<IObjectWithQuality<Goods>> goods = (isLinkOutput ? row.Products.Select(p => p.Goods) : row.Ingredients.Select(i => i.Goods))!;
-                Dictionary<ObjectWithQuality<Goods>, ProductionLink> links = goods
+                Dictionary<IObjectWithQuality<Goods>, ProductionLink> links = goods
                     .Select(goods => { row.FindLink(goods, out IProductionLink? link); return link as ProductionLink; })
                     .WhereNotNull()
                     .ToDictionary(x => x.goods);
@@ -182,13 +182,13 @@ public class ProductionLinkSummaryScreen : PseudoScreen, IComparer<(RecipeRow ro
                     }
                     else {
                         IComparer<IObjectWithQuality<Goods>> comparer = DataUtils.DefaultOrdering;
-                        if (isLinkOutput && row.recipe.mainProduct().Is<Goods>(out var mainProduct)) {
+                        if (isLinkOutput && row.recipe.mainProduct() is IObjectWithQuality<Goods> mainProduct) {
                             comparer = DataUtils.CustomFirstItemComparer(mainProduct, comparer);
                         }
 
                         string header = isLinkOutput ? "Select product link to inspect" : "Select ingredient link to inspect";
-                        ObjectSelectOptions<ObjectWithQuality<Goods>> options = new(header, comparer, int.MaxValue);
-                        if (gui.BuildInlineObjectList(links.Keys, out ObjectWithQuality<Goods>? selected, options) && gui.CloseDropdown()) {
+                        ObjectSelectOptions<IObjectWithQuality<Goods>> options = new(header, comparer, int.MaxValue);
+                        if (gui.BuildInlineObjectList(links.Keys, out IObjectWithQuality<Goods>? selected, options) && gui.CloseDropdown()) {
                             changeLinkView(links[selected]);
                         }
                     }

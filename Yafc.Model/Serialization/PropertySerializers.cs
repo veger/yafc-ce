@@ -64,6 +64,14 @@ internal abstract class PropertySerializer<TOwner, TPropertyType>(PropertyInfo p
     }
 }
 
+/// <summary>
+/// With <see cref="ValueSerializer{T}">ValueSerializer&lt;<typeparamref name="TPropertyType"/>></see>, serializes and deserializes all values
+/// stored in writable properties.
+/// </summary>
+/// <typeparam name="TOwner">The type (not a <see langword="struct"/>) that contains this property.</typeparam>
+/// <typeparam name="TPropertyType">The declared type of this property. This type must be listed in
+/// <see cref="ValueSerializer.IsValueSerializerSupported"/>.</typeparam>
+/// <param name="property">This property's <see cref="PropertyInfo"/>.</param>
 internal sealed class ValuePropertySerializer<TOwner, TPropertyType>(PropertyInfo property) :
     PropertySerializer<TOwner, TPropertyType>(property, PropertyType.Normal, true) where TOwner : class {
 
@@ -81,13 +89,8 @@ internal sealed class ValuePropertySerializer<TOwner, TPropertyType>(PropertyInf
 
         var result = _getter(owner);
 
-        if (result == null) {
-            if (CanBeNull) {
-                return default;
-            }
-            else {
-                throw new InvalidOperationException($"{property.DeclaringType}.{propertyName} must not return null.");
-            }
+        if (result == null && !CanBeNull) {
+            throw new InvalidOperationException($"{property.DeclaringType}.{propertyName} must not return null.");
         }
 
         return result;
@@ -111,7 +114,12 @@ internal sealed class ValuePropertySerializer<TOwner, TPropertyType>(PropertyInf
     public override bool CanBeNull => ValueSerializer.CanBeNull;
 }
 
-// Serializes read-only sub-value with support of polymorphism
+/// <summary>
+/// With <see cref="ModelObjectSerializer{T}">ModelObjectSerializer&lt;<typeparamref name="TPropertyType"/>></see>, serializes and deserializes 
+/// <see cref="ModelObject"/>s stored in non-writable properties.
+/// </summary>
+/// <typeparam name="TOwner">The type (<see cref="ModelObject"/> or a derived type) that contains this property.</typeparam>
+/// <typeparam name="TPropertyType">The declared type (<see cref="ModelObject"/> or a derived type) of this property.</typeparam>
 internal class ReadOnlyReferenceSerializer<TOwner, TPropertyType> :
     PropertySerializer<TOwner, TPropertyType> where TOwner : ModelObject where TPropertyType : ModelObject {
 
@@ -159,37 +167,16 @@ internal class ReadOnlyReferenceSerializer<TOwner, TPropertyType> :
     public override void DeserializeFromUndoBuilder(TOwner owner, UndoSnapshotReader reader) { }
 }
 
-internal class ReadWriteReferenceSerializer<TOwner, TPropertyType>(PropertyInfo property) :
-    ReadOnlyReferenceSerializer<TOwner, TPropertyType>(property, PropertyType.Normal, true)
-    where TOwner : ModelObject where TPropertyType : ModelObject {
-
-    private void setter(TOwner owner, TPropertyType? value)
-        => _setter(owner ?? throw new ArgumentNullException(nameof(owner)), value);
-    private new TPropertyType? getter(TOwner owner)
-        => _getter(owner ?? throw new ArgumentNullException(nameof(owner)));
-
-    public override void DeserializeFromJson(TOwner owner, ref Utf8JsonReader reader, DeserializationContext context) {
-        if (reader.TokenType == JsonTokenType.Null) {
-            return;
-        }
-
-        var instance = getter(owner);
-
-        if (instance == null) {
-            setter(owner, SerializationMap<TPropertyType>.DeserializeFromJson(owner, ref reader, context));
-            return;
-        }
-
-        base.DeserializeFromJson(owner, ref reader, context);
-    }
-
-    public override void SerializeToUndoBuilder(TOwner owner, UndoSnapshotBuilder builder) =>
-        builder.WriteManagedReference(getter(owner) ?? throw new InvalidOperationException($"Cannot serialize a null value for {property.DeclaringType}.{propertyName} to the undo snapshot."));
-
-    public override void DeserializeFromUndoBuilder(TOwner owner, UndoSnapshotReader reader) =>
-        setter(owner, reader.ReadOwnedReference<TPropertyType>(owner));
-}
-
+/// <summary>
+/// With <see cref="ValueSerializer{T}">ValueSerializer&lt;<typeparamref name="TElement"/>></see>, serializes and deserializes most collection
+/// values (stored in non-writable properties).
+/// </summary>
+/// <typeparam name="TOwner">The type (not a <see langword="struct"/>) that contains this property.</typeparam>
+/// <typeparam name="TCollection">The declared type of this property, which implements
+/// <see cref="ICollection{T}">ICollection&lt;<typeparamref name="TElement"/>></see></typeparam>
+/// <typeparam name="TElement">The element type stored in the serialized collection. This type must be listed in
+/// <see cref="ValueSerializer.IsValueSerializerSupported"/>.</typeparam>
+/// <param name="property">This property's <see cref="PropertyInfo"/>.</param>
 internal sealed class CollectionSerializer<TOwner, TCollection, TElement>(PropertyInfo property) :
     PropertySerializer<TOwner, TCollection>(property, PropertyType.Normal, false)
     where TCollection : ICollection<TElement?> where TOwner : class {
@@ -243,6 +230,16 @@ internal sealed class CollectionSerializer<TOwner, TCollection, TElement>(Proper
     }
 }
 
+/// <summary>
+/// With <see cref="ValueSerializer{T}">ValueSerializer&lt;<typeparamref name="TElement"/>></see>, serializes and deserializes
+/// <see cref="ReadOnlyCollection{T}"/>s (stored in non-writable properties).
+/// </summary>
+/// <typeparam name="TOwner">The type (not a <see langword="struct"/>) that contains this property.</typeparam>
+/// <typeparam name="TCollection">The declared type of this property, which is or derives from
+/// <see cref="ReadOnlyCollection{T}">ReadOnlyCollection&lt;<typeparamref name="TElement"/>></see>.</typeparam>
+/// <typeparam name="TElement">The element type stored in the serialized collection. This type must be listed in
+/// <see cref="ValueSerializer.IsValueSerializerSupported"/>.</typeparam>
+/// <param name="property">This property's <see cref="PropertyInfo"/>.</param>
 internal sealed class ReadOnlyCollectionSerializer<TOwner, TCollection, TElement>(PropertyInfo property) :
     PropertySerializer<TOwner, TCollection>(property, PropertyType.Normal, false)
     // This is ReadOnlyCollection, not IReadOnlyCollection, because we rely on knowing about the mutable backing storage of ReadOnlyCollection.
@@ -302,6 +299,21 @@ internal sealed class ReadOnlyCollectionSerializer<TOwner, TCollection, TElement
     }
 }
 
+/// <summary>
+/// With <see cref="ValueSerializer{T}">ValueSerializer&lt;<typeparamref name="TKey"/>></see> and
+/// <see cref="ValueSerializer{T}">ValueSerializer&lt;<typeparamref name="TValue"/>></see>, serializes and deserializes dictionary values (stored
+/// in non-writable properties).
+/// </summary>
+/// <typeparam name="TOwner">The type (not a <see langword="struct"/>) that contains this property.</typeparam>
+/// <typeparam name="TCollection">The declared type of this property, which implements
+/// <see cref="IDictionary{TKey, TValue}">IDictionary&lt;<typeparamref name="TKey"/>, <typeparamref name="TValue"/>></see></typeparam>
+/// <typeparam name="TKey">The type of the keys stored in the dictionary. This type must be listed in
+/// <see cref="ValueSerializer.IsKeySerializerSupported"/> and <see cref="ValueSerializer.IsValueSerializerSupported"/>, and 
+/// <see cref="ValueSerializer{T}">ValueSerializer&lt;<typeparamref name="TKey"/>></see>.<see cref="ValueSerializer{T}.Default">Default</see>
+/// must have an overridden <see cref="ValueSerializer{T}.ReadFromJsonProperty"/> method.</typeparam>
+/// <typeparam name="TValue">The type of the values stored in the dictionary. This type must be listed in
+/// <see cref="ValueSerializer.IsValueSerializerSupported"/>.</typeparam>
+/// <param name="property">This property's <see cref="PropertyInfo"/>.</param>
 internal class DictionarySerializer<TOwner, TCollection, TKey, TValue>(PropertyInfo property) :
     PropertySerializer<TOwner, TCollection>(property, PropertyType.Normal, false)
     where TCollection : IDictionary<TKey, TValue?> where TOwner : class {
@@ -358,7 +370,7 @@ internal class DictionarySerializer<TOwner, TCollection, TKey, TValue>(PropertyI
         for (int i = 0; i < count; i++) {
             TKey key = KeySerializer.ReadFromUndoSnapshot(reader, owner) ??
                 throw new InvalidOperationException($"Serialized a null key for {property}. Cannot deserialize undo entry.");
-            dictionary.Add(key, DictionarySerializer<TOwner, TCollection, TKey, TValue>.ValueSerializer.ReadFromUndoSnapshot(reader, owner));
+            dictionary.Add(key, ValueSerializer.ReadFromUndoSnapshot(reader, owner));
         }
     }
 }

@@ -12,13 +12,13 @@ public static class Database {
     public static Item[] allSciencePacks { get; internal set; } = null!;
     public static Dictionary<string, FactorioObject> objectsByTypeName { get; internal set; } = null!;
     public static Dictionary<string, List<Fluid>> fluidVariants { get; internal set; } = null!;
-    public static ObjectWithQuality<Goods> voidEnergy { get; internal set; } = null!;
-    public static ObjectWithQuality<Item> science { get; internal set; } = null!;
-    public static ObjectWithQuality<Goods> itemInput { get; internal set; } = null!;
-    public static ObjectWithQuality<Goods> itemOutput { get; internal set; } = null!;
-    public static ObjectWithQuality<Special> electricity { get; internal set; } = null!;
-    public static ObjectWithQuality<Recipe> electricityGeneration { get; internal set; } = null!;
-    public static ObjectWithQuality<Special> heat { get; internal set; } = null!;
+    public static IObjectWithQuality<Goods> voidEnergy { get; internal set; } = null!;
+    public static IObjectWithQuality<Item> science { get; internal set; } = null!;
+    public static IObjectWithQuality<Item> itemInput { get; internal set; } = null!;
+    public static IObjectWithQuality<Item> itemOutput { get; internal set; } = null!;
+    public static IObjectWithQuality<Special> electricity { get; internal set; } = null!;
+    public static IObjectWithQuality<Recipe> electricityGeneration { get; internal set; } = null!;
+    public static IObjectWithQuality<Special> heat { get; internal set; } = null!;
     public static Entity? character { get; internal set; }
     public static EntityCrafter[] allCrafters { get; internal set; } = null!;
     public static Module[] allModules { get; internal set; } = null!;

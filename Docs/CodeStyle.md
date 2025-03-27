@@ -74,22 +74,3 @@ Most of the operators like `.` `+` `&&` go to the next line.
 The notable operators that stay on the same line are `=>`, `=> {`, and `,`.
 
 The wrapping of arguments in constructors and method-definitions is up to you.
-
-# Quality Implementation
-Despite several attempts, the implementation of quality levels is unpleasantly twisted.
-Here are some guidelines to keep handling of quality levels from causing additional problems:
-* **Serialization**
-  * All serialized values (public properties of `ModelObject`s and `[Serializable]` classes) must be a suitable concrete type.
-  (That is, `ObjectWithQuality<T>`, not `IObjectWithQuality<T>`)
-* **Equality**
-  * Where `==` operators are expected/used, prefer the concrete type.
-  The `==` operator will silently revert to reference equality if both sides of are the interface type.
-  * On the other hand, the `==` operator will fail to compile if the two sides are distinct concrete types.
-  Use `.As<type>()` to convert one side to the interface type.
-  * Types that call `Object.Equals`, such as `Dictionary` and `HashSet`, will behave correctly on both the interface and concrete types.
-  The interface type may be more convenient for things like dictionary keys or hashset values.
-* **Conversion**
-  * There is a conversion from `(T?, Quality)` to `ObjectWithQuality<T>?`, where a null input will return a null result.
-  If the input is definitely not null, use the constructor instead.
-  C# prohibits conversions to or from interface types.
-  * The interface types are covariant; an `IObjectWithQuality<Item>` may be used as an `IObjectWithQuality<Goods>` in the same way that an `Item` may be used as a `Goods`.

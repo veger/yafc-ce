@@ -276,7 +276,7 @@ doneDrawing:;
             using (gui.EnterGroup(contentPadding)) {
                 if (entity.spoilResult != null) {
                     gui.BuildText($"After {DataUtils.FormatTime(spoilTime)} of no production, spoils into");
-                    gui.BuildFactorioObjectButtonWithText(new ObjectWithQuality<Entity>(entity.spoilResult, quality), iconDisplayStyle: IconDisplayStyle.Default with { AlwaysAccessible = true });
+                    gui.BuildFactorioObjectButtonWithText(entity.spoilResult.With(quality), iconDisplayStyle: IconDisplayStyle.Default with { AlwaysAccessible = true });
                 }
                 else {
                     gui.BuildText($"Expires after {DataUtils.FormatTime(spoilTime)} of no production");

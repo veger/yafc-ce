@@ -28,7 +28,7 @@ public static class QualityExtensions {
     public static string QualityName(this IObjectWithQuality<FactorioObject> obj) => obj.target.name + "@" + obj.quality.name;
 
     public static IObjectWithQuality<Goods>? mainProduct(this IObjectWithQuality<RecipeOrTechnology> recipe) =>
-        (ObjectWithQuality<Goods>?)(recipe.target.mainProduct, recipe.quality);
+        recipe.target.mainProduct.With(recipe.quality);
 
     public static bool CanAcceptModule(this IObjectWithQuality<RecipeOrTechnology> recipe, Module module) =>
         recipe.target.CanAcceptModule(module);
@@ -38,43 +38,44 @@ public static class QualityExtensions {
     public static IObjectWithQuality<Item>? FuelResult(this IObjectWithQuality<Goods>? goods) =>
         (goods?.target as Item)?.fuelResult.With(goods!.quality); // null-forgiving: With is not called if goods is null.
 
-    [return: NotNullIfNotNull(nameof(obj))]
-    public static ObjectWithQuality<T>? With<T>(this T? obj, Quality quality) where T : FactorioObject => (obj, quality);
+    /// <summary>
+    /// Gets the <see cref="IObjectWithQuality{T}"/> representing a <see cref="FactorioObject"/> with an attached <see cref="Quality"/> modifier.
+    /// </summary>
+    /// <typeparam name="T">The type of the quality-oblivious object. This must be <see cref="FactorioObject"/> or a derived type.</typeparam>
+    /// <param name="target">The quality-oblivious object to be converted, or <see langword="null"/> to return <see langword="null"/>.</param>
+    /// <param name="quality">The desired quality. If <paramref name="target"/> does not accept quality modifiers (e.g. fluids or technologies),
+    /// the return value will have normal quality regardless of the value of this parameter. This parameter must still be a valid
+    /// <see cref="Quality"/> (not <see langword="null"/>), even if it will be ignored. </param>
+    /// <remarks>This automatically checks for invalid combinations, such as rare <see cref="Fluid"/>s. It will instead return a normal quality
+    /// object in that case.</remarks>
+    /// <returns>A valid quality-aware object, respecting the limitations of what objects can exist at non-normal quality, or
+    /// <see langword="null"/> if <paramref name="target"/> was <see langword="null"/>.</returns>
+    [return: NotNullIfNotNull(nameof(target))]
+    public static IObjectWithQuality<T>? With<T>(this T? target, Quality quality) where T : FactorioObject => ObjectWithQuality.Get(target, quality);
 
     /// <summary>
-    /// If possible, converts an <see cref="IObjectWithQuality{T}"/> into one with a different generic parameter.
+    /// Gets the <see cref="IObjectWithQuality{T}"/> with the same <see cref="IObjectWithQuality{T}.target"/> and the specified
+    /// <see cref="Quality"/>.
     /// </summary>
-    /// <typeparam name="T">The desired type parameter for the output <see cref="IObjectWithQuality{T}"/>.</typeparam>
-    /// <param name="obj">The input <see cref="IObjectWithQuality{T}"/> to be converted.</param>
-    /// <param name="result">If <c><paramref name="obj"/>?.target is <typeparamref name="T"/></c>, an <see cref="IObjectWithQuality{T}"/> with
-    /// the same target and quality as <paramref name="obj"/>. Otherwise, <see langword="null"/>.</param>
-    /// <returns><see langword="true"/> if the conversion was successful, or <see langword="false"/> if it was not.</returns>
-    public static bool Is<T>(this IObjectWithQuality<FactorioObject>? obj, [NotNullWhen(true)] out IObjectWithQuality<T>? result) where T : FactorioObject {
-        result = obj.As<T>();
-        return result is not null;
-    }
+    /// <typeparam name="T">The corresponding quality-oblivious type. This must be <see cref="FactorioObject"/> or a derived type.</typeparam>
+    /// <param name="target">An object containing the desired <see cref="IObjectWithQuality{T}.target"/>, or <see langword="null"/> to return
+    /// <see langword="null"/>.</param>
+    /// <param name="quality">The desired quality. If <paramref name="target"/>.<see cref="IObjectWithQuality{T}.target">target</see> does not
+    /// accept quality modifiers (e.g. fluids or technologies), the return value will have normal quality regardless of the value of this
+    /// parameter.</param>
+    /// <remarks>This automatically checks for invalid combinations, such as rare <see cref="Fluid"/>s. It will instead return a normal quality
+    /// object in that case.</remarks>
+    /// <returns>A valid quality-aware object, respecting the limitations of what objects can exist at non-normal quality, or
+    /// <see langword="null"/> if <paramref name="target"/> was <see langword="null"/>.</returns>
+    [return: NotNullIfNotNull(nameof(target))]
+    public static IObjectWithQuality<T>? With<T>(this IObjectWithQuality<T>? target, Quality quality) where T : FactorioObject
+        => ObjectWithQuality.Get(target?.target, quality);
 
     /// <summary>
     /// Tests whether an <see cref="IObjectWithQuality{T}"/> can be converted to one with a different generic parameter.
     /// </summary>
     /// <typeparam name="T">The desired type parameter for the <see cref="IObjectWithQuality{T}"/> conversion to be tested.</typeparam>
-    /// <param name="obj">The input <see cref="IObjectWithQuality{T}"/> to be converted.</param>
+    /// <param name="target">The input <see cref="IObjectWithQuality{T}"/> to be tested.</param>
     /// <returns><see langword="true"/> if the conversion is possible, or <see langword="false"/> if it was not.</returns>
-    public static bool Is<T>(this IObjectWithQuality<FactorioObject>? obj) where T : FactorioObject => obj?.target is T;
-
-    /// <summary>
-    /// If possible, converts an <see cref="IObjectWithQuality{T}"/> into one with a different generic parameter.
-    /// </summary>
-    /// <typeparam name="T">The desired type parameter for the output <see cref="IObjectWithQuality{T}"/>.</typeparam>
-    /// <param name="obj">The input <see cref="IObjectWithQuality{T}"/> to be converted.</param>
-    /// <param name="result">If <c><paramref name="obj"/>?.target is <typeparamref name="T"/></c>, an <see cref="IObjectWithQuality{T}"/> with
-    /// the same target and quality as <paramref name="obj"/>. Otherwise, <see langword="null"/>.</param>
-    /// <returns><see langword="true"/> if the conversion was successful, or <see langword="false"/> if it was not.</returns>
-    public static IObjectWithQuality<T>? As<T>(this IObjectWithQuality<FactorioObject>? obj) where T : FactorioObject {
-        if (obj is null or IObjectWithQuality<T>) {
-            return obj as IObjectWithQuality<T>;
-        }
-        // Use the conversion because it permits a null target. The constructor does not.
-        return (ObjectWithQuality<T>?)(obj.target as T, obj.quality);
-    }
+    public static bool Is<T>(this IObjectWithQuality<FactorioObject>? target) where T : FactorioObject => target?.target is T;
 }

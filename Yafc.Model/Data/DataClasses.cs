@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Text.Json;
 using Yafc.UI;
 [assembly: InternalsVisibleTo("Yafc.Parser")]
 
@@ -661,7 +661,7 @@ public abstract class EntityWithModules : Entity {
         return true;
     }
 
-    public bool CanAcceptModule<T>(ObjectWithQuality<T> module) where T : Module => CanAcceptModule(module.target.moduleSpecification);
+    public bool CanAcceptModule<T>(IObjectWithQuality<T> module) where T : Module => CanAcceptModule(module.target.moduleSpecification);
     public bool CanAcceptModule(ModuleSpecification module) => CanAcceptModule(module, allowedEffects, allowedModuleCategories);
 }
 
@@ -796,7 +796,9 @@ public sealed class Quality : FactorioObject {
 /// <summary>
 /// Represents a <see cref="FactorioObject"/> with an attached <see cref="Quality"/> modifier.
 /// </summary>
-/// <typeparam name="T">The concrete type of the quality-modified object.</typeparam>
+/// <typeparam name="T">The type of the quality-modified object.</typeparam>
+/// <remarks>Like <see cref="FactorioObject"/>s and their derived types, any two <see cref="IObjectWithQuality{T}"/> values may be compared using
+/// <c>==</c> and the default reference equality.</remarks>
 public interface IObjectWithQuality<out T> : IFactorioObjectWrapper where T : FactorioObject {
     /// <summary>
     /// Gets the <typeparamref name="T"/> object managed by this instance.
@@ -809,70 +811,78 @@ public interface IObjectWithQuality<out T> : IFactorioObjectWrapper where T : Fa
 }
 
 /// <summary>
-/// Represents a <see cref="FactorioObject"/> with an attached <see cref="Quality"/> modifier.
+/// Provides static methods for interacting with the canonical quality objects.
 /// </summary>
-/// <typeparam name="T">The concrete type of the quality-modified object.</typeparam>
-/// <param name="target">The object to be associated with a quality modifier. If this parameter might be <see langword="null"/>,
-/// use the implicit conversion from <see cref="ValueTuple{T1, T2}"/> instead.</param>
-/// <param name="quality">The quality for this object.</param>
-[Serializable]
-public sealed class ObjectWithQuality<T>(T target, Quality quality) : IObjectWithQuality<T>, ICustomJsonDeserializer<ObjectWithQuality<T>> where T : FactorioObject {
-    // These items do not support quality:
+/// <remarks>References to the old <c>ObjectWithQuality&lt;T></c> class should be changed to <see cref="IObjectWithQuality{T}"/>, and constructor
+/// calls and conversions should be replaced with calls to <see cref="QualityExtensions.With{T}(T, Quality)"/>.</remarks>
+public static class ObjectWithQuality {
+    private static readonly Dictionary<(FactorioObject, Quality), object> _cache = [];
+    // These items do not support quality
     private static readonly HashSet<string> nonQualityItemNames = ["science", "item-total-input", "item-total-output"];
 
-    /// <inheritdoc/>
-    public T target { get; } = target ?? throw new ArgumentNullException(nameof(target));
-    /// <inheritdoc/>
-    public Quality quality { get; } = CheckQuality(target, quality ?? throw new ArgumentNullException(nameof(quality)));
-
-    private static Quality CheckQuality(T target, Quality quality) => target switch {
-        // Things that don't support quality:
-        Fluid or Location or Mechanics { source: Entity } or Quality or Special or Technology or Tile => Quality.Normal,
-        Recipe r when r.ingredients.All(i => i.goods is Fluid) => Quality.Normal,
-        // Most other things support quality, but a few items are excluded:
-        Item when nonQualityItemNames.Contains(target.name) => Quality.Normal,
-        _ => quality
-    };
+    /// <summary>
+    /// Gets the <see cref="IObjectWithQuality{T}"/> representing a <see cref="FactorioObject"/> with an attached <see cref="Quality"/> modifier.
+    /// </summary>
+    /// <typeparam name="T">The type of the quality-modified object.</typeparam>
+    /// <param name="target">The object to be associated with a quality modifier.</param>
+    /// <param name="quality">The quality for this object.</param>
+    /// <remarks>For shorter expressions/lines, consider calling <see cref="QualityExtensions.With{T}(T, Quality)"/> instead.</remarks>
+    [return: NotNullIfNotNull(nameof(target))]
+    public static IObjectWithQuality<T>? Get<T>(T? target, Quality quality) where T : FactorioObject
+        => target == null ? null : (IObjectWithQuality<T>)_cache[(target, quality ?? throw new ArgumentNullException(nameof(quality)))];
 
     /// <summary>
-    /// Creates a new <see cref="ObjectWithQuality{T}"/> with the current <see cref="target"/> and the specified <see cref="Quality"/>.
+    /// Constructs all <see cref="ConcreteObjectWithQuality{T}"/>s for the current contents of data.raw. This should only be called by
+    /// <c>FactorioDataDeserializer.LoadData</c>.
     /// </summary>
-    public ObjectWithQuality<T> With(Quality quality) => new(target, quality);
-
-    string IFactorioObjectWrapper.text => ((IFactorioObjectWrapper)target).text;
-    FactorioObject IFactorioObjectWrapper.target => target;
-    float IFactorioObjectWrapper.amount => ((IFactorioObjectWrapper)target).amount;
-
-    public static implicit operator ObjectWithQuality<T>?((T? entity, Quality quality) value) => value.entity == null ? null : new(value.entity, value.quality);
-
-    /// <inheritdoc/>
-    public static bool Deserialize(ref Utf8JsonReader reader, DeserializationContext context, out ObjectWithQuality<T>? result) {
-        if (reader.TokenType == JsonTokenType.String) {
-            // Read the old `"entity": "Entity.solar-panel"` format.
-            if (Database.objectsByTypeName[reader.GetString()!] is not T obj) {
-                context.Error($"Could not convert '{reader.GetString()}' to a {typeof(T).Name}.", ErrorSeverity.MinorDataLoss);
-                result = null;
-                return true;
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    internal static void LoadCache(List<FactorioObject> allObjects) {
+        _cache.Clear();
+        // Quality.Normal must be processed first, so the reset-to-normal logic will work properly.
+        foreach (var quality in allObjects.OfType<Quality>().Where(x => x != Quality.Normal).Prepend(Quality.Normal)) {
+            foreach (var obj in allObjects) {
+                MakeObject(obj, quality);
             }
-            result = new(obj, Quality.Normal);
-            return true;
         }
-        // This is probably the current `"entity": { "target": "Entity.solar-panel", "quality": "Quality.rare" }` format.
-        result = default;
-        return false;
     }
 
-    // Ensure ObjectWithQuality<X> equals ObjectWithQuality<Y> as long as the properties are equal, regardless of X and Y.
-    public override bool Equals(object? obj) => Equals(obj as IObjectWithQuality<FactorioObject>);
-    public bool Equals(IObjectWithQuality<FactorioObject>? other) => other is not null && target == other.target && quality == other.quality;
-    public override int GetHashCode() => HashCode.Combine(target, quality);
+    private static void MakeObject(FactorioObject target, Quality quality) {
+        Quality realQuality = target switch {
+            // Things that don't support quality:
+            Fluid or Location or Mechanics { source: Entity } or Quality or Special or Technology or Tile => Quality.Normal,
+            Recipe r when r.ingredients.All(i => i.goods is Fluid) => Quality.Normal,
+            Item when nonQualityItemNames.Contains(target.name) => Quality.Normal,
+            // Everything else supports quality
+            _ => quality
+        };
 
-    public static bool operator ==(ObjectWithQuality<T>? left, ObjectWithQuality<T>? right) => left == (IObjectWithQuality<FactorioObject>?)right;
-    public static bool operator ==(ObjectWithQuality<T>? left, IObjectWithQuality<FactorioObject>? right) => (left is null && right is null) || (left is not null && left.Equals(right));
-    public static bool operator ==(IObjectWithQuality<FactorioObject>? left, ObjectWithQuality<T>? right) => right == left;
-    public static bool operator !=(ObjectWithQuality<T>? left, ObjectWithQuality<T>? right) => !(left == right);
-    public static bool operator !=(ObjectWithQuality<T>? left, IObjectWithQuality<FactorioObject>? right) => !(left == right);
-    public static bool operator !=(IObjectWithQuality<FactorioObject>? left, ObjectWithQuality<T>? right) => !(left == right);
+        object withQuality;
+        if (realQuality == quality) {
+            Type type = typeof(ConcreteObjectWithQuality<>).MakeGenericType(target.GetType());
+            withQuality = Activator.CreateInstance(type, [target, realQuality])!;
+        }
+        else {
+            // This got changed back to normal quality. Get the previously stored object instead of making a new one.
+            withQuality = Get(target, realQuality);
+        }
+
+        _cache[(target, quality)] = withQuality;
+    }
+
+    /// <summary>
+    /// Represents a <see cref="FactorioObject"/> with an attached <see cref="Quality"/> modifier.
+    /// </summary>
+    /// <typeparam name="T">The concrete type of the quality-modified object.</typeparam>
+    private sealed class ConcreteObjectWithQuality<T>(T target, Quality quality) : IObjectWithQuality<T> where T : FactorioObject {
+        /// <inheritdoc/>
+        public T target { get; } = target ?? throw new ArgumentNullException(nameof(target));
+        /// <inheritdoc/>
+        public Quality quality { get; } = quality ?? throw new ArgumentNullException(nameof(quality));
+
+        string IFactorioObjectWrapper.text => ((IFactorioObjectWrapper)target).text;
+        FactorioObject IFactorioObjectWrapper.target => target;
+        float IFactorioObjectWrapper.amount => ((IFactorioObjectWrapper)target).amount;
+    }
 }
 
 public class Effect {

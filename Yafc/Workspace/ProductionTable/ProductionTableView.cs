@@ -249,10 +249,10 @@ public class ProductionTableView : ProjectPageView<ProductionTable> {
 
                     foreach (var quality in Database.qualities.all) {
                         foreach (var product in recipe.products) {
-                            view.CreateLink(view.model, new ObjectWithQuality<Goods>(product.goods, quality));
+                            view.CreateLink(view.model, product.goods.With(quality));
                         }
 
-                        view.model.AddRecipe(new(recipe, quality), DefaultVariantOrdering);
+                        view.model.AddRecipe(recipe.With(quality), DefaultVariantOrdering);
                     }
 goodsHaveNoProduction:;
                 }
@@ -267,7 +267,7 @@ goodsHaveNoProduction:;
             if (gui.BuildButton("Add raw recipe").WithTooltip(gui, "Ctrl-click to add a technology instead") && gui.CloseDropdown()) {
                 if (InputSystem.Instance.control) {
                     SelectMultiObjectPanel.Select(Database.technologies.all, "Select technology",
-                        r => table.AddRecipe(new(r, Quality.Normal), DefaultVariantOrdering), checkMark: r => table.recipes.Any(rr => rr.recipe.target == r), yellowMark: r => table.GetAllRecipes().Any(rr => rr.recipe.target == r));
+                        r => table.AddRecipe(r.With(Quality.Normal), DefaultVariantOrdering), checkMark: r => table.recipes.Any(rr => rr.recipe.target == r), yellowMark: r => table.GetAllRecipes().Any(rr => rr.recipe.target == r));
                 }
                 else {
                     var prodTable = ProductionLinkSummaryScreen.FindProductionTable(table, out List<ModelObject> parents);
@@ -350,7 +350,7 @@ goodsHaveNoProduction:;
 
                 if (favoriteCrafter != null && recipe.entity?.target != favoriteCrafter) {
                     _ = recipe.RecordUndo();
-                    recipe.entity = new(favoriteCrafter, recipe.entity?.quality ?? Quality.MaxAccessible);
+                    recipe.entity = favoriteCrafter.With(recipe.entity?.quality ?? Quality.MaxAccessible);
 
                     if (!recipe.entity.target.energy.fuels.Contains(recipe.fuel?.target)) {
                         recipe.fuel = recipe.entity.target.energy.fuels.AutoSelect(DataUtils.FavoriteFuel).With(Quality.Normal);
@@ -377,7 +377,7 @@ goodsHaveNoProduction:;
                 view.BuildGoodsIcon(gui, fuel, fuelLink, fuelAmount, ProductDropdownType.Fuel, recipe, recipe.linkRoot, HintLocations.OnProducingRecipes);
             }
             else {
-                if (recipe.recipe == Database.electricityGeneration.As<Recipe>() && recipe.entity.target.factorioType is "solar-panel" or "lightning-attractor") {
+                if (recipe.recipe == Database.electricityGeneration && recipe.entity.target.factorioType is "solar-panel" or "lightning-attractor") {
                     BuildAccumulatorView(gui, recipe);
                 }
             }
@@ -391,7 +391,7 @@ goodsHaveNoProduction:;
                 float requiredMj = recipe.entity?.GetCraftingSpeed() * recipe.buildingCount * (70 / 0.7f) ?? 0; // 70 seconds of charge time to last through the night
                 requiredAccumulators = requiredMj / accumulator.AccumulatorCapacity(accumulatorQuality);
             }
-            else if (recipe.entity.Is(out IObjectWithQuality<EntityAttractor>? attractor)) {
+            else if (recipe.entity is IObjectWithQuality<EntityAttractor> attractor) {
                 // Model the storm as rising from 0% to 100% over 30 seconds, staying at 100% for 24 seconds, and decaying over 30 seconds.
                 // I adjusted these until the right answers came out of my Excel model.
                 // TODO(multi-planet): Adjust these numbers based on day length.
@@ -434,7 +434,7 @@ goodsHaveNoProduction:;
                     requiredChargeMw / accumulator.Power(accumulatorQuality));
             }
 
-            ObjectWithQuality<Entity> accumulatorWithQuality = new(accumulator, accumulatorQuality);
+            IObjectWithQuality<Entity> accumulatorWithQuality = accumulator.With(accumulatorQuality);
             if (gui.BuildFactorioObjectWithAmount(accumulatorWithQuality, requiredAccumulators, ButtonDisplayStyle.ProductionTableUnscaled) == Click.Left) {
                 ShowAccumulatorDropdown(gui, recipe, accumulator, accumulatorQuality);
             }
@@ -470,7 +470,7 @@ goodsHaveNoProduction:;
                     }
 
                     _ = recipe.RecordUndo();
-                    recipe.entity = new(sel, quality);
+                    recipe.entity = sel.With(quality);
                     if (!sel.energy.fuels.Contains(recipe.fuel?.target)) {
                         recipe.fuel = recipe.entity.target.energy.fuels.AutoSelect(DataUtils.FavoriteFuel).With(Quality.Normal);
                     }
@@ -580,7 +580,7 @@ goodsHaveNoProduction:;
                     foreach (var recipe in view.GetRecipesRecursive()) {
                         if (recipe.recipe.target.crafters.Contains(set)) {
                             _ = recipe.RecordUndo();
-                            recipe.entity = new(set, recipe.entity?.quality ?? Quality.Normal);
+                            recipe.entity = set.With(recipe.entity?.quality ?? Quality.Normal);
 
                             if (!set.energy.fuels.Contains(recipe.fuel?.target)) {
                                 recipe.fuel = recipe.entity.target.energy.fuels.AutoSelect(DataUtils.FavoriteFuel).With(Quality.Normal);
@@ -783,7 +783,7 @@ goodsHaveNoProduction:;
                     else {
                         _ = dropGui.BuildQualityList(quality, out quality);
                     }
-                    dropGui.BuildInlineObjectListAndButton(modules, m => recipe.SetFixedModule(new(m, quality)), new("Select fixed module", DataUtils.FavoriteModule));
+                    dropGui.BuildInlineObjectListAndButton(modules, m => recipe.SetFixedModule(m.With(quality)), new("Select fixed module", DataUtils.FavoriteModule));
                 }
 
                 if (moduleTemplateList.data.Count > 0) {
@@ -846,7 +846,7 @@ goodsHaveNoProduction:;
             return;
         }
 
-        ProductionLink link = new ProductionLink(table, new(goods.target, goods.quality));
+        ProductionLink link = new ProductionLink(table, goods.target.With(goods.quality));
         Rebuild();
         table.RecordUndo().links.Add(link);
     }
@@ -858,7 +858,7 @@ goodsHaveNoProduction:;
         }
     }
 
-    private static void CreateNewProductionTable(ObjectWithQuality<Goods> goods, float amount) {
+    private static void CreateNewProductionTable(IObjectWithQuality<Goods> goods, float amount) {
         var page = MainScreen.Instance.AddProjectPage(goods.target.locName, goods.target, typeof(ProductionTable), true, false);
         ProductionTable content = (ProductionTable)page.content;
         ProductionLink link = new ProductionLink(content, goods) { amount = amount > 0 ? amount : 1 };
@@ -866,7 +866,7 @@ goodsHaveNoProduction:;
         content.RebuildLinkMap();
     }
 
-    private void OpenProductDropdown(ImGui targetGui, Rect rect, ObjectWithQuality<Goods> goods, float amount, IProductionLink? iLink,
+    private void OpenProductDropdown(ImGui targetGui, Rect rect, IObjectWithQuality<Goods> goods, float amount, IProductionLink? iLink,
         ProductDropdownType type, RecipeRow? recipe, ProductionTable context, Goods[]? variants = null) {
 
         if (InputSystem.Instance.shift) {
@@ -883,18 +883,18 @@ goodsHaveNoProduction:;
         bool recipeExists(RecipeOrTechnology rec) => curLevelRecipes.Contains(rec.With(goods.quality));
         bool recipeExistsAnywhere(RecipeOrTechnology rec) => allRecipes.Contains(rec.With(goods.quality));
 
-        ObjectWithQuality<Goods>? selectedFuel = null;
-        ObjectWithQuality<Goods>? spentFuel = null;
+        IObjectWithQuality<Goods>? selectedFuel = null;
+        IObjectWithQuality<Goods>? spentFuel = null;
 
         async void addRecipe(RecipeOrTechnology rec) {
-            ObjectWithQuality<RecipeOrTechnology> qualityRecipe = rec.With(goods.quality);
+            IObjectWithQuality<RecipeOrTechnology> qualityRecipe = rec.With(goods.quality);
             if (variants == null) {
                 CreateLink(context, goods);
             }
             else {
                 foreach (var variant in variants) {
                     if (rec.GetProductionPerRecipe(variant) > 0f) {
-                        CreateLink(context, new ObjectWithQuality<Goods>(variant, goods.quality));
+                        CreateLink(context, variant.With(goods.quality));
 
                         if (variant != goods.target) {
                             // null-forgiving: If variants is not null, neither is recipe: Only the call from BuildGoodsIcon sets variants,
@@ -987,10 +987,10 @@ goodsHaveNoProduction:;
             #region Recipe selection
             int numberOfShownRecipes = 0;
 
-            if (goods == Database.science.As<Item>()) {
+            if (goods == Database.science) {
                 if (gui.BuildButton("Add technology") && gui.CloseDropdown()) {
                     SelectMultiObjectPanel.Select(Database.technologies.all, "Select technology",
-                        r => context.AddRecipe(new(r, Quality.Normal), DefaultVariantOrdering), checkMark: r => context.recipes.Any(rr => rr.recipe.target == r));
+                        r => context.AddRecipe(r.With(Quality.Normal), DefaultVariantOrdering), checkMark: r => context.recipes.Any(rr => rr.recipe.target == r));
                 }
             }
             else if (type <= ProductDropdownType.Ingredient && allProduction.Length > 0) {
@@ -1318,7 +1318,7 @@ goodsHaveNoProduction:;
 
         switch (evt) {
             case GoodsWithAmountEvent.LeftButtonClick when goods is not null:
-                OpenProductDropdown(gui, gui.lastRect, new(goods.target, goods.quality), amount, link, dropdownType, recipe, context, variants);
+                OpenProductDropdown(gui, gui.lastRect, goods, amount, link, dropdownType, recipe, context, variants);
                 break;
             case GoodsWithAmountEvent.RightButtonClick when goods is not null and { target.isLinkable: true } && (link is not ProductionLink || link.owner != context):
                 CreateLink(context, goods);
@@ -1586,7 +1586,7 @@ goodsHaveNoProduction:;
                 link.RecordUndo().amount = 1f;
             }
             else {
-                table.RecordUndo().links.Add(new ProductionLink(table, new(product.target, product.quality)) { amount = 1f });
+                table.RecordUndo().links.Add(new ProductionLink(table, product.target.With(product.quality)) { amount = 1f });
             }
         }, Quality.Normal);
 

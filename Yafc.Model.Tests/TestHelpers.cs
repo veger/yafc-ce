@@ -10,6 +10,6 @@ internal static class TestHelpers {
     /// <typeparam name="T">The type of the input objects. Must be <see cref="FactorioObject"/> or one of its subclasses.</typeparam>
     /// <param name="values">The sequence of values that should have qualities applied to them.</param>
     /// <returns>The cartesian product of <paramref name="values"/> and the members of <see cref="Database.qualities"/>.</returns>
-    public static IEnumerable<ObjectWithQuality<T>> WithAllQualities<T>(this IEnumerable<T> values) where T : FactorioObject
+    public static IEnumerable<IObjectWithQuality<T>> WithAllQualities<T>(this IEnumerable<T> values) where T : FactorioObject
         => values.SelectMany(c => Database.qualities.all.Select(q => c.With(q))).Distinct();
 }

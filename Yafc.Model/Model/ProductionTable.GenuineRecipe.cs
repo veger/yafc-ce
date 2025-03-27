@@ -35,8 +35,8 @@ public partial class ProductionTable {
         }
 
         // Pass all remaining calls through to the underlying RecipeRow.
-        public ObjectWithQuality<EntityCrafter>? entity => row.entity;
-        public ObjectWithQuality<Goods>? fuel => row.fuel;
+        public IObjectWithQuality<EntityCrafter>? entity => row.entity;
+        public IObjectWithQuality<Goods>? fuel => row.fuel;
         public float fixedBuildings => row.fixedBuildings;
         public double recipesPerSecond { get => row.recipesPerSecond; set => row.recipesPerSecond = value; }
         public float RecipeTime => ((IRecipeRow)row).RecipeTime;

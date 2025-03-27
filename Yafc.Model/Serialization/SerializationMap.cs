@@ -19,10 +19,13 @@ public class NoUndoAttribute : Attribute { }
 public sealed class DeserializeWithNonPublicConstructorAttribute : Attribute { }
 
 /// <summary>
-/// Represents a type that can be deserialized from JSON formats that do not match its current serialization format. This typically happens when an object changes
-/// between value (string/float), object, and array representations.
+/// Represents a type that can be deserialized from JSON formats that do not match its current serialization format. This typically happens when
+/// an object changes between value (string/float), object, and array representations.
 /// </summary>
 /// <typeparam name="T">The type that is being defined with custom deserialization rules.</typeparam>
+/// <remarks>When adding new static members to this interface, also add matching instance members to 
+/// <see cref="SerializationMap{T}.ICustomDeserializerHelper"/> and <see cref="SerializationMap{T}.CustomDeserializerHelper{U}"/>. Check that
+/// <c>helper</c> is not <see langword="null"/> and call the members of this interface using <c>helper.<em>MemberName</em></c>.</remarks>
 internal interface ICustomJsonDeserializer<T> {
     /// <summary>
     /// Attempts to deserialize an object from custom (aka 'old') formats.
@@ -32,8 +35,10 @@ internal interface ICustomJsonDeserializer<T> {
     /// <param name="result">If the deserialization was successful (this method returns <see langword="true"/>), this is set to the result of reading the consumed JSON tokens.
     /// If unsuccessful, the output value of this parameter should not be used.</param>
     /// <returns><see langword="true"/> when the custom deserialization was successful, and <see langword="false"/> when the default serializer should be used instead.</returns>
-    // This is a static method so it can be declared for types that do no have a default constructor.
+    // This is a static method so it can be declared for types that do not have a default constructor.
     static abstract bool Deserialize(ref Utf8JsonReader reader, DeserializationContext context, out T? result);
+
+    // When adding new static members to this interface, also add them to SerializationMap's nested types; see the remarks above.
 }
 
 internal abstract class SerializationMap {
@@ -75,6 +80,7 @@ internal static class SerializationMap<T> where T : class {
     private static readonly int constructorProperties;
     private static readonly ulong constructorFieldMask;
     private static readonly ulong requiredConstructorFieldMask;
+    private static readonly ICustomDeserializerHelper? helper;
 
     public class SpecificSerializationMap : SerializationMap {
         public override void BuildUndo(object? target, UndoSnapshotBuilder builder) {
@@ -138,15 +144,11 @@ internal static class SerializationMap<T> where T : class {
             if (definition == typeof(IDictionary<,>)) {
                 var args = iface.GetGenericArguments();
 
-                if (ValueSerializer.IsValueSerializerSupported(args[0])) {
-                    keyType = args[0];
-                    elementType = args[1];
-
-                    if (ValueSerializer.IsValueSerializerSupported(elementType)) {
-                        serializerType = typeof(DictionarySerializer<,,,>);
-
-                        return true;
-                    }
+                keyType = args[0];
+                elementType = args[1];
+                if (ValueSerializer.IsKeySerializerSupported(keyType) && ValueSerializer.IsValueSerializerSupported(elementType)) {
+                    serializerType = typeof(DictionarySerializer<,,,>);
+                    return true;
                 }
             }
         }
@@ -157,6 +159,7 @@ internal static class SerializationMap<T> where T : class {
     }
 
     static SerializationMap() {
+
         List<PropertySerializer<T>> list = [];
         bool isModel = typeof(ModelObject).IsAssignableFrom(typeof(T));
 
@@ -165,6 +168,13 @@ internal static class SerializationMap<T> where T : class {
         }
         else {
             constructor = typeof(T).GetConstructors(BindingFlags.Public | BindingFlags.Instance)[0];
+        }
+
+        if (typeof(ICustomJsonDeserializer<T>).IsAssignableFrom(typeof(T))) {
+            // I want to call methods by using, e.g. `((ICustomJsonDeserializer<T>)T).Deserialize(...)`, but that isn't supported.
+            // This helper calls ICustomJsonDeserializer<T>.Deserialize (and any new methods) by the least obscure method I could come up with.
+
+            helper = (ICustomDeserializerHelper)Activator.CreateInstance(typeof(CustomDeserializerHelper<>).MakeGenericType(typeof(T), typeof(T)))!;
         }
 
         var constructorParameters = constructor.GetParameters();
@@ -218,9 +228,6 @@ internal static class SerializationMap<T> where T : class {
             if (property.CanWrite && property.GetSetMethod() != null) {
                 if (ValueSerializer.IsValueSerializerSupported(propertyType)) {
                     serializerType = typeof(ValuePropertySerializer<,>);
-                }
-                else if (typeof(ModelObject).IsAssignableFrom(propertyType)) {
-                    serializerType = typeof(ReadWriteReferenceSerializer<,>);
                 }
                 else {
                     throw new NotSupportedException("Type " + typeof(T) + " has property " + property.Name + " that cannot be serialized");
@@ -292,10 +299,19 @@ internal static class SerializationMap<T> where T : class {
         return null;
     }
 
+    /// <summary>
+    /// A helper type for calling static members of <see cref="ICustomJsonDeserializer{T}"/>. Static members there should have matching instance
+    /// members here.
+    /// </summary>
     private interface ICustomDeserializerHelper {
         bool Deserialize(ref Utf8JsonReader reader, DeserializationContext context, out T? deserializedObject);
     }
 
+    /// <summary>
+    /// A helper type for calling static members in <see cref="ICustomJsonDeserializer{T}"/>. Static members there should have matching instance
+    /// members here, which call <typeparamref name="U"/>.<em>MemberName</em> and return the result, casting as appropriate.
+    /// </summary>
+    /// <typeparam name="U">Always the same as <typeparamref name="T"/>, though the compiler doesn't know this.</typeparam>
     private class CustomDeserializerHelper<U> : ICustomDeserializerHelper where U : ICustomJsonDeserializer<U> {
         public bool Deserialize(ref Utf8JsonReader reader, DeserializationContext context, out T? deserializedObject) {
             bool result = U.Deserialize(ref reader, context, out U? intermediate);
@@ -309,10 +325,7 @@ internal static class SerializationMap<T> where T : class {
             return null;
         }
 
-        if (typeof(ICustomJsonDeserializer<T>).IsAssignableFrom(typeof(T))) {
-            // I want to do `((ICustomJsonDeserializer<T>)T).Deserialize(...)`, but that isn't supported.
-            // This and its helper types call ICustomJsonDeserializer<T>.Deserialize by the least obscure method I could come up with.
-            ICustomDeserializerHelper helper = (ICustomDeserializerHelper)Activator.CreateInstance(typeof(CustomDeserializerHelper<>).MakeGenericType(typeof(T), typeof(T)))!;
+        if (helper != null) {
             Utf8JsonReader savedState = reader;
             if (helper.Deserialize(ref reader, context, out T? result)) {
                 // The custom deserializer was successful; return its result.

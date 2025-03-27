@@ -16,7 +16,7 @@ public struct ModuleEffects {
     public readonly float speedMod => MathF.Max(1f + speed, 0.2f);
     public readonly float energyUsageMod => MathF.Max(1f + consumption, 0.2f);
     public readonly float qualityMod => MathF.Max(quality, 0);
-    public void AddModules(ObjectWithQuality<Module> module, float count, AllowedEffects allowedEffects = AllowedEffects.All) {
+    public void AddModules(IObjectWithQuality<Module> module, float count, AllowedEffects allowedEffects = AllowedEffects.All) {
         ModuleSpecification spec = module.target.moduleSpecification;
         Quality quality = module.quality;
         if (allowedEffects.HasFlags(AllowedEffects.Speed)) {
@@ -36,7 +36,7 @@ public struct ModuleEffects {
         }
     }
 
-    public readonly int GetModuleSoftLimit(ObjectWithQuality<Module> module, int hardLimit) {
+    public readonly int GetModuleSoftLimit(IObjectWithQuality<Module> module, int hardLimit) {
         ModuleSpecification spec = module.target.moduleSpecification;
         Quality quality = module.quality;
 
@@ -56,8 +56,8 @@ public struct ModuleEffects {
 /// One module that is (or will be) applied to a <see cref="RecipeRow"/>, and the number of times it should appear.
 /// </summary>
 /// <remarks>Immutable. To modify, modify the owning <see cref="ModuleTemplate"/>.</remarks>
-public class RecipeRowCustomModule(ModuleTemplate owner, ObjectWithQuality<Module> module, int fixedCount = 0) : ModelObject<ModuleTemplate>(owner) {
-    public ObjectWithQuality<Module> module { get; } = module ?? throw new ArgumentNullException(nameof(module));
+public class RecipeRowCustomModule(ModuleTemplate owner, IObjectWithQuality<Module> module, int fixedCount = 0) : ModelObject<ModuleTemplate>(owner) {
+    public IObjectWithQuality<Module> module { get; } = module ?? throw new ArgumentNullException(nameof(module));
     public int fixedCount { get; } = fixedCount;
 }
 
@@ -70,7 +70,7 @@ public class ModuleTemplate : ModelObject<ModelObject> {
     /// <summary>
     /// The beacon to use, if any, for the associated <see cref="RecipeRow"/>.
     /// </summary>
-    public ObjectWithQuality<EntityBeacon>? beacon { get; }
+    public IObjectWithQuality<EntityBeacon>? beacon { get; }
     /// <summary>
     /// The modules, if any, to directly insert into the crafting entity.
     /// </summary>
@@ -80,7 +80,7 @@ public class ModuleTemplate : ModelObject<ModelObject> {
     /// </summary>
     public ReadOnlyCollection<RecipeRowCustomModule> beaconList { get; private set; } = new([]); // Must be a distinct collection object to accommodate the deserializer.
 
-    private ModuleTemplate(ModelObject owner, ObjectWithQuality<EntityBeacon>? beacon) : base(owner) => this.beacon = beacon;
+    private ModuleTemplate(ModelObject owner, IObjectWithQuality<EntityBeacon>? beacon) : base(owner) => this.beacon = beacon;
 
     public bool IsCompatibleWith([NotNullWhen(true)] RecipeRow? row) {
         if (row?.entity == null) {
@@ -111,9 +111,9 @@ public class ModuleTemplate : ModelObject<ModelObject> {
     }
 
     internal void GetModulesInfo(RecipeRow row, EntityCrafter entity, ref ModuleEffects effects, ref UsedModule used, ModuleFillerParameters? filler) {
-        List<(ObjectWithQuality<Module> module, int count, bool beacon)> buffer = [];
+        List<(IObjectWithQuality<Module> module, int count, bool beacon)> buffer = [];
         int beaconedModules = 0;
-        ObjectWithQuality<Module>? nonBeacon = null;
+        IObjectWithQuality<Module>? nonBeacon = null;
         used.modules = null;
         int remaining = entity.moduleSlots;
 
@@ -186,7 +186,7 @@ public class ModuleTemplate : ModelObject<ModelObject> {
 
         return modules;
 
-        ReadOnlyCollection<RecipeRowCustomModule> convertList(List<(ObjectWithQuality<Module> module, int fixedCount)> list)
+        ReadOnlyCollection<RecipeRowCustomModule> convertList(List<(IObjectWithQuality<Module> module, int fixedCount)> list)
             => list.Select(m => new RecipeRowCustomModule(modules, m.module, m.fixedCount)).ToList().AsReadOnly();
     }
 }
@@ -198,15 +198,15 @@ public class ModuleTemplateBuilder {
     /// <summary>
     /// The beacon to be stored in <see cref="ModuleTemplate.beacon"/> after building.
     /// </summary>
-    public ObjectWithQuality<EntityBeacon>? beacon { get; set; }
+    public IObjectWithQuality<EntityBeacon>? beacon { get; set; }
     /// <summary>
     /// The list of <see cref="Module"/>s and counts to be stored in <see cref="ModuleTemplate.list"/> after building.
     /// </summary>
-    public List<(ObjectWithQuality<Module> module, int fixedCount)> list { get; set; } = [];
+    public List<(IObjectWithQuality<Module> module, int fixedCount)> list { get; set; } = [];
     /// <summary>
     /// The list of <see cref="Module"/>s and counts to be stored in <see cref="ModuleTemplate.beaconList"/> after building.
     /// </summary>
-    public List<(ObjectWithQuality<Module> module, int fixedCount)> beaconList { get; set; } = [];
+    public List<(IObjectWithQuality<Module> module, int fixedCount)> beaconList { get; set; } = [];
 
     /// <summary>
     /// Builds a <see cref="ModuleTemplate"/> from this <see cref="ModuleTemplateBuilder"/>.
@@ -257,8 +257,8 @@ public interface IGroupedElement<TGroup> {
 /// </summary>
 public interface IRecipeRow {
     // Variable (user-configured, for RecipeRow) properties
-    ObjectWithQuality<EntityCrafter>? entity { get; }
-    ObjectWithQuality<Goods>? fuel { get; }
+    IObjectWithQuality<EntityCrafter>? entity { get; }
+    IObjectWithQuality<Goods>? fuel { get; }
     /// <summary>
     /// If not zero, the fixed building count to be used by the solver.
     /// </summary>
@@ -304,15 +304,15 @@ public interface IRecipeRow {
 /// Represents a row in a production table that can be configured by the user.
 /// </summary>
 public class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<ProductionTable>, IRecipeRow {
-    private ObjectWithQuality<EntityCrafter>? _entity;
-    private ObjectWithQuality<Goods>? _fuel;
+    private IObjectWithQuality<EntityCrafter>? _entity;
+    private IObjectWithQuality<Goods>? _fuel;
     private float _fixedBuildings;
-    private ObjectWithQuality<Goods>? _fixedProduct;
+    private IObjectWithQuality<Goods>? _fixedProduct;
     private ModuleTemplate? _modules;
 
-    public ObjectWithQuality<RecipeOrTechnology> recipe { get; }
+    public IObjectWithQuality<RecipeOrTechnology> recipe { get; }
     // Variable parameters
-    public ObjectWithQuality<EntityCrafter>? entity {
+    public IObjectWithQuality<EntityCrafter>? entity {
         get => _entity;
         set {
             if (_entity == value) {
@@ -344,7 +344,7 @@ public class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Productio
             }
         }
     }
-    public ObjectWithQuality<Goods>? fuel {
+    public IObjectWithQuality<Goods>? fuel {
         get => _fuel;
         set {
             if (SerializationMap.IsDeserializing || fixedBuildings == 0 || _fuel == value) {
@@ -404,11 +404,11 @@ public class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Productio
     /// <summary>
     /// If not <see langword="null"/>, <see cref="fixedBuildings"/> is set to control the consumption of this ingredient.
     /// </summary>
-    public ObjectWithQuality<Goods>? fixedIngredient { get; set; }
+    public IObjectWithQuality<Goods>? fixedIngredient { get; set; }
     /// <summary>
     /// If not <see langword="null"/>, <see cref="fixedBuildings"/> is set to control the production of this product.
     /// </summary>
-    public ObjectWithQuality<Goods>? fixedProduct {
+    public IObjectWithQuality<Goods>? fixedProduct {
         get => _fixedProduct;
         set {
             if (value == null) {
@@ -416,7 +416,7 @@ public class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Productio
             }
             else {
                 // This takes advantage of the fact that ObjectWithQuality automatically downgrades high-quality fluids (etc.) to normal.
-                var products = recipe.target.products.AsEnumerable().Select(p => new ObjectWithQuality<Goods>(p.goods, recipe.quality));
+                var products = recipe.target.products.AsEnumerable().Select(p => p.goods.With(recipe.quality));
                 if (value != Database.itemOutput && products.All(p => p != value)) {
                     // The UI doesn't know the difference between a product and a spent fuel, but we care about the difference
                     _fixedProduct = null;
@@ -457,7 +457,7 @@ public class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Productio
     public Module module {
         set {
             if (value != null) {
-                modules = new ModuleTemplateBuilder { list = { (new(value, Quality.Normal), 0) } }.Build(this);
+                modules = new ModuleTemplateBuilder { list = { (value.With(Quality.Normal), 0) } }.Build(this);
             }
         }
     }
@@ -498,7 +498,7 @@ public class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Productio
         float factor = forSolver ? 1 : (float)recipesPerSecond; // The solver needs the ingredients for one recipe, to produce recipesPerSecond.
         for (int i = 0; i < recipe.target.ingredients.Length; i++) {
             Ingredient ingredient = recipe.target.ingredients[i];
-            ObjectWithQuality<Goods> option = (ingredient.variants == null ? ingredient.goods : GetVariant(ingredient.variants)).With(recipe.quality);
+            IObjectWithQuality<Goods> option = (ingredient.variants == null ? ingredient.goods : GetVariant(ingredient.variants)).With(recipe.quality);
             yield return (option, ingredient.amount * factor, links.ingredients[i], i);
         }
     }
@@ -566,8 +566,9 @@ public class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Productio
         }
 
         if (!handledFuel) {
-            // null-forgiving: handledFuel is always true if spentFuel is null.
-            yield return (new(spentFuel!.target, spentFuel.quality), parameters.fuelUsagePerSecondPerRecipe * factor, links.spentFuel, 0, null);
+            // null-forgiving (both): handledFuel is always false when running the solver.
+            // equivalently: We do not enter this block when a non-null Goods is required.
+            yield return (spentFuel!, parameters.fuelUsagePerSecondPerRecipe * factor, links.spentFuel, 0, null);
         }
     }
 
@@ -628,7 +629,7 @@ public class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Productio
     public float buildingCount => (float)recipesPerSecond * parameters.recipeTime;
     public bool visible { get; internal set; } = true;
 
-    public RecipeRow(ProductionTable owner, ObjectWithQuality<RecipeOrTechnology> recipe) : base(owner) {
+    public RecipeRow(ProductionTable owner, IObjectWithQuality<RecipeOrTechnology> recipe) : base(owner) {
         this.recipe = recipe ?? throw new ArgumentNullException(nameof(recipe), "Recipe does not exist");
 
         links = new RecipeLinks {
@@ -648,7 +649,7 @@ public class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Productio
         CreateUndoSnapshot();
         modules = null;
     }
-    public void SetFixedModule(ObjectWithQuality<Module> module) {
+    public void SetFixedModule(IObjectWithQuality<Module> module) {
         ModuleTemplateBuilder builder = modules?.GetBuilder() ?? new();
         builder.list = [(module, 0)];
         this.RecordUndo().modules = builder.Build(this);
@@ -699,7 +700,7 @@ public class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Productio
     /// </summary>
     private class ChangeModulesOrEntity : IDisposable {
         private readonly RecipeRow row;
-        private readonly ObjectWithQuality<Goods>? oldFuel;
+        private readonly IObjectWithQuality<Goods>? oldFuel;
         private readonly RecipeParameters oldParameters;
 
         public ChangeModulesOrEntity(RecipeRow row) {
@@ -793,7 +794,7 @@ public enum LinkAlgorithm {
 /// </summary>
 public interface IProductionLink {
     internal LinkAlgorithm algorithm { get; }
-    ObjectWithQuality<Goods> goods { get; }
+    IObjectWithQuality<Goods> goods { get; }
     float amount { get; }
     internal int solverIndex { get; set; }
     ProductionLink.Flags flags { get; set; }
@@ -815,7 +816,7 @@ public interface IProductionLink {
 /// <summary>
 /// A Link is goods whose production and consumption is attempted to be balanced by YAFC across the sheet.
 /// </summary>
-public class ProductionLink(ProductionTable group, ObjectWithQuality<Goods> goods) : ModelObject<ProductionTable>(group), IProductionLink {
+public class ProductionLink(ProductionTable group, IObjectWithQuality<Goods> goods) : ModelObject<ProductionTable>(group), IProductionLink {
     [Flags]
     public enum Flags {
         // This enum uses powers of two to represent its state.
@@ -840,7 +841,7 @@ public class ProductionLink(ProductionTable group, ObjectWithQuality<Goods> good
         HasProductionAndConsumption = HasProduction | HasConsumption,
     }
 
-    public ObjectWithQuality<Goods> goods { get; } = goods ?? throw new ArgumentNullException(nameof(goods), "Linked product does not exist");
+    public IObjectWithQuality<Goods> goods { get; } = goods ?? throw new ArgumentNullException(nameof(goods), "Linked product does not exist");
     public float amount { get; set; }
     public LinkAlgorithm algorithm { get; set; }
     public UnitOfMeasure flowUnitOfMeasure => goods.target.flowUnitOfMeasure;
@@ -897,7 +898,7 @@ public class ProductionLink(ProductionTable group, ObjectWithQuality<Goods> good
 /// <summary>
 /// An ingredient for a recipe row, as reported to the UI.
 /// </summary>
-public record RecipeRowIngredient(ObjectWithQuality<Goods>? Goods, float Amount, ProductionLink? Link, Goods[]? Variants) {
+public record RecipeRowIngredient(IObjectWithQuality<Goods>? Goods, float Amount, ProductionLink? Link, Goods[]? Variants) {
     /// <summary>
     /// Convert from a <see cref="SolverIngredient"/> (the form initially generated when reporting ingredients) to a
     /// <see cref="RecipeRowIngredient"/>.
@@ -909,7 +910,7 @@ public record RecipeRowIngredient(ObjectWithQuality<Goods>? Goods, float Amount,
 /// <summary>
 /// A product from a recipe row, as reported to the UI.
 /// </summary>
-public record RecipeRowProduct(ObjectWithQuality<Goods>? Goods, float Amount, IProductionLink? Link, float? PercentSpoiled) {
+public record RecipeRowProduct(IObjectWithQuality<Goods>? Goods, float Amount, IProductionLink? Link, float? PercentSpoiled) {
     /// <summary>
     /// Convert from a <see cref="SolverProduct"/> (the form initially generated when reporting products) to a <see cref="RecipeRowProduct"/>.
     /// </summary>
@@ -921,8 +922,8 @@ public record RecipeRowProduct(ObjectWithQuality<Goods>? Goods, float Amount, IP
 /// An ingredient for a recipe row, as reported to the solver.
 /// Alternatively, an intermediate value that will be used by the UI after conversion using <see cref="RecipeRowIngredient.FromSolver"/>.
 /// </summary>
-internal record SolverIngredient(ObjectWithQuality<Goods> Goods, float Amount, IProductionLink? Link, int LinkIndex) {
-    public static implicit operator SolverIngredient((ObjectWithQuality<Goods> Goods, float Amount, IProductionLink? Link, int LinkIndex) value)
+internal record SolverIngredient(IObjectWithQuality<Goods> Goods, float Amount, IProductionLink? Link, int LinkIndex) {
+    public static implicit operator SolverIngredient((IObjectWithQuality<Goods> Goods, float Amount, IProductionLink? Link, int LinkIndex) value)
         => new(value.Goods, value.Amount, value.Link, value.LinkIndex);
 }
 
@@ -930,7 +931,7 @@ internal record SolverIngredient(ObjectWithQuality<Goods> Goods, float Amount, I
 /// A product for a recipe row, as reported to the solver.
 /// Alternatively, an intermediate value that will be used by the UI after conversion using <see cref="RecipeRowProduct.FromSolver"/>.
 /// </summary>
-internal record SolverProduct(ObjectWithQuality<Goods> Goods, float Amount, IProductionLink? Link, int LinkIndex, float? PercentSpoiled) {
-    public static implicit operator SolverProduct((ObjectWithQuality<Goods> Goods, float Amount, IProductionLink? Link, int LinkIndex, float? PercentSpoiled) value)
+internal record SolverProduct(IObjectWithQuality<Goods> Goods, float Amount, IProductionLink? Link, int LinkIndex, float? PercentSpoiled) {
+    public static implicit operator SolverProduct((IObjectWithQuality<Goods> Goods, float Amount, IProductionLink? Link, int LinkIndex, float? PercentSpoiled) value)
         => new(value.Goods, value.Amount, value.Link, value.LinkIndex, value.PercentSpoiled);
 }

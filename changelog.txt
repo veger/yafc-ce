@@ -15,6 +15,11 @@
 //     Internal changes:
 //         Changes to the code that do not affect the behavior of the program.
 ----------------------------------------------------------------------------------------------------------------------
+Version:
+Date:
+    Internal changes:
+        - Quality objects now have reference equality and abstract serialization, like FactorioObjects.
+----------------------------------------------------------------------------------------------------------------------
 Version: 2.11.0
 Date: March 21st 2025
     Features:

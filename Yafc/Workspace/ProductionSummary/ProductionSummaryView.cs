@@ -9,7 +9,7 @@ namespace Yafc;
 public class ProductionSummaryView : ProjectPageView<ProductionSummary> {
     private readonly DataGrid<ProductionSummaryEntry> grid;
     private readonly FlatHierarchy<ProductionSummaryEntry, ProductionSummaryGroup> flatHierarchy;
-    private ObjectWithQuality<Goods>? filteredGoods;
+    private IObjectWithQuality<Goods>? filteredGoods;
     private readonly Dictionary<ProductionSummaryColumn, GoodsColumn> goodsToColumn = [];
     private readonly PaddingColumn padding;
     private readonly SummaryColumn firstColumn;
@@ -148,7 +148,7 @@ public class ProductionSummaryView : ProjectPageView<ProductionSummary> {
     private class GoodsColumn(ProductionSummaryColumn column, ProductionSummaryView view) : DataColumn<ProductionSummaryEntry>(4f) {
         public readonly ProductionSummaryColumn column = column;
 
-        public ObjectWithQuality<Goods> goods { get; } = column.goods as ObjectWithQuality<Goods> ?? new(column.goods.target, column.goods.quality);
+        public IObjectWithQuality<Goods> goods { get; } = column.goods as IObjectWithQuality<Goods> ?? column.goods.target.With(column.goods.quality);
 
         public override void BuildHeader(ImGui gui) {
             var moveHandle = gui.statePosition;
@@ -200,7 +200,7 @@ public class ProductionSummaryView : ProjectPageView<ProductionSummary> {
         }
     }
 
-    private void ApplyFilter(ObjectWithQuality<Goods> goods) {
+    private void ApplyFilter(IObjectWithQuality<Goods> goods) {
         var filter = filteredGoods == goods ? null : goods;
         filteredGoods = filter;
         model.group.UpdateFilter(goods, default);
@@ -266,7 +266,7 @@ public class ProductionSummaryView : ProjectPageView<ProductionSummary> {
         }
 
         if (!found) {
-            model.columns.Add(new ProductionSummaryColumn(model, new(goods.target, goods.quality)));
+            model.columns.Add(new ProductionSummaryColumn(model, goods));
         }
     }
 

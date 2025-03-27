@@ -55,7 +55,7 @@ public class ModuleFillerParametersScreen : PseudoScreen {
                         if (!selectedBeacon.target.CanAcceptModule(modules.overrideCrafterBeacons[crafter].beaconModule)) {
                             _ = Database.GetDefaultModuleFor(selectedBeacon.target, out Module? module);
                             // null-forgiving: Anything from usableBeacons accepts at least one module.
-                            modules.overrideCrafterBeacons[crafter] = modules.overrideCrafterBeacons[crafter] with { beaconModule = new(module!, Quality.MaxAccessible) };
+                            modules.overrideCrafterBeacons[crafter] = modules.overrideCrafterBeacons[crafter] with { beaconModule = module!.With(Quality.MaxAccessible) };
                         }
                     }
 
@@ -111,8 +111,8 @@ public class ModuleFillerParametersScreen : PseudoScreen {
     public override void Build(ImGui gui) {
         EntityBeacon? beacon = Database.usableBeacons.FirstOrDefault();
         _ = Database.GetDefaultModuleFor(beacon, out Module? defaultBeaconModule);
-        ObjectWithQuality<EntityBeacon>? defaultBeacon = beacon == null ? null : new(beacon, Quality.MaxAccessible);
-        ObjectWithQuality<Module>? beaconFillerModule = (defaultBeaconModule, Quality.MaxAccessible);
+        IObjectWithQuality<EntityBeacon>? defaultBeacon = beacon.With(Quality.MaxAccessible);
+        IObjectWithQuality<Module>? beaconFillerModule = defaultBeaconModule.With(Quality.MaxAccessible);
 
         BuildHeader(gui, "Module autofill parameters");
         BuildSimple(gui, modules);
