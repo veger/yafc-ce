@@ -17,6 +17,8 @@
 ----------------------------------------------------------------------------------------------------------------------
 Version:
 Date:
+    Fixes:
+        - (regression) Fix opening new unnamed files.
     Internal changes:
         - Quality objects now have reference equality and abstract serialization, like FactorioObjects.
 ----------------------------------------------------------------------------------------------------------------------
