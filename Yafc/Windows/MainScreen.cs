@@ -55,7 +55,7 @@ public partial class MainScreen : WindowMain, IKeyboardFocus, IProgress<(string,
         searchGui = new ImGui(BuildSearch, new Padding(1f)) { boxShadow = RectangleBorder.Thin, boxColor = SchemeColor.Background };
         Instance = this;
         tabBar = new MainScreenTabBar(this);
-        allPages = new VirtualScrollList<ProjectPage>(30, new Vector2(0f, 2f), BuildPage, collapsible: true);
+        allPages = new VirtualScrollList<ProjectPage>(30, new Vector2(float.PositiveInfinity, 2f), BuildPage, collapsible: true);
 
         Create("Yet Another Factorio Calculator CE v" + YafcLib.version.ToString(3), display, Preferences.Instance.initialMainScreenWidth,
             Preferences.Instance.initialMainScreenHeight, Preferences.Instance.maximizeMainScreen);

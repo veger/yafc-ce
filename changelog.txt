@@ -19,6 +19,7 @@ Version:
 Date:
     Fixes:
         - (regression) Fix opening new unnamed files.
+        - (.NET 9) Fix page name display in the search-all dropdown.
     Internal changes:
         - Quality objects now have reference equality and abstract serialization, like FactorioObjects.
 ----------------------------------------------------------------------------------------------------------------------
