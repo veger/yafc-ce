@@ -20,6 +20,7 @@ Date:
     Fixes:
         - (regression) Fix opening new unnamed files.
         - (.NET 9) Fix page name display in the search-all dropdown.
+        - When calculating the required inserters, remember that inserters cannot hold more than one stack.
     Internal changes:
         - Quality objects now have reference equality and abstract serialization, like FactorioObjects.
 ----------------------------------------------------------------------------------------------------------------------
