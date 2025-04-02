@@ -1193,8 +1193,8 @@ goodsHaveNoProduction:;
             }
             #endregion
 
-            if (goods.Is<Item>()) {
-                BuildBeltInserterInfo(gui, amount, recipe?.buildingCount ?? 0);
+            if (goods is { target: Item item }) {
+                BuildBeltInserterInfo(gui, item, amount, recipe?.buildingCount ?? 0);
             }
         }
     }
@@ -1408,7 +1408,7 @@ goodsHaveNoProduction:;
 
     private void BuildShoppingList(RecipeRow? recipeRoot) => ShoppingListScreen.Show(recipeRoot == null ? GetRecipesRecursive() : GetRecipesRecursive(recipeRoot));
 
-    private static void BuildBeltInserterInfo(ImGui gui, float amount, float buildingCount) {
+    private static void BuildBeltInserterInfo(ImGui gui, Item item, float amount, float buildingCount) {
         var preferences = Project.current.preferences;
         var belt = preferences.defaultBelt;
         var inserter = preferences.defaultInserter;
@@ -1431,7 +1431,7 @@ goodsHaveNoProduction:;
         }
 
         using (gui.EnterRow()) {
-            int capacity = preferences.inserterCapacity;
+            int capacity = Math.Min(item.stackSize, preferences.inserterCapacity);
             float inserterBase = inserter.inserterSwingTime * amount / capacity;
             click |= gui.BuildFactorioObjectButton(inserter, ButtonDisplayStyle.Default) == Click.Left;
             string text = DataUtils.FormatAmount(inserterBase, UnitOfMeasure.None);
