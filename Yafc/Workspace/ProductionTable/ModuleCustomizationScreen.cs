@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using Yafc.Model;
 using Yafc.UI;
@@ -126,6 +127,17 @@ public class ModuleCustomizationScreen : PseudoScreenWithResult<ModuleTemplateBu
                 effects.productivity += baseEffect.productivity;
                 effects.speed += baseEffect.speed;
                 effects.consumption += baseEffect.consumption;
+            }
+
+            if (recipe?.recipe.target is Recipe actualRecipe) {
+                Dictionary<Technology, int> levels = Project.current.settings.productivityTechnologyLevels;
+                foreach ((Technology productivityTechnology, float changePerLevel) in actualRecipe.technologyProductivity) {
+                    if (levels.TryGetValue(productivityTechnology, out int productivityTechLevel)) {
+                        effects.productivity += changePerLevel * productivityTechLevel;
+                    }
+                }
+
+                effects.productivity = Math.Min(effects.productivity, actualRecipe.maximumProductivity ?? float.MaxValue);
             }
 
             if (recipe != null) {

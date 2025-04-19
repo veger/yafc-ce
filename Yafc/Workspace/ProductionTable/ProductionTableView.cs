@@ -6,7 +6,6 @@ using SDL2;
 using Yafc.Blueprints;
 using Yafc.Model;
 using Yafc.UI;
-using static Yafc.UI.ImGui;
 
 namespace Yafc;
 
@@ -81,6 +80,9 @@ public class ProductionTableView : ProjectPageView<ProductionTable> {
                     }
                     else if (row.warningFlags.HasFlag(WarningFlags.UselessQuality)) {
                         _ = MainScreen.Instance.ShowPseudoScreen(new MilestonesPanel());
+                    }
+                    else if (row.warningFlags.HasFlag(WarningFlags.ExcessProductivity)) {
+                        PreferencesScreen.ShowProgression();
                     }
                 }
             }
@@ -1551,6 +1553,8 @@ goodsHaveNoProduction:;
             "The accumulator estimate tries to store 10% of the energy captured by the attractors."},
         {WarningFlags.UselessQuality, "The quality bonus on this recipe has no effect. " +
             "Make sure the recipe produces items and that all milestones for the next quality are unlocked. (Click to open the milestone window)"},
+        {WarningFlags.ExcessProductivity, "This building has a larger productivity bonus (from base effect, research, and/or modules) than allowed by the recipe. " +
+            "Please make sure you entered productivity research levels, not percent bonuses. (Click to open the preferences)"},
     };
 
     private static readonly (Icon icon, SchemeColor color)[] tagIcons = [

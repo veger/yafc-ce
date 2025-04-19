@@ -13,6 +13,7 @@ public enum WarningFlags {
     AsteroidCollectionNotModelled = 1 << 3,
     AssumesFulgoraAndModel = 1 << 4,
     UselessQuality = 1 << 5,
+    ExcessProductivity = 1 << 6,
 
     // Static errors
     EntityNotSpecified = 1 << 8,
@@ -174,6 +175,11 @@ internal class RecipeParameters(float recipeTime, float fuelUsagePerSecondPerBui
             activeEffects.productivity += productivity;
             activeEffects.speed += speed;
             activeEffects.consumption += consumption;
+
+            if (recipe.target is Recipe { maximumProductivity: float maxProd } && activeEffects.productivity > maxProd) {
+                warningFlags |= WarningFlags.ExcessProductivity;
+                activeEffects.productivity = maxProd;
+            }
 
             recipeTime /= activeEffects.speedMod;
             fuelUsagePerSecondPerBuilding *= activeEffects.energyUsageMod;
