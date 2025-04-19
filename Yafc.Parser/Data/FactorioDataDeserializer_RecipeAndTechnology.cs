@@ -372,5 +372,6 @@ internal partial class FactorioDataDeserializer {
 
         recipe.hidden = table.Get("hidden", false);
         recipe.enabled = table.Get("enabled", true);
+        recipe.maximumProductivity = table.Get("maximum_productivity", 3f);
     }
 }

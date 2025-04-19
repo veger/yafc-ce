@@ -183,6 +183,7 @@ public class Recipe : RecipeOrTechnology {
     public Dictionary<Technology, float> technologyProductivity { get; internal set; } = [];
     public bool preserveProducts { get; internal set; }
     public bool hidden { get; internal set; }
+    public float? maximumProductivity { get; internal set; }
 
     public bool HasIngredientVariants() {
         foreach (var ingredient in ingredients) {
