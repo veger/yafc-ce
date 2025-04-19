@@ -39,34 +39,57 @@ public class WelcomeScreen : WindowUtility, IProgress<(string, string)>, IKeyboa
     private static readonly Dictionary<string, string> languageMapping = new Dictionary<string, string>()
     {
         {"en", "English"},
-        {"ca", "Catalan"},
-        {"cs", "Czech"},
-        {"da", "Danish"},
-        {"nl", "Dutch"},
-        {"de", "German"},
-        {"fi", "Finnish"},
-        {"fr", "French"},
-        {"hu", "Hungarian"},
-        {"it", "Italian"},
-        {"no", "Norwegian"},
-        {"pl", "Polish"},
-        {"pt-PT", "Portuguese"},
-        {"pt-BR", "Portuguese (Brazilian)"},
-        {"ro", "Romanian"},
-        {"ru", "Russian"},
-        {"es-ES", "Spanish"},
-        {"sv-SE", "Swedish"},
-        {"tr", "Turkish"},
-        {"uk", "Ukrainian"},
+        {"af", "Afrikaans" },
+        {"be", "беларуская" },
+        {"bg", "български" },
+        {"ca", "català"},
+        {"cs", "čeština"},
+        {"da", "dansk"},
+        {"de", "Deutsch"},
+        {"el", "Ελληνικά" },
+        {"es-ES", "español"},
+        {"et", "eesti" },
+        {"eu", "euskara" },
+        {"fi", "suomi"},
+        {"fil", "Filipino"},
+        {"fr", "français"},
+        {"fy-NL", "Frysk"},
+        {"ga-IE", "Gaeilge"},
+        {"hr", "hrvatski"},
+        {"hu", "magyar"},
+        {"id", "Bahasa Indonesia"},
+        {"is", "íslenska"},
+        {"it", "italiano"},
+        {"kk", "Қазақша"},
+        {"lt", "lietuvių"},
+        {"lv", "latviešu"},
+        {"nl", "Nederlands"},
+        {"no", "norsk"},
+        {"pl", "polski"},
+        {"pt-PT", "português"},
+        {"pt-BR", "português (Brazil)"},
+        {"ro", "română"},
+        {"ru", "русский"},
+        {"sk", "slovenčina"},
+        {"sl", "slovenski"},
+        {"sq", "shqip"},
+        {"sr", "српски"},
+        {"sv-SE", "svenska"},
+        {"tr", "türkmençe"},
+        {"uk", "українська"},
+        {"vi", "Tiếng Việt"},
     };
 
     private static readonly Dictionary<string, string> languagesRequireFontOverride = new Dictionary<string, string>()
     {
+        {"ar", "Arabic"},
+        {"he", "Hebrew"},
         {"ja", "Japanese"},
+        {"ka", "Georgian"},
+        {"ko", "Korean"},
+        {"th", "Thai"},
         {"zh-CN", "Chinese (Simplified)"},
         {"zh-TW", "Chinese (Traditional)"},
-        {"ko", "Korean"},
-        {"tr", "Turkish"},
     };
 
     private enum EditType {
@@ -242,9 +265,9 @@ public class WelcomeScreen : WindowUtility, IProgress<(string, string)>, IKeyboa
     private static void DoLanguageList(ImGui gui, Dictionary<string, string> list, bool enabled) {
         foreach (var (k, v) in list) {
             if (!enabled) {
-                gui.BuildText(v);
+                gui.BuildText(v + " (" + k + ")");
             }
-            else if (gui.BuildLink(v)) {
+            else if (gui.BuildLink(v + " (" + k + ")")) {
                 Preferences.Instance.language = k;
                 Preferences.Instance.Save();
                 _ = gui.CloseDropdown();
