@@ -1,9 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
+using System.Net.Http;
+using System.Reflection;
 using System.Runtime.InteropServices;
+using Newtonsoft.Json.Linq;
 using SDL2;
 using Serilog;
 using Yafc.Model;
@@ -12,9 +17,29 @@ using Yafc.UI;
 
 namespace Yafc;
 
+/// <summary>
+/// Contains information about a language supported by Factorio.
+/// </summary>
+/// <param name="NativeName">The name of the language, expressed in its language. To select this language, the current font must contain glyphs
+/// for all characters in this string.</param>
+/// <param name="LatinName"><paramref name="NativeName"/>, if that uses only well-supported Latin characters, or the English name of the
+/// language.</param>
+/// <param name="BaseFontName">The base name of the default font to use for this language.</param>
+internal sealed record LanguageInfo(string LatinName, string NativeName, string BaseFontName) {
+    public LanguageInfo(string latinName, string nativeName) : this(latinName, nativeName, "Roboto") { }
+    public LanguageInfo(string name) : this(name, name, "Roboto") { }
+
+    /// <summary>
+    /// If not <see langword="null"/>, the current font must also have glyphs for these characters. Some fonts have enough glyphs for the
+    /// language name, but don't have glyphs for all characters used by the language. (e.g. Some fonts have glyphs for türkmençe but are missing
+    /// the Turkish ı.)
+    /// </summary>
+    public string? CheckExtraCharacters { get; set; }
+}
+
 public class WelcomeScreen : WindowUtility, IProgress<(string, string)>, IKeyboardFocus {
     private readonly ILogger logger = Logging.GetLogger<WelcomeScreen>();
-    private bool loading;
+    private bool loading, downloading;
     private string? currentLoad1, currentLoad2;
     private string path = "", dataPath = "", _modsPath = "";
     private string modsPath {
@@ -36,60 +61,56 @@ public class WelcomeScreen : WindowUtility, IProgress<(string, string)>, IKeyboa
     private readonly string[] tips;
     private bool useMostRecentSave = true;
 
-    private static readonly Dictionary<string, string> languageMapping = new Dictionary<string, string>()
+    internal static readonly SortedList<string, LanguageInfo> languageMapping = new()
     {
-        {"en", "English"},
-        {"af", "Afrikaans" },
-        {"be", "беларуская" },
-        {"bg", "български" },
-        {"ca", "català"},
-        {"cs", "čeština"},
-        {"da", "dansk"},
-        {"de", "Deutsch"},
-        {"el", "Ελληνικά" },
-        {"es-ES", "español"},
-        {"et", "eesti" },
-        {"eu", "euskara" },
-        {"fi", "suomi"},
-        {"fil", "Filipino"},
-        {"fr", "français"},
-        {"fy-NL", "Frysk"},
-        {"ga-IE", "Gaeilge"},
-        {"hr", "hrvatski"},
-        {"hu", "magyar"},
-        {"id", "Bahasa Indonesia"},
-        {"is", "íslenska"},
-        {"it", "italiano"},
-        {"kk", "Қазақша"},
-        {"lt", "lietuvių"},
-        {"lv", "latviešu"},
-        {"nl", "Nederlands"},
-        {"no", "norsk"},
-        {"pl", "polski"},
-        {"pt-PT", "português"},
-        {"pt-BR", "português (Brazil)"},
-        {"ro", "română"},
-        {"ru", "русский"},
-        {"sk", "slovenčina"},
-        {"sl", "slovenski"},
-        {"sq", "shqip"},
-        {"sr", "српски"},
-        {"sv-SE", "svenska"},
-        {"tr", "türkmençe"},
-        {"uk", "українська"},
-        {"vi", "Tiếng Việt"},
-    };
-
-    private static readonly Dictionary<string, string> languagesRequireFontOverride = new Dictionary<string, string>()
-    {
-        {"ar", "Arabic"},
-        {"he", "Hebrew"},
-        {"ja", "Japanese"},
-        {"ka", "Georgian"},
-        {"ko", "Korean"},
-        {"th", "Thai"},
-        {"zh-CN", "Chinese (Simplified)"},
-        {"zh-TW", "Chinese (Traditional)"},
+        {"en", new("English")},
+        {"af", new("Afrikaans")},
+        {"ar", new("Arabic", "العربية", "noto-sans-arabic")},
+        {"be", new("Belarusian", "беларуская")},
+        {"bg", new("Bulgarian", "български")},
+        {"ca", new("català")},
+        {"cs", new("Czech", "čeština")},
+        {"da", new("dansk")},
+        {"de", new("Deutsch")},
+        {"el", new("Greek", "Ελληνικά")},
+        {"es-ES", new("español")},
+        {"et", new("eesti") },
+        {"eu", new("euskara") },
+        {"fi", new("suomi")},
+        {"fil", new("Filipino")},
+        {"fr", new("français")},
+        {"fy-NL", new("Frysk")},
+        {"ga-IE", new("Gaeilge")},
+        {"he", new("Hebrew", "עברית", "noto-sans-hebrew")},
+        {"hr", new("hrvatski")},
+        {"hu", new("magyar")},
+        {"id", new("Bahasa Indonesia")},
+        {"is", new("íslenska")},
+        {"it", new("italiano")},
+        {"ja", new("Japanese", "日本語", "noto-sans-jp") { CheckExtraCharacters = "軽気処鉱砕" }},
+        {"ka", new("Georgian", "ქართული", "noto-sans-georgian")},
+        {"kk", new("Kazakh", "Қазақша")},
+        {"ko", new("Korean", "한국어", "noto-sans-kr")},
+        {"lt", new("Lithuanian", "lietuvių")},
+        {"lv", new("Latvian", "latviešu")},
+        {"nl", new("Nederlands")},
+        {"no", new("norsk")},
+        {"pl", new("polski")},
+        {"pt-PT", new("português")},
+        {"pt-BR", new("português (Brazil)")},
+        {"ro", new("română")},
+        {"ru", new("Russian", "русский")},
+        {"sk", new("Slovak", "slovenčina")},
+        {"sl", new("slovenski")},
+        {"sq", new("shqip")},
+        {"sr", new("Serbian", "српски")},
+        {"sv-SE", new("svenska")},
+        {"th", new("Thai", "ไทย", "noto-sans-thai")},
+        {"tr", new("Turkish","türkmençe") { CheckExtraCharacters = "ığş" }},
+        {"uk", new("Ukranian", "українська")},
+        {"vi", new("Vietnamese", "Tiếng Việt")},
+        {"zh-CN", new("Chinese (Simplified)", "汉语", "noto-sans-sc")},
+        {"zh-TW", new("Chinese (Traditional)", "漢語", "noto-sans-tc") { CheckExtraCharacters = "鈾礦" }},
     };
 
     private enum EditType {
@@ -138,6 +159,10 @@ public class WelcomeScreen : WindowUtility, IProgress<(string, string)>, IKeyboa
             gui.BuildText(tip, new TextBlockDisplayStyle(WrapText: true, Alignment: RectAlignment.Middle));
             gui.SetNextRebuild(Ui.time + 30);
         }
+        else if (downloading) {
+            gui.BuildText("Please wait . . .", TextBlockDisplayStyle.Centered);
+            gui.BuildText("Yafc is downloading the fonts for your language.", TextBlockDisplayStyle.Centered);
+        }
         else if (errorMessage != null) {
             errorScroll.Build(gui);
             bool thereIsAModToDisable = (errorMod != null);
@@ -183,8 +208,8 @@ public class WelcomeScreen : WindowUtility, IProgress<(string, string)>, IKeyboa
             using (gui.EnterRow()) {
                 gui.allocator = RectAllocator.RightRow;
                 string lang = Preferences.Instance.language;
-                if (languageMapping.TryGetValue(Preferences.Instance.language, out string? mapped) || languagesRequireFontOverride.TryGetValue(Preferences.Instance.language, out mapped)) {
-                    lang = mapped;
+                if (languageMapping.TryGetValue(Preferences.Instance.language, out LanguageInfo? mapped)) {
+                    lang = mapped.NativeName;
                 }
 
                 if (gui.BuildLink(lang)) {
@@ -262,15 +287,76 @@ public class WelcomeScreen : WindowUtility, IProgress<(string, string)>, IKeyboa
         gui.BuildWrappedText("Please attach a new-game save file to sync mods, versions, and settings.");
     }
 
-    private static void DoLanguageList(ImGui gui, Dictionary<string, string> list, bool enabled) {
+    private void DoLanguageList(ImGui gui, SortedList<string, LanguageInfo> list, bool listFontSupported) {
         foreach (var (k, v) in list) {
-            if (!enabled) {
-                gui.BuildText(v + " (" + k + ")");
+            if (!Font.text.CanDraw(v.NativeName + v.CheckExtraCharacters) && !listFontSupported) {
+                bool result;
+                if (Font.text.CanDraw(v.NativeName)) {
+                    result = gui.BuildLink($"{v.NativeName} ({k})");
+                }
+                else {
+                    result = gui.BuildLink($"{v.LatinName} ({k})");
+                }
+
+                if (result) {
+                    if (Font.FilesExist(v.BaseFontName) || Program.hasOverriddenFont) {
+                        Preferences.Instance.language = k;
+                        Preferences.Instance.Save();
+                        gui.CloseDropdown();
+                        restartIfNecessary();
+                    }
+                    else {
+                        gui.ShowDropDown(async gui => {
+                            gui.BuildText("Yafc will download a suitable font before it restarts.\nThis may take a minute or two.", TextBlockDisplayStyle.WrappedText);
+                            gui.allocator = RectAllocator.Center;
+                            if (gui.BuildButton("Confirm")) {
+                                gui.CloseDropdown();
+                                downloading = true;
+                                // Jump through several hoops to download an appropriate Noto Sans font.
+                                // Google Webfonts Helper is the first place I found that would (eventually) let me directly download ttf files
+                                // for the static fonts. It can also provide links to Google, but that would take three requests, instead of two.
+                                // Variable fonts can be acquired from github, but SDL_ttf doesn't support those yet.
+                                // See https://gwfh.mranftl.com/fonts, https://github.com/majodev/google-webfonts-helper, and
+                                // https://github.com/libsdl-org/SDL_ttf/pull/506
+                                HttpClient client = new();
+                                // Get the character subsets supported by this font
+                                string query = "https://gwfh.mranftl.com/api/fonts/" + v.BaseFontName;
+                                dynamic response = JObject.Parse(await client.GetStringAsync(query));
+                                // Request a zip containing ttf files and all character subsets
+                                query += "?variants=300,regular&download=zip&formats=ttf&subsets=";
+                                foreach (string item in response["subsets"]) {
+                                    query += item + ",";
+                                }
+                                ZipArchive archive = new(await client.GetStreamAsync(query));
+                                // Extract the two ttf files into the expected locations
+                                foreach (var entry in archive.Entries) {
+                                    if (entry.Name.Contains("300")) {
+                                        entry.ExtractToFile($"Data/{v.BaseFontName}-Light.ttf");
+                                    }
+                                    else {
+                                        entry.ExtractToFile($"Data/{v.BaseFontName}-Regular.ttf");
+                                    }
+                                }
+                                // Save and restart
+                                Preferences.Instance.language = k;
+                                Preferences.Instance.Save();
+                                restartIfNecessary();
+                            }
+                        });
+                    }
+                }
             }
-            else if (gui.BuildLink(v + " (" + k + ")")) {
+            else if (Font.text.CanDraw(v.NativeName + v.CheckExtraCharacters) && listFontSupported && gui.BuildLink(v.NativeName + " (" + k + ")")) {
                 Preferences.Instance.language = k;
                 Preferences.Instance.Save();
                 _ = gui.CloseDropdown();
+            }
+        }
+
+        static void restartIfNecessary() {
+            if (!Program.hasOverriddenFont) {
+                Process.Start("dotnet", Assembly.GetEntryAssembly()!.Location);
+                Environment.Exit(0);
             }
         }
     }
@@ -285,14 +371,14 @@ public class WelcomeScreen : WindowUtility, IProgress<(string, string)>, IKeyboa
         if (!Program.hasOverriddenFont) {
             gui.AllocateSpacing(0.5f);
 
-            string nonEuLanguageMessage = "To select languages with non-European glyphs you need to override used font first. Download or locate a font that has your language glyphs.";
-            gui.BuildText(nonEuLanguageMessage, TextBlockDisplayStyle.WrappedText);
+            string unsupportedLanguageMessage = "These languages are not supported by the current font. Click the language to restart with a suitable font, or click 'Select font' to select a custom font.";
+            gui.BuildText(unsupportedLanguageMessage, TextBlockDisplayStyle.WrappedText);
             gui.AllocateSpacing(0.5f);
         }
-        DoLanguageList(gui, languagesRequireFontOverride, Program.hasOverriddenFont);
+        DoLanguageList(gui, languageMapping, false);
 
         gui.AllocateSpacing(0.5f);
-        if (gui.BuildButton("Select font to override")) {
+        if (gui.BuildButton("Select font")) {
             SelectFont();
         }
 
@@ -304,7 +390,7 @@ public class WelcomeScreen : WindowUtility, IProgress<(string, string)>, IKeyboa
                 Preferences.Instance.Save();
             }
         }
-        gui.BuildText("Selecting font to override require YAFC restart to take effect", TextBlockDisplayStyle.WrappedText);
+        gui.BuildText("Restart Yafc to switch to the selected font.", TextBlockDisplayStyle.WrappedText);
     }
 
     private async void SelectFont() {

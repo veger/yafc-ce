@@ -57,6 +57,7 @@ public class AboutScreen : WindowUtility {
             gui.BuildText("Google");
             BuildLink(gui, "https://developers.google.com/optimization", "OR-Tools,");
             BuildLink(gui, "https://fonts.google.com/specimen/Roboto", "Roboto font family");
+            BuildLink(gui, "https://fonts.google.com/noto", "Noto Sans font family");
             gui.BuildText("and");
             BuildLink(gui, "https://material.io/resources/icons", "Material Design Icon collection");
         }
