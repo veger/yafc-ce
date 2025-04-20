@@ -152,10 +152,11 @@ internal partial class FactorioDataDeserializer {
                                 continue;
                             }
 
-                            float change = modifier.Get("change", 0f);
+                            _ = technology.changeRecipeProductivity.TryGetValue(recipe, out float change);
+                            change += modifier.Get("change", 0f);
 
-                            technology.changeRecipeProductivity.Add(recipe, change);
-                            recipe.technologyProductivity.Add(technology, change);
+                            technology.changeRecipeProductivity[recipe] = change;
+                            recipe.technologyProductivity[technology] = change;
 
                             break;
                         }
