@@ -235,9 +235,12 @@ public static partial class FactorioDataSource {
             foreach (var mod in allFoundMods) {
                 CurrentLoadingMod = mod.name;
 
-                if (mod.ValidForFactorioVersion(factorioVersion) && allMods.TryGetValue(mod.name, out var existing)
-                    && (existing == null || mod.parsedVersion > existing.parsedVersion || (mod.parsedVersion == existing.parsedVersion && existing.zipArchive != null && mod.zipArchive == null))
-                    && (!versionSpecifiers.TryGetValue(mod.name, out var version) || existing?.parsedVersion != version)) {
+                ModInfo? existing = null;
+                bool modFound = mod.ValidForFactorioVersion(factorioVersion) && allMods.TryGetValue(mod.name, out existing);
+                bool higherVersionOrFolder = existing == null || mod.parsedVersion > existing.parsedVersion || (mod.parsedVersion == existing.parsedVersion && existing.zipArchive != null && mod.zipArchive == null);
+                bool existingMatchesVersionDirective = versionSpecifiers.TryGetValue(mod.name, out var version) && existing?.parsedVersion == version;
+
+                if (modFound && higherVersionOrFolder && !existingMatchesVersionDirective) {
                     existing?.Dispose();
                     allMods[mod.name] = mod;
                 }
