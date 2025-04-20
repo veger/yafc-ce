@@ -21,6 +21,7 @@ Date:
         - Prevent productivity bonuses from exceeding +300%, unless otherwise allowed by mods.
         - When loading duplicate research productivity effects, obey both of them, instead of failing.
         - Fixed a crash when item.weight == 0, related to ultracube.
+        - If the requested mod version isn't found, use the latest, like Factorio.
 ----------------------------------------------------------------------------------------------------------------------
 Version: 2.11.1
 Date: April 5th 2025
