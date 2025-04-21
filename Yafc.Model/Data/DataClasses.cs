@@ -386,6 +386,7 @@ public class Item : Goods {
     public int stackSize { get; internal set; }
     public Entity? placeResult { get; internal set; }
     public Entity? plantResult { get; internal set; }
+    public int rocketCapacity { get; internal set; }
     public override bool isPower => false;
     public override string type => "Item";
     internal override FactorioObjectSortOrder sortingOrder => FactorioObjectSortOrder.Items;

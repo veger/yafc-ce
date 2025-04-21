@@ -465,7 +465,7 @@ doneDrawing:;
 
             using (gui.EnterGroup(contentPadding)) {
                 gui.BuildText("Stack size: " + item.stackSize);
-                gui.BuildText("Rocket capacity: " + DataUtils.FormatAmount(Database.rocketCapacity / item.weight, UnitOfMeasure.None));
+                gui.BuildText("Rocket capacity: " + DataUtils.FormatAmount(item.rocketCapacity, UnitOfMeasure.None));
             }
         }
     }
