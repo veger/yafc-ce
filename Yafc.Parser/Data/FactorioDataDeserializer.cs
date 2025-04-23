@@ -559,11 +559,8 @@ internal partial class FactorioDataDeserializer {
 nextWeightCalculation:;
         }
 
-        List<EntityCrafter> rocketSilos = [.. registeredObjects.Values.OfType<EntityCrafter>().Where(e => e.factorioType == "rocket-silo")];
-        int maxStacks = 1;// if we have no rocket silos, default to one stack.
-        if (rocketSilos.Count > 0) {
-            maxStacks = rocketSilos.Max(r => r.rocketInventorySize);
-        }
+        int maxStacks = registeredObjects.Values.OfType<EntityCrafter>().Where(e => e.factorioType == "rocket-silo").MaxBy(e => e.rocketInventorySize)?.rocketInventorySize
+            ?? 1; // if we have no rocket silos, default to one stack.
 
         foreach (Item item in allObjects.OfType<Item>()) {
             // If it doesn't otherwise have a weight, it gets the default weight.
@@ -571,11 +568,16 @@ nextWeightCalculation:;
                 item.weight = defaultItemWeight;
             }
 
+            // The item count is initialized to 1, but it should be the rocket capacity. Scale up the ingredient and product(s).
+            // item.weight == 0 is possible if defaultItemWeight is 0, so we bail out on the / item.weight in that case.
+            int maxFactor = maxStacks * item.stackSize;
+            int factor = item.weight == 0 ? maxFactor : Math.Min(rocketCapacity / item.weight, maxFactor);
+
+            item.rocketCapacity = factor;
+
             if (registeredObjects.TryGetValue((typeof(Mechanics), SpecialNames.RocketLaunch + "." + item.name), out FactorioObject? r)
                 && r is Mechanics recipe) {
 
-                // The item count is initialized to 1, but it should be the rocket capacity. Scale up the ingredient and product(s).
-                int factor = Math.Min(rocketCapacity / item.weight, maxStacks * item.stackSize);
                 recipe.ingredients[0] = new(item, factor);
                 for (int i = 0; i < recipe.products.Length; i++) {
                     recipe.products[i] *= factor;
