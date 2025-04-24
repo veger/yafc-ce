@@ -239,18 +239,18 @@ doneDrawing:;
                 using (gui.EnterGroup(contentPadding)) {
                     BuildIconRow(gui, crafter.recipes, 2);
                     if (crafter.CraftingSpeed(quality) != 1f) {
-                        gui.BuildText(DataUtils.FormatAmount(crafter.CraftingSpeed(quality), UnitOfMeasure.Percent, "Crafting speed: "));
+                        gui.BuildText("Crafting speed: " + DataUtils.FormatAmount(crafter.CraftingSpeed(quality), UnitOfMeasure.Percent));
                     }
 
                     Effect baseEffect = crafter.effectReceiver.baseEffect;
                     if (baseEffect.speed != 0f) {
-                        gui.BuildText(DataUtils.FormatAmount(baseEffect.speed, UnitOfMeasure.Percent, "Crafting speed: "));
+                        gui.BuildText("Crafting speed: " + DataUtils.FormatAmount(baseEffect.speed, UnitOfMeasure.Percent));
                     }
                     if (baseEffect.productivity != 0f) {
-                        gui.BuildText(DataUtils.FormatAmount(baseEffect.productivity, UnitOfMeasure.Percent, "Crafting productivity: "));
+                        gui.BuildText("Crafting productivity: " + DataUtils.FormatAmount(baseEffect.productivity, UnitOfMeasure.Percent));
                     }
                     if (baseEffect.consumption != 0f) {
-                        gui.BuildText(DataUtils.FormatAmount(baseEffect.consumption, UnitOfMeasure.Percent, "Energy consumption: "));
+                        gui.BuildText("Energy consumption: " + DataUtils.FormatAmount(baseEffect.consumption, UnitOfMeasure.Percent));
                     }
 
                     if (crafter.allowedEffects != AllowedEffects.None) {
@@ -442,23 +442,23 @@ doneDrawing:;
                 BuildSubHeader(gui, "Module parameters");
                 using (gui.EnterGroup(contentPadding)) {
                     if (moduleSpecification.baseProductivity != 0f) {
-                        gui.BuildText(DataUtils.FormatAmount(moduleSpecification.Productivity(quality), UnitOfMeasure.Percent, "Productivity: "));
+                        gui.BuildText("Productivity: " + DataUtils.FormatAmount(moduleSpecification.Productivity(quality), UnitOfMeasure.Percent));
                     }
 
                     if (moduleSpecification.baseSpeed != 0f) {
-                        gui.BuildText(DataUtils.FormatAmount(moduleSpecification.Speed(quality), UnitOfMeasure.Percent, "Speed: "));
+                        gui.BuildText("Speed: " + DataUtils.FormatAmount(moduleSpecification.Speed(quality), UnitOfMeasure.Percent));
                     }
 
                     if (moduleSpecification.baseConsumption != 0f) {
-                        gui.BuildText(DataUtils.FormatAmount(moduleSpecification.Consumption(quality), UnitOfMeasure.Percent, "Consumption: "));
+                        gui.BuildText("Consumption: " + DataUtils.FormatAmount(moduleSpecification.Consumption(quality), UnitOfMeasure.Percent));
                     }
 
                     if (moduleSpecification.basePollution != 0f) {
-                        gui.BuildText(DataUtils.FormatAmount(moduleSpecification.Pollution(quality), UnitOfMeasure.Percent, "Pollution: "));
+                        gui.BuildText("Pollution: " + DataUtils.FormatAmount(moduleSpecification.Pollution(quality), UnitOfMeasure.Percent));
                     }
 
                     if (moduleSpecification.baseQuality != 0f) {
-                        gui.BuildText(DataUtils.FormatAmount(moduleSpecification.Quality(quality), UnitOfMeasure.Percent, "Quality: "));
+                        gui.BuildText("Quality: " + DataUtils.FormatAmount(moduleSpecification.Quality(quality), UnitOfMeasure.Percent));
                     }
                 }
             }

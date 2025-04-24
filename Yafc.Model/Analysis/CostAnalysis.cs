@@ -415,6 +415,6 @@ public class CostAnalysis(bool onlyCurrentMilestones) : Analysis {
             return null;
         }
 
-        return DataUtils.FormatAmount(itemFlow * 1000f, UnitOfMeasure.None, itemAmountPrefix);
+        return itemAmountPrefix + DataUtils.FormatAmount(itemFlow * 1000f, UnitOfMeasure.None);
     }
 }

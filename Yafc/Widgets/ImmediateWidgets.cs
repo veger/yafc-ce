@@ -299,7 +299,8 @@ public static class ImmediateWidgets {
                 text = perSecond + "\n" + perMinute + "\n" + perHour;
 
                 if (goods.target is Item item) {
-                    text += DataUtils.FormatAmount(MathF.Abs(item.stackSize / amount.Value), UnitOfMeasure.Second, "\n", " per stack");
+                    text += "\n";
+                    text += DataUtils.FormatAmount(MathF.Abs(item.stackSize / amount.Value), UnitOfMeasure.Second) + " per stack";
                 }
 
                 break;

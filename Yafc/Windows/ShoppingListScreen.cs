@@ -44,7 +44,7 @@ public class ShoppingListScreen : PseudoScreen {
     private void ElementDrawer(ImGui gui, (IObjectWithQuality<FactorioObject> obj, float count) element, int index) {
         using (gui.EnterRow()) {
             gui.BuildFactorioObjectIcon(element.obj, new IconDisplayStyle(2, MilestoneDisplay.Contained, false));
-            gui.RemainingRow().BuildText(DataUtils.FormatAmount(element.count, UnitOfMeasure.None, "x") + ": " + element.obj.target.locName);
+            gui.RemainingRow().BuildText("x" + DataUtils.FormatAmount(element.count, UnitOfMeasure.None) + ": " + element.obj.target.locName);
         }
         _ = gui.BuildFactorioObjectButtonBackground(gui.lastRect, element.obj);
     }
@@ -120,7 +120,7 @@ public class ShoppingListScreen : PseudoScreen {
     public override void Build(ImGui gui) {
         BuildHeader(gui, "Shopping list");
         gui.BuildText(
-            "Total cost of all objects: " + DataUtils.FormatAmount(shoppingCost, UnitOfMeasure.None, "¥") + ", buildings: " +
+            "Total cost of all objects: ¥" + DataUtils.FormatAmount(shoppingCost, UnitOfMeasure.None) + ", buildings: " +
             DataUtils.FormatAmount(totalBuildings, UnitOfMeasure.None) + ", modules: " + DataUtils.FormatAmount(totalModules, UnitOfMeasure.None), TextBlockDisplayStyle.Centered);
         using (gui.EnterRow()) {
             if (gui.BuildRadioGroup(displayStateOptions, (int)displayState, out int newSelected)) {

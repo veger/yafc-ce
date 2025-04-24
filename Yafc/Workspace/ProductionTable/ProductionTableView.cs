@@ -1450,7 +1450,7 @@ goodsHaveNoProduction:;
                 click |= gui.BuildFactorioObjectButton(belt, ButtonDisplayStyle.Default) == Click.Left;
                 gui.AllocateSpacing(-1.5f);
                 click |= gui.BuildFactorioObjectButton(inserter, ButtonDisplayStyle.Default) == Click.Left;
-                text = DataUtils.FormatAmount(inserterToBelt, UnitOfMeasure.None, "~");
+                text = "~" + DataUtils.FormatAmount(inserterToBelt, UnitOfMeasure.None);
 
                 if (buildingCount > 1) {
                     text += " (" + DataUtils.FormatAmount(inserterToBelt / buildingCount, UnitOfMeasure.None) + "/b)";
