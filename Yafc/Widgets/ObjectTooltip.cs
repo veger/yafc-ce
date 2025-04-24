@@ -321,9 +321,7 @@ doneDrawing:;
             using (gui.EnterGroup(contentPadding))
             using (gui.EnterRow(0)) {
                 gui.AllocateRect(0, 1.5f);
-                gui.BuildText($"Requires {DataUtils.FormatAmount(entity.heatingPower, UnitOfMeasure.Megawatt)}");
-                gui.BuildFactorioObjectIcon(Database.heat, IconDisplayStyle.Default with { Size = 1.5f });
-                gui.BuildText("heat on cold planets.");
+                gui.BuildText($"Requires {DataUtils.FormatAmount(entity.heatingPower, UnitOfMeasure.Megawatt)} heat on cold planets.");
             }
         }
 

@@ -142,9 +142,7 @@ public class ShoppingListScreen : PseudoScreen {
         if (totalHeat > 0) {
             using (gui.EnterRow(0)) {
                 gui.AllocateRect(0, 1.5f);
-                gui.BuildText("These entities require " + DataUtils.FormatAmount(totalHeat, UnitOfMeasure.Megawatt));
-                gui.BuildFactorioObjectIcon(Database.heat, IconDisplayStyle.Default with { Size = 1.5f });
-                gui.BuildText("heat on cold planets.");
+                gui.BuildText("These entities require " + DataUtils.FormatAmount(totalHeat, UnitOfMeasure.Megawatt) + " heat on cold planets.");
             }
 
             using (gui.EnterRow(0)) {
