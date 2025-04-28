@@ -133,9 +133,8 @@ public class ProductionSummaryEntry(ProductionSummaryGroup owner) : ModelObject<
             }
 
             foreach (var link in subTable.allLinks) {
-                if (link.amount != 0) {
-                    _ = flow.TryGetValue(link.goods, out float prevValue);
-                    flow[link.goods] = prevValue + (link.amount * multiplier);
+                if (link.amount != 0 && !flow.ContainsKey(link.goods)) {
+                    flow[link.goods] = link.amount * multiplier;
                 }
             }
         }
