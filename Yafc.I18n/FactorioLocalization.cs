@@ -1,12 +1,18 @@
-﻿using System.Collections.Generic;
-using System.IO;
+﻿using System.Runtime.CompilerServices;
+[assembly: InternalsVisibleTo("Yafc.Model.Tests")]
 
-namespace Yafc.Parser;
+namespace Yafc.I18n;
 
-internal static class FactorioLocalization {
+public static class FactorioLocalization {
     private static readonly Dictionary<string, string> keys = [];
 
     public static void Parse(Stream stream) {
+        foreach (var (category, key, value) in Read(stream)) {
+            keys[$"{category}.{key}"] = CleanupTags(value);
+        }
+    }
+
+    public static IEnumerable<(string, string, string)> Read(Stream stream) {
         using StreamReader reader = new StreamReader(stream);
         string category = "";
 
@@ -14,13 +20,15 @@ internal static class FactorioLocalization {
             string? line = reader.ReadLine();
 
             if (line == null) {
-                return;
+                break;
             }
 
-            line = line.Trim();
+            // Trim spaces before keys and all spaces around [categories], but not trailing spaces in values.
+            line = line.TrimStart();
+            string trimmed = line.TrimEnd();
 
-            if (line.StartsWith('[') && line.EndsWith(']')) {
-                category = line[1..^1];
+            if (trimmed.StartsWith('[') && trimmed.EndsWith(']')) {
+                category = trimmed[1..^1];
             }
             else {
                 int idx = line.IndexOf('=');
@@ -31,9 +39,8 @@ internal static class FactorioLocalization {
 
                 string key = line[..idx];
                 string val = line[(idx + 1)..];
-                keys[category + "." + key] = CleanupTags(val);
+                yield return (category, key, val);
             }
-
         }
     }
 
@@ -69,7 +76,7 @@ internal static class FactorioLocalization {
         return null;
     }
 
-    public static void Initialize(Dictionary<string, string> newKeys) {
+    internal static void Initialize(Dictionary<string, string> newKeys) {
         keys.Clear();
         foreach (var (key, value) in newKeys) {
             keys[key] = value;

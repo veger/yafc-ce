@@ -6,6 +6,7 @@ using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using SDL2;
 using Serilog;
+using Yafc.I18n;
 using Yafc.Model;
 using Yafc.UI;
 
@@ -425,7 +426,7 @@ internal partial class FactorioDataDeserializer {
         item.stackSize = table.Get("stack_size", 1);
 
         if (item.locName == null && table.Get("placed_as_equipment_result", out string? result)) {
-            item.locName = LocalisedStringParser.Parse("equipment-name." + result, [])!;
+            item.locName = LocalisedStringParser.ParseKey("equipment-name." + result, [])!;
         }
         if (table.Get("fuel_value", out string? fuelValue)) {
             item.fuelValue = ParseEnergy(fuelValue);
@@ -712,17 +713,17 @@ nextWeightCalculation:;
         target.factorioType = table.Get("type", "");
 
         if (table.Get("localised_name", out object? loc)) {  // Keep UK spelling for Factorio/LUA data objects
-            target.locName = LocalisedStringParser.Parse(loc)!;
+            target.locName = LocalisedStringParser.ParseObject(loc)!;
         }
         else {
-            target.locName = LocalisedStringParser.Parse(prototypeType + "-name." + target.name, [])!;
+            target.locName = LocalisedStringParser.ParseKey(prototypeType + "-name." + target.name, [])!;
         }
 
         if (table.Get("localised_description", out loc)) {  // Keep UK spelling for Factorio/LUA data objects
-            target.locDescr = LocalisedStringParser.Parse(loc);
+            target.locDescr = LocalisedStringParser.ParseObject(loc);
         }
         else {
-            target.locDescr = LocalisedStringParser.Parse(prototypeType + "-description." + target.name, []);
+            target.locDescr = LocalisedStringParser.ParseKey(prototypeType + "-description." + target.name, []);
         }
 
         _ = table.Get("icon_size", out float defaultIconSize);

@@ -1,10 +1,9 @@
-﻿using System;
-using System.Linq;
-using System.Text;
+﻿using System.Text;
 
-namespace Yafc.Parser;
-internal static class LocalisedStringParser {
-    public static string? Parse(object localisedString) {
+namespace Yafc.I18n;
+
+public static class LocalisedStringParser {
+    public static string? ParseObject(object localisedString) {
         try {
             return RemoveRichText(ParseStringOrArray(localisedString));
         }
@@ -13,32 +12,34 @@ internal static class LocalisedStringParser {
         }
     }
 
-    public static string? Parse(string key, object[] parameters) {
+    /// <summary>
+    /// Creates the localized string for the supplied key, using <paramref name="parameters"/> for substitutions.
+    /// </summary>
+    /// <param name="key">The UI key to load.</param>
+    /// <param name="parameters">The substitution parameters to be used.</param>
+    /// <returns>The localized string for <paramref name="key"/>, using <paramref name="parameters"/> for substitutions.</returns>
+    public static string? ParseKey(string key, object[] parameters) {
         try {
-            return RemoveRichText(ParseKey(key, parameters));
+            return RemoveRichText(ParseKeyInternal(key, parameters));
         }
         catch {
             return null;
         }
     }
 
-    private static string? ParseStringOrArray(object obj) {
-        if (obj is string str) {
-            return str;
+    private static string? ParseStringOrArray(object? obj) {
+        if (obj is ILocalizable table && table.Get(out string? key, out object[]? parameters)) {
+            return ParseKeyInternal(key, parameters);
         }
 
-        if (obj is LuaTable table && table.Get(1, out string? key)) {
-            return ParseKey(key, table.ArrayElements.Skip(1).ToArray()!);
-        }
-
-        return null;
+        return obj?.ToString();
     }
 
 
-    private static string? ParseKey(string key, object[] parameters) {
+    private static string? ParseKeyInternal(string key, object?[] parameters) {
         if (key == "") {
             StringBuilder builder = new StringBuilder();
-            foreach (object subString in parameters) {
+            foreach (object? subString in parameters) {
                 string? localisedSubString = ParseStringOrArray(subString);
                 if (localisedSubString == null) {
                     return null;
@@ -50,7 +51,7 @@ internal static class LocalisedStringParser {
             return builder.ToString();
         }
         else if (key == "?") {
-            foreach (object alternative in parameters) {
+            foreach (object? alternative in parameters) {
                 string? localisedAlternative = ParseStringOrArray(alternative);
                 if (localisedAlternative != null) {
                     return localisedAlternative;
@@ -116,7 +117,7 @@ internal static class LocalisedStringParser {
                 case "TILE":
                 case "FLUID":
                     string name = readExtraParameter();
-                    result.Append(ParseKey($"{type.ToLower()}-name.{name}", []));
+                    result.Append(ParseKeyInternal($"{type.ToLower()}-name.{name}", []));
                     break;
                 case "plural_for_parameter":
                     string deciderIdx = readExtraParameter();
