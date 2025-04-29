@@ -108,7 +108,4 @@ locked:;
         allSciencePacks = Database.technologies.CreateMapping(
             tech => sciencePackCount.Select((x, id) => x[tech] == 0 ? null : new Ingredient(sciencePacks[id], x[tech])).WhereNotNull().ToArray());
     }
-
-    public override string description =>
-        "Technology analysis calculates the total amount of science packs required for each technology";
 }
