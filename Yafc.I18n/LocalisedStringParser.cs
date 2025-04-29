@@ -119,6 +119,10 @@ public static class LocalisedStringParser {
                     string name = readExtraParameter();
                     result.Append(ParseKeyInternal($"{type.ToLower()}-name.{name}", []));
                     break;
+                case "YAFC":
+                    name = readExtraParameter();
+                    result.Append(ParseKeyInternal("yafc." + name, parameters));
+                    break;
                 case "plural_for_parameter":
                     string deciderIdx = readExtraParameter();
                     string? decider = parameters[int.Parse(deciderIdx) - 1];
