@@ -23,6 +23,7 @@ Date:
         - Fixed a crash when item.weight == 0, related to ultracube.
         - If the requested mod version isn't found, use the latest, like Factorio.
         - Fix amounts loaded from other pages in the legacy summary page.
+        - Improved precision for building count calculation.
 ----------------------------------------------------------------------------------------------------------------------
 Version: 2.11.1
 Date: April 5th 2025

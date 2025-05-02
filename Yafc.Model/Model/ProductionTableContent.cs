@@ -626,7 +626,7 @@ public class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Productio
 
     [MemberNotNullWhen(true, nameof(subgroup))]
     public bool isOverviewMode => subgroup != null && !subgroup.expanded;
-    public float buildingCount => (float)recipesPerSecond * parameters.recipeTime;
+    public float buildingCount => (float)(recipesPerSecond * parameters.recipeTime);
     public bool visible { get; internal set; } = true;
 
     public RecipeRow(ProductionTable owner, IObjectWithQuality<RecipeOrTechnology> recipe) : base(owner) {
