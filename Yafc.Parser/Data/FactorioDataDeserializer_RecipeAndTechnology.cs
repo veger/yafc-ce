@@ -56,13 +56,15 @@ internal partial class FactorioDataDeserializer {
     }
 
     private void UpdateRecipeCatalysts() {
-        foreach (var recipe in allObjects.OfType<Recipe>()) {
-            foreach (var product in recipe.products) {
-                if (product.productivityAmount == product.amount) {
-                    float catalyst = recipe.GetConsumptionPerRecipe(product.goods);
+        if (factorioVersion < new Version(2, 0, 0)) {
+            foreach (var recipe in allObjects.OfType<Recipe>()) {
+                foreach (var product in recipe.products) {
+                    if (product.productivityAmount == product.amount) {
+                        float catalyst = recipe.GetConsumptionPerRecipe(product.goods);
 
-                    if (catalyst > 0f) {
-                        product.SetCatalyst(catalyst);
+                        if (catalyst > 0f) {
+                            product.SetCatalyst(catalyst);
+                        }
                     }
                 }
             }
