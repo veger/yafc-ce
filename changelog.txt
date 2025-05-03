@@ -24,6 +24,7 @@ Date:
         - If the requested mod version isn't found, use the latest, like Factorio.
         - Fix amounts loaded from other pages in the legacy summary page.
         - Improved precision for building count calculation.
+        - Remove automatic catalyst amount calculations when loading Factorio 2.0 data.
 ----------------------------------------------------------------------------------------------------------------------
 Version: 2.11.1
 Date: April 5th 2025
