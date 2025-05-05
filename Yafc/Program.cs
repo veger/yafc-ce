@@ -23,9 +23,16 @@ public static class Program {
             Console.Error.WriteException(ex);
         }
 
+        string baseFileName = "Roboto";
+        if (WelcomeScreen.languageMapping.TryGetValue(Preferences.Instance.language, out LanguageInfo? language)) {
+            if (Font.FilesExist(language.BaseFontName)) {
+                baseFileName = language.BaseFontName;
+            }
+        }
+
         hasOverriddenFont = overriddenFontFile != null;
-        Font.header = new Font(overriddenFontFile ?? new FontFile("Data/Roboto-Light.ttf"), 2f);
-        var regular = overriddenFontFile ?? new FontFile("Data/Roboto-Regular.ttf");
+        Font.header = new Font(overriddenFontFile ?? new FontFile($"Data/{baseFileName}-Light.ttf"), 2f);
+        var regular = overriddenFontFile ?? new FontFile($"Data/{baseFileName}-Regular.ttf");
         Font.subheader = new Font(regular, 1.5f);
         Font.productionTableHeader = new Font(regular, 1.23f);
         Font.text = new Font(regular, 1f);

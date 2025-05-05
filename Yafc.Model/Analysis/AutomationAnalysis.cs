@@ -90,6 +90,4 @@ public class AutomationAnalysis : Analysis {
         }
         automatable = state;
     }
-
-    public override string description => "Automation analysis tries to find what objects can be automated. Object cannot be automated if it requires looting an entity or manual crafting.";
 }

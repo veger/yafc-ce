@@ -121,6 +121,16 @@ public static partial class FactorioDataSource {
         }
     }
 
+    public static void LoadYafcLocale(string locale) {
+        try {
+            foreach (string localeName in Directory.EnumerateFiles("Data/locale/" + locale + "/")) {
+                using Stream stream = File.Open(localeName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+                FactorioLocalization.Parse(stream);
+            }
+        }
+        catch (DirectoryNotFoundException) { /* No Yafc translation for this locale */ }
+    }
+
     private static void FindMods(string directory, IProgress<(string, string)> progress, List<ModInfo> mods) {
         foreach (string entry in Directory.EnumerateDirectories(directory)) {
             string infoFile = Path.Combine(entry, "info.json");

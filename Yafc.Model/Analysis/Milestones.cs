@@ -265,7 +265,4 @@ public class Milestones : Analysis {
     private const string UseDependencyExplorer = "\n\nFor this reason YAFC has a Dependency Explorer that allows you to manually enable some of the core recipes. " +
         "YAFC will iteratively try to unlock all the dependencies after each recipe you manually enabled. " +
         "For most modpacks it's enough to unlock a few early recipes like any special recipes for plates that everything in the mod is based on.";
-
-    public override string description => "Milestone analysis starts from objects that are placed on map by the map generator and tries to find all objects that are accessible from that, " +
-        "taking notes about which objects are locked behind which milestones.";
 }

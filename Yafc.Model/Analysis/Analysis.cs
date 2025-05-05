@@ -21,8 +21,6 @@ public abstract class Analysis {
         }
     }
 
-    public abstract string description { get; }
-
     public static void Do<T>(Project project) where T : Analysis {
         foreach (var analysis in analyses) {
             if (analysis is T t) {

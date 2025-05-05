@@ -564,25 +564,22 @@ public static partial class DataUtils {
         return $"{time / 3600f:#} hours";
     }
 
-    public static string FormatAmount(float amount, UnitOfMeasure unit, string? prefix = null, string? suffix = null, bool precise = false) {
+    public static string FormatAmount(float amount, UnitOfMeasure unit, bool precise = false) {
         var (multiplier, unitSuffix) = Project.current == null ? (1f, null) : Project.current.ResolveUnitOfMeasure(unit);
 
-        return FormatAmountRaw(amount, multiplier, unitSuffix, precise ? PreciseFormat : FormatSpec, prefix, suffix);
+        return FormatAmountRaw(amount, multiplier, unitSuffix, precise ? PreciseFormat : FormatSpec);
     }
 
-    public static string FormatAmountRaw(float amount, float unitMultiplier, string? unitSuffix, (char suffix, float multiplier, string format)[] formatSpec, string? prefix = null, string? suffix = null) {
+    public static string FormatAmountRaw(float amount, float unitMultiplier, string? unitSuffix, (char suffix, float multiplier, string format)[] formatSpec) {
         if (float.IsNaN(amount) || float.IsInfinity(amount)) {
             return "-";
         }
 
         if (amount == 0f) {
-            return prefix + "0" + unitSuffix + suffix;
+            return "0" + unitSuffix;
         }
 
         _ = amountBuilder.Clear();
-        if (prefix != null) {
-            _ = amountBuilder.Append(prefix);
-        }
 
         if (amount < 0) {
             _ = amountBuilder.Append('-');
@@ -599,10 +596,6 @@ public static partial class DataUtils {
         }
 
         _ = amountBuilder.Append(unitSuffix);
-
-        if (suffix != null) {
-            _ = amountBuilder.Append(suffix);
-        }
 
         return amountBuilder.ToString();
     }
