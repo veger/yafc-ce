@@ -416,6 +416,11 @@ public class WelcomeScreen : WindowUtility, IProgress<(string, string)>, IKeyboa
                 canCreate = false;
                 return;
             }
+            else if (Directory.Exists(path)) {
+                createText = LSs.WelcomeAlertPathIsDirectory;
+                canCreate = false;
+                return;
+            }
             createText = LSs.WelcomeCreateProjectName.L(Path.GetFileNameWithoutExtension(path));
         }
         else {
