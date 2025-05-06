@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using SDL2;
+using Yafc.I18n;
 using Yafc.Model;
 using Yafc.UI;
 
@@ -14,19 +15,19 @@ public class DependencyExplorer : PseudoScreen {
     private readonly List<FactorioObject> history = [];
     private FactorioObject current;
 
-    private static readonly Dictionary<DependencyNode.Flags, (string name, string missingText)> dependencyListTexts = new Dictionary<DependencyNode.Flags, (string, string)>()
+    private static readonly Dictionary<DependencyNode.Flags, (LocalizableString1? name, LocalizableString0 missingText)> dependencyListTexts = new()
     {
-        {DependencyNode.Flags.Fuel, ("Fuel", "There is no fuel to power this entity")},
-        {DependencyNode.Flags.Ingredient, ("Ingredient", "There are no ingredients to this recipe")},
-        {DependencyNode.Flags.IngredientVariant, ("Ingredient", "There are no ingredient variants for this recipe")},
-        {DependencyNode.Flags.CraftingEntity, ("Crafter", "There are no crafters that can craft this item")},
-        {DependencyNode.Flags.Source, ("Source", "This item have no sources")},
-        {DependencyNode.Flags.TechnologyUnlock, ("Research", "This recipe is disabled and there are no technologies to unlock it")},
-        {DependencyNode.Flags.TechnologyPrerequisites, ("Research", "There are no technology prerequisites")},
-        {DependencyNode.Flags.ItemToPlace, ("Item", "This entity cannot be placed")},
-        {DependencyNode.Flags.SourceEntity, ("Source", "This recipe requires another entity")},
-        {DependencyNode.Flags.Disabled, ("", "This technology is disabled")},
-        {DependencyNode.Flags.Location, ("Location", "There are no locations that spawn this entity")},
+        {DependencyNode.Flags.Fuel, (LSs.DependencyFuel, LSs.DependencyFuelMissing)},
+        {DependencyNode.Flags.Ingredient, (LSs.DependencyIngredient, LSs.DependencyIngredientMissing)},
+        {DependencyNode.Flags.IngredientVariant, (LSs.DependencyIngredient, LSs.DependencyIngredientVariantsMissing)},
+        {DependencyNode.Flags.CraftingEntity, (LSs.DependencyCrafter, LSs.DependencyCrafterMissing)},
+        {DependencyNode.Flags.Source, (LSs.DependencySource, LSs.DependencySourcesMissing)},
+        {DependencyNode.Flags.TechnologyUnlock, (LSs.DependencyTechnology, LSs.DependencyTechnologyMissing)},
+        {DependencyNode.Flags.TechnologyPrerequisites, (LSs.DependencyTechnology, LSs.DependencyTechnologyNoPrerequisites)},
+        {DependencyNode.Flags.ItemToPlace, (LSs.DependencyItem, LSs.DependencyItemMissing)},
+        {DependencyNode.Flags.SourceEntity, (LSs.DependencySource, LSs.DependencyMapSourceMissing)},
+        {DependencyNode.Flags.Disabled, (null, LSs.DependencyTechnologyDisabled)},
+        {DependencyNode.Flags.Location, (LSs.DependencyLocation, LSs.DependencyLocationMissing)},
     };
 
     public DependencyExplorer(FactorioObject current) : base(60f) {
@@ -41,7 +42,7 @@ public class DependencyExplorer : PseudoScreen {
         FactorioObject obj = Database.objects[id];
         using (gui.EnterGroup(listPad, RectAllocator.LeftRow)) {
             gui.BuildFactorioObjectIcon(obj);
-            string text = obj.locName + " (" + obj.type + ")";
+            string text = LSs.NameWithType.L(obj.locName, obj.type);
             gui.RemainingRow(0.5f).BuildText(text, TextBlockDisplayStyle.WrappedText with { Color = obj.IsAccessible() ? SchemeColor.BackgroundText : SchemeColor.BackgroundTextFaint });
         }
         if (gui.BuildFactorioObjectButtonBackground(gui.lastRect, obj, tooltipOptions: new() { ShowTypeInHeader = true }) == Click.Left) {
@@ -53,20 +54,27 @@ public class DependencyExplorer : PseudoScreen {
         gui.spacing = 0f;
 
         Dependencies.dependencyList[current].Draw(gui, (gui, elements, flags) => {
-            if (!dependencyListTexts.TryGetValue(flags, out var dependencyType)) {
-                dependencyType = (flags.ToString(), "Missing " + flags);
+            string name;
+            string missingText;
+            if (dependencyListTexts.TryGetValue(flags, out var dependencyType)) {
+                name = dependencyType.name?.L(elements.Count) ?? "";
+                missingText = dependencyType.missingText;
+            }
+            else {
+                name = flags.ToString();
+                missingText = "Missing " + flags;
             }
 
             if (elements.Count > 0) {
                 gui.AllocateSpacing(0.5f);
                 if (elements.Count == 1) {
-                    gui.BuildText("Require this " + dependencyType.name + ":");
+                    gui.BuildText(LSs.DependencyRequireSingle.L(name));
                 }
                 else if (flags.HasFlags(DependencyNode.Flags.RequireEverything)) {
-                    gui.BuildText("Require ALL of these " + dependencyType.name + "s:");
+                    gui.BuildText(LSs.DependencyRequireAll.L(name));
                 }
                 else {
-                    gui.BuildText("Require ANY of these " + dependencyType.name + "s:");
+                    gui.BuildText(LSs.DependencyRequireAny.L(name));
                 }
 
                 gui.AllocateSpacing(0.5f);
@@ -75,15 +83,14 @@ public class DependencyExplorer : PseudoScreen {
                 }
             }
             else {
-                string text = dependencyType.missingText;
                 if (Database.rootAccessible.Contains(current)) {
-                    text += ", but it is inherently accessible.";
+                    missingText = LSs.DependencyAccessibleAnyway.L(missingText);
                 }
                 else {
-                    text += ", and it is inaccessible.";
+                    missingText = LSs.DependencyAndNotAccessible.L(missingText);
                 }
 
-                gui.BuildText(text, TextBlockDisplayStyle.WrappedText);
+                gui.BuildText(missingText, TextBlockDisplayStyle.WrappedText);
             }
         });
     }
@@ -105,39 +112,39 @@ public class DependencyExplorer : PseudoScreen {
 
     public override void Build(ImGui gui) {
         gui.allocator = RectAllocator.Center;
-        BuildHeader(gui, "Dependency explorer");
+        BuildHeader(gui, LSs.DependencyExplorer);
         using (gui.EnterRow()) {
-            gui.BuildText("Currently inspecting:", Font.subheader);
+            gui.BuildText(LSs.DependencyCurrentlyInspecting, Font.subheader);
             if (gui.BuildFactorioObjectButtonWithText(current) == Click.Left) {
-                SelectSingleObjectPanel.Select(Database.objects.explorable, "Select something", Change);
+                SelectSingleObjectPanel.Select(Database.objects.explorable, LSs.DependencySelectSomething, Change);
             }
 
-            gui.DrawText(gui.lastRect, "(Click to change)", RectAlignment.MiddleRight, color: TextBlockDisplayStyle.HintText.Color);
+            gui.DrawText(gui.lastRect, LSs.DependencyClickToChangeHint, RectAlignment.MiddleRight, color: TextBlockDisplayStyle.HintText.Color);
         }
         using (gui.EnterRow()) {
             var settings = Project.current.settings;
             if (current.IsAccessible()) {
                 if (current.IsAutomatable()) {
-                    gui.BuildText("Status: Automatable");
+                    gui.BuildText(LSs.DependencyAutomatable);
                 }
                 else {
-                    gui.BuildText("Status: Accessible, Not automatable");
+                    gui.BuildText(LSs.DependencyAccessible);
                 }
 
                 if (settings.Flags(current).HasFlags(ProjectPerItemFlags.MarkedAccessible)) {
-                    gui.BuildText("Manually marked as accessible.");
-                    if (gui.BuildLink("Clear mark")) {
+                    gui.BuildText(LSs.DependencyMarkedAccessible);
+                    if (gui.BuildLink(LSs.DependencyClearMark)) {
                         SetFlag(ProjectPerItemFlags.MarkedAccessible, false);
                         NeverEnoughItemsPanel.Refresh();
                     }
                 }
                 else {
-                    if (gui.BuildLink("Mark as inaccessible")) {
+                    if (gui.BuildLink(LSs.DependencyMarkNotAccessible)) {
                         SetFlag(ProjectPerItemFlags.MarkedInaccessible, true);
                         NeverEnoughItemsPanel.Refresh();
                     }
 
-                    if (gui.BuildLink("Mark as accessible without milestones")) {
+                    if (gui.BuildLink(LSs.DependencyMarkAccessibleIgnoringMilestones)) {
                         SetFlag(ProjectPerItemFlags.MarkedAccessible, true);
                         NeverEnoughItemsPanel.Refresh();
                     }
@@ -145,15 +152,15 @@ public class DependencyExplorer : PseudoScreen {
             }
             else {
                 if (settings.Flags(current).HasFlags(ProjectPerItemFlags.MarkedInaccessible)) {
-                    gui.BuildText("Status: Marked as inaccessible");
-                    if (gui.BuildLink("Clear mark")) {
+                    gui.BuildText(LSs.DependencyMarkedNotAccessible);
+                    if (gui.BuildLink(LSs.DependencyClearMark)) {
                         SetFlag(ProjectPerItemFlags.MarkedInaccessible, false);
                         NeverEnoughItemsPanel.Refresh();
                     }
                 }
                 else {
-                    gui.BuildText("Status: Not accessible. Wrong?");
-                    if (gui.BuildLink("Manually mark as accessible")) {
+                    gui.BuildText(LSs.DependencyNotAccessible);
+                    if (gui.BuildLink(LSs.DependencyMarkAccessible)) {
                         SetFlag(ProjectPerItemFlags.MarkedAccessible, true);
                         NeverEnoughItemsPanel.Refresh();
                     }
@@ -163,10 +170,10 @@ public class DependencyExplorer : PseudoScreen {
         gui.AllocateSpacing(2f);
         using var split = gui.EnterHorizontalSplit(2);
         split.Next();
-        gui.BuildText("Dependencies:", Font.subheader);
+        gui.BuildText(LSs.DependencyHeaderDependencies.L(Dependencies.dependencyList[current].Count()), Font.subheader);
         dependencies.Build(gui);
         split.Next();
-        gui.BuildText("Dependents:", Font.subheader);
+        gui.BuildText(LSs.DependencyHeaderDependents.L(Dependencies.reverseDependencies[current].Count), Font.subheader);
         dependents.Build(gui);
     }
 

@@ -1,5 +1,5 @@
 ﻿using Xunit;
-using Yafc.Parser;
+using Yafc.I18n;
 
 namespace Yafc.Model.Data.Tests;
 
@@ -16,49 +16,49 @@ public class LocalisedStringParserTests {
 
     [Fact]
     public void Parse_JustString() {
-        string localised = LocalisedStringParser.Parse("test");
+        string localised = LocalisedStringParser.ParseObject("test");
         Assert.Equal("test", localised);
     }
 
     [Fact]
     public void Parse_RemoveRichText() {
-        string localised = LocalisedStringParser.Parse("[color=#ffffff]iron[/color] [color=1,0,0]plate[.color] [item=iron-plate]");
+        string localised = LocalisedStringParser.ParseObject("[color=#ffffff]iron[/color] [color=1,0,0]plate[.color] [item=iron-plate]");
         Assert.Equal("iron plate ", localised);
     }
 
     [Fact]
     public void Parse_NoParameters() {
-        string localised = LocalisedStringParser.Parse("not-enough-ingredients", []);
+        string localised = LocalisedStringParser.ParseKey("not-enough-ingredients", []);
         Assert.Equal("Not enough ingredients.", localised);
     }
 
     [Fact]
     public void Parse_Parameter() {
-        string localised = LocalisedStringParser.Parse("si-unit-kilometer-per-hour", ["100"]);
+        string localised = LocalisedStringParser.ParseKey("si-unit-kilometer-per-hour", ["100"]);
         Assert.Equal("100 km/h", localised);
     }
 
     [Fact]
     public void Parse_LinkItem() {
-        string localised = LocalisedStringParser.Parse("item-name.big-iron-plate", []);
+        string localised = LocalisedStringParser.ParseKey("item-name.big-iron-plate", []);
         Assert.Equal("Big Iron plate", localised);
     }
 
     [Fact]
     public void Parse_PluralSpecial() {
-        string localised = LocalisedStringParser.Parse("hours", ["1"]);
+        string localised = LocalisedStringParser.ParseKey("hours", ["1"]);
         Assert.Equal("1 hour", localised);
     }
 
     [Fact]
     public void Parse_PluralRest() {
-        string localised = LocalisedStringParser.Parse("hours", ["2"]);
+        string localised = LocalisedStringParser.ParseKey("hours", ["2"]);
         Assert.Equal("2 hours", localised);
     }
 
     [Fact]
     public void Parse_PluralWithParameter() {
-        string localised = LocalisedStringParser.Parse("connecting", ["1"]);
+        string localised = LocalisedStringParser.ParseKey("connecting", ["1"]);
         Assert.Equal("1 player is connecting", localised);
     }
 
@@ -67,7 +67,7 @@ public class LocalisedStringParserTests {
     [InlineData(22, "option 2")]
     [InlineData(5, "option 3")]
     public void Parse_PluralEndsIn(int n, string expectedResult) {
-        string localised = LocalisedStringParser.Parse("ends.in", [n.ToString()]);
+        string localised = LocalisedStringParser.ParseKey("ends.in", [n.ToString()]);
         Assert.Equal(expectedResult, localised);
     }
 }
