@@ -147,7 +147,8 @@ public static class ImGuiUtils {
     }
 
     // null-forgiving: OnlyOnFaulted guarantees that Exception is non-null.
-    public static void CaptureException(this Task task) => _ = task.ContinueWith(t => throw t.Exception!, TaskContinuationOptions.OnlyOnFaulted);
+    public static void CaptureException(this Task task) =>
+        _ = task.ContinueWith(t => Ui.DispatchInMainThread(_ => throw t.Exception!, null), TaskContinuationOptions.OnlyOnFaulted);
 
     public static bool BuildMouseOverIcon(this ImGui gui, Icon icon, SchemeColor color = SchemeColor.BackgroundText) {
         if (gui.isBuilding && gui.IsMouseOver(gui.lastRect)) {
