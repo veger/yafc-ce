@@ -70,6 +70,15 @@ public class FilesystemScreen : TaskWindow<string?>, IKeyboardFocus {
 
     private void BuildSelectButton(ImGui gui) {
         if (gui.BuildButton(button, active: resultValid)) {
+            OkClicked();
+        }
+    }
+
+    private void OkClicked() {
+        if (mode is Mode.SelectFile or Mode.SelectOrCreateFile && Directory.Exists(selectedResult)) {
+            SetLocation(selectedResult);
+        }
+        else {
             CloseWithResult(selectedResult);
         }
     }
@@ -177,7 +186,7 @@ public class FilesystemScreen : TaskWindow<string?>, IKeyboardFocus {
 
     public bool KeyDown(SDL.SDL_Keysym key) {
         if (key.sym is SDL.SDL_Keycode.SDLK_KP_ENTER or SDL.SDL_Keycode.SDLK_RETURN or SDL.SDL_Keycode.SDLK_RETURN2) {
-            CloseWithResult(selectedResult);
+            OkClicked();
             return true;
         }
         else if (key.sym == SDL.SDL_Keycode.SDLK_ESCAPE) {

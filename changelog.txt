@@ -30,6 +30,7 @@ Date:
         - Improved precision for building count calculation.
         - Remove automatic catalyst amount calculations when loading Factorio 2.0 data.
         - Update documentation for changing the selected Factorio-object language.
+        - Make it much harder for the user to select a folder when YAFC is expecting a file.
 ----------------------------------------------------------------------------------------------------------------------
 Version: 2.11.1
 Date: April 5th 2025

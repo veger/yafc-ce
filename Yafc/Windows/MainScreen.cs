@@ -652,8 +652,11 @@ public partial class MainScreen : WindowMain, IKeyboardFocus, IProgress<(string,
 
     private Task<bool> SaveProject() {
         if (!string.IsNullOrEmpty(project.attachedFileName)) {
-            project.Save(project.attachedFileName);
-            return Task.FromResult(true);
+            try {
+                project.Save(project.attachedFileName);
+                return Task.FromResult(true);
+            }
+            catch (Exception) { /* Error saving. Fall back to save as */ }
         }
 
         return SaveProjectAs();
