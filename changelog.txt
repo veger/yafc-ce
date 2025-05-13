@@ -18,7 +18,12 @@
 Version: 
 Date: 
     Features:
+        - Add support for exporting all building entities to one blueprint.
+        - Support for new burner fuel inventory. Exported entities will now have burner fuel inventory slot set as filter (Configurable in preferences).
     Fixes:
+        - Fix issue when trying to export blueprint with modules (Key "count" was not found in property tree...)
+    Internal Changes:
+        - Upgrade Blueprint classes to support new logistic filter sections.
 ----------------------------------------------------------------------------------------------------------------------
 Version: 2.12.0
 Date: May 12th 2025

@@ -43,6 +43,7 @@ public class Preferences {
     }
     public ProjectDefinition[] recentProjects { get; set; } = [];
     public bool darkMode { get; set; }
+    public bool exportEntitiesWithFuelFilter { get; set; } = true;
     public string language {
         get => _language;
         set {

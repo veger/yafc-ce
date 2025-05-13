@@ -560,6 +560,11 @@ goodsHaveNoProduction:;
                                     }
                                 }
                             }
+
+                            if (Preferences.Instance.exportEntitiesWithFuelFilter && recipe.fuel is not null && !recipe.fuel.target.isPower) {
+                                entity.SetFuel(recipe.fuel.target.name, recipe.fuel.quality.name);
+                            }
+
                             BlueprintString bp = new BlueprintString(recipe.recipe.target.locName) { blueprint = { entities = { entity } } };
                             _ = SDL.SDL_SetClipboardText(bp.ToBpString());
                         }
@@ -610,6 +615,15 @@ goodsHaveNoProduction:;
 
             if (gui.BuildButton(LSs.ShoppingList) && gui.CloseDropdown()) {
                 view.BuildShoppingList(null);
+            }
+
+            if (gui.BuildButton(LSs.ProductionTableExportEntitiesToBlueprint) && gui.CloseDropdown()) {
+                bool includeFuel = Preferences.Instance.exportEntitiesWithFuelFilter;
+                var uniqueEntites = view
+                    .GetRecipesRecursive()
+                    .DistinctBy(row => (row.entity, row.recipe, includeFuel ? row.fuel : null));
+
+                _ = BlueprintUtilities.ExportRecipiesAsBlueprint(view.projectPage!.name, uniqueEntites, includeFuel);
             }
         }
     }

@@ -117,7 +117,7 @@ internal partial class FactorioDataDeserializer {
         }
     }
 
-    private static int GetSize(LuaTable box) {
+    private static (int Width, int Height) GetDimensions(LuaTable box) {
         _ = box.Get(1, out LuaTable? topLeft);
         _ = box.Get(2, out LuaTable? bottomRight);
         _ = topLeft.Get(1, out float x0);
@@ -125,7 +125,7 @@ internal partial class FactorioDataDeserializer {
         _ = bottomRight.Get(1, out float x1);
         _ = bottomRight.Get(2, out float y1);
 
-        return Math.Max(MathUtils.Round(x1 - x0), MathUtils.Round(y1 - y0));
+        return (MathUtils.Round(x1 - x0), MathUtils.Round(y1 - y0));
     }
 
     private static void ParseModules(LuaTable table, EntityWithModules entity, AllowedEffects def) {
@@ -584,7 +584,9 @@ internal partial class FactorioDataDeserializer {
             }
         }
 
-        entity.size = table.Get("selection_box", out LuaTable? box) ? GetSize(box) : 3;
+        (entity.width, entity.height) = table.Get("selection_box", out LuaTable? box) ? GetDimensions(box) : (3, 3);
+
+        entity.size = Math.Max(entity.width, entity.height);
 
         _ = table.Get("energy_source", out LuaTable? energySource);
 

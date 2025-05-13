@@ -209,6 +209,10 @@ public class PreferencesScreen : PseudoScreen {
         if (gui.BuildCheckBox(LSs.PrefsAutosave, Preferences.Instance.autosaveEnabled, out newValue)) {
             Preferences.Instance.autosaveEnabled = newValue;
         }
+
+        if (gui.BuildCheckBox(LSs.PrefsExportEntitiesWithFuelFilterSet, Preferences.Instance.exportEntitiesWithFuelFilter, out newValue)) {
+            Preferences.Instance.exportEntitiesWithFuelFilter = newValue;
+        }
     }
 
     protected override void ReturnPressed() => Close();
