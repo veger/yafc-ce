@@ -23,6 +23,7 @@ Date:
         - When Factorio updates Defines.lua, update it as automatically as possible.
     Fixes:
         - Fix issue when trying to export blueprint with modules (Key "count" was not found in property tree...)
+        - Update Defines.lua for Factorio 2.0.49. (Yafc also still works with 2.0.47.)
     Internal Changes:
         - Upgrade Blueprint classes to support new logistic filter sections.
 ----------------------------------------------------------------------------------------------------------------------
