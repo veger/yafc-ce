@@ -20,6 +20,7 @@ Date:
     Features:
         - Add support for exporting all building entities to one blueprint.
         - Support for new burner fuel inventory. Exported entities will now have burner fuel inventory slot set as filter (Configurable in preferences).
+        - When Factorio updates Defines.lua, update it as automatically as possible.
     Fixes:
         - Fix issue when trying to export blueprint with modules (Key "count" was not found in property tree...)
     Internal Changes:
