@@ -422,9 +422,7 @@ public partial class MainScreen : WindowMain, IKeyboardFocus, IProgress<(string,
         BuildSubHeader(gui, LSs.MenuHeaderExtra);
 
         if (gui.BuildContextMenuButton(LSs.MenuRunFactorio)) {
-            string factorioPath = DataUtils.dataPath + "/../bin/x64/factorio";
-            string? args = string.IsNullOrEmpty(DataUtils.modsPath) ? null : "--mod-directory \"" + DataUtils.modsPath + "\"";
-            _ = Process.Start(new ProcessStartInfo(factorioPath, args!) { UseShellExecute = true }); // null-forgiving: ProcessStartInfo permits null args.
+            StartFactorio();
             _ = gui.CloseDropdown();
         }
 
@@ -435,6 +433,12 @@ public partial class MainScreen : WindowMain, IKeyboardFocus, IProgress<(string,
         if (gui.BuildContextMenuButton(LSs.MenuAbout) && gui.CloseDropdown()) {
             _ = new AboutScreen(this);
         }
+    }
+
+    public static void StartFactorio() {
+        string factorioPath = DataUtils.dataPath + "/../bin/x64/factorio";
+        string? args = string.IsNullOrEmpty(DataUtils.modsPath) ? null : "--mod-directory \"" + DataUtils.modsPath + "\"";
+        _ = Process.Start(new ProcessStartInfo(factorioPath, args!) { UseShellExecute = true }); // null-forgiving: ProcessStartInfo permits null args.
     }
 
     private bool saveConfirmationActive;

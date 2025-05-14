@@ -57,10 +57,18 @@ public class WelcomeScreen : WindowUtility, IProgress<(string, string)>, IKeyboa
     private readonly ScrollArea recentProjectScroll;
     private readonly ScrollArea languageScroll;
     private string? errorMod;
+    private const string DefinesUpdateCommand = "/command helpers.write_file(\"Defines.lua\", \"return \" .. serpent.line(defines), false)";
+    private DefinesUpdateState definesUpdateState;
     private string? errorMessage;
     private string? tip;
     private readonly string[] tips;
     private bool useMostRecentSave = true;
+
+    private enum DefinesUpdateState {
+        None,
+        WaitingForCopy,
+        WaitingForFile,
+    }
 
     internal static readonly SortedList<string, LanguageInfo> languageMapping = new()
     {
@@ -126,7 +134,7 @@ public class WelcomeScreen : WindowUtility, IProgress<(string, string)>, IKeyboa
 
         recentProjectScroll = new ScrollArea(20f, BuildRecentProjectList, collapsible: true);
         languageScroll = new ScrollArea(20f, LanguageSelection, collapsible: true);
-        errorScroll = new ScrollArea(20f, BuildError, collapsible: true);
+        errorScroll = new ScrollArea(20f, BuildRedErrorPanel, collapsible: true);
         Create(LSs.Welcome.L(YafcLib.version.ToString(3)), 45, null);
 
         if (cliProject != null && !string.IsNullOrEmpty(cliProject.dataPath)) {
@@ -140,7 +148,7 @@ public class WelcomeScreen : WindowUtility, IProgress<(string, string)>, IKeyboa
         }
     }
 
-    private void BuildError(ImGui gui) {
+    private void BuildRedErrorPanel(ImGui gui) {
         if (errorMod != null) {
             gui.BuildText(LSs.ErrorWhileLoadingMod.L(errorMod), TextBlockDisplayStyle.Centered with { Color = SchemeColor.Error });
         }
@@ -195,6 +203,30 @@ public class WelcomeScreen : WindowUtility, IProgress<(string, string)>, IKeyboa
                 if (gui.RemainingRow().BuildButton(LSs.BackButton)) {
                     errorMessage = null;
                     Rebuild();
+                }
+            }
+        }
+        else if (definesUpdateState != DefinesUpdateState.None) {
+            gui.BuildText(LSs.LoadErrorNeedsNewDefines, TextBlockDisplayStyle.WrappedText);
+            using (gui.EnterRow()) {
+                if (gui.BuildButton(LSs.CopyUpdateDefinesCommand, definesUpdateState == DefinesUpdateState.WaitingForCopy ? SchemeColor.Primary : SchemeColor.Grey)) {
+                    SDL.SDL_SetClipboardText(DefinesUpdateCommand);
+                    definesUpdateState = DefinesUpdateState.WaitingForFile;
+                }
+                if (gui.BuildButton(LSs.MenuRunFactorio, definesUpdateState == DefinesUpdateState.WaitingForFile ? SchemeColor.Primary : SchemeColor.Grey)) {
+                    MainScreen.StartFactorio();
+                }
+                if (tryFileCopy()) {
+                    definesUpdateState = DefinesUpdateState.None;
+                    LoadProject();
+                }
+                ButtonEvent evt = gui.RemainingRow().BuildButton(LSs.BackButton, SchemeColor.Grey);
+                // "C:/<whatever>" looks wrong, but not replacing the \ risks trying to display "\n", which cannot be escaped when localizing.
+                // (Factorio treats "\\n" as '\' + '\n', not '\\' + 'n', and we do the same.)
+                _ = evt.WithTooltip(gui, LSs.LoadErrorNotYetUpdated.L(Path.Combine(Environment.CurrentDirectory, "Data").Replace('\\', '/')));
+                if (evt) {
+                    Rebuild();
+                    definesUpdateState = DefinesUpdateState.None;
                 }
             }
         }
@@ -260,6 +292,27 @@ public class WelcomeScreen : WindowUtility, IProgress<(string, string)>, IKeyboa
                     LoadProject();
                 }
             }
+        }
+
+        bool tryFileCopy() {
+            // Potential locations for the script-output folder:
+            string[] factorioUserFolders = [
+                modsPath + "/..", // All OS, if the user entered a mod path
+                dataPath + "/..", // Portable installation, at least Windows and maybe all OS
+                "~/.factorio", // Linux
+                "~/.var/app/com.valvesoftware.Steam/.factorio", // Linux with flatpak Steam, if I'm reading the wiki right
+                "~/Library/Application Support/factorio", // MacOS
+                Environment.ExpandEnvironmentVariables("%appdata%/Factorio"), // Windows
+            ];
+
+            foreach (string root in factorioUserFolders) {
+                string file = Path.Combine(root, "script-output/Defines.lua");
+                if (File.Exists(file)) {
+                    File.Move(file, Path.Combine(Environment.CurrentDirectory, "Data/Defines.lua"), true);
+                    return true;
+                }
+            }
+            return false;
         }
     }
 
@@ -517,6 +570,10 @@ public class WelcomeScreen : WindowUtility, IProgress<(string, string)>, IKeyboa
             Close();
             GC.Collect();
             logger.Information("GC: {TotalMemory}", GC.GetTotalMemory(false));
+        }
+        catch (InvalidOperationException ex) when (FactorioDataSource.CurrentLoadingMod == null && (ex.StackTrace?.Contains("MoveNext") ?? false)) {
+            await Ui.EnterMainThread();
+            definesUpdateState = DefinesUpdateState.WaitingForCopy;
         }
         catch (Exception ex) {
             await Ui.EnterMainThread();
