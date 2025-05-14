@@ -58,13 +58,13 @@ public class BlueprintString(string blueprintName) {
 
 [Serializable]
 public class Blueprint(string label) {
-    public const int VERSION = 0x01000000;
+    public const long VERSION = 562949956632577;
 
     public string item { get; set; } = "blueprint";
     public string label { get; set; } = label;
     public List<BlueprintEntity> entities { get; } = [];
     public List<BlueprintIcon> icons { get; } = [];
-    public int version { get; set; } = VERSION;
+    public long version { get; set; } = VERSION;
 }
 
 [Serializable]
@@ -98,17 +98,44 @@ public class BlueprintSignal {
 
 [Serializable]
 public class BlueprintEntity {
-    [JsonPropertyName("entity_number")] public int index { get; set; }
+    [JsonPropertyName("entity_number")]
+    public int index { get; set; }
+
     public string? name { get; set; }
     public string? quality { get; set; }
     public BlueprintPosition position { get; set; } = new BlueprintPosition();
     public int direction { get; set; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? recipe { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? recipe_quality { get; set; }
-    [JsonPropertyName("control_behavior")] public BlueprintControlBehavior? controlBehavior { get; set; }
+
+    [JsonPropertyName("control_behavior")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public BlueprintControlBehavior? controlBehavior { get; set; }
     public BlueprintConnection? connections { get; set; }
-    [JsonPropertyName("request_filters")] public List<BlueprintRequestFilter> requestFilters { get; } = [];
+
+    [JsonPropertyName("request_filters")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public BlueprintRequestFilterSections? requestFilters { get; set; }
     public List<BlueprintItem> items { get; } = [];
+    [JsonPropertyName("burner_fuel_inventory")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public BlueprintRequestFilterSection? burnerFuelInventory { get; set; }
+
+    public void SetFuel(string name, string? quality = null) {
+        BlueprintRequestFilter fuelFilter = new() {
+            index = 1,
+            comparator = "=",
+            name = name,
+            quality = quality,
+            count = 1
+        };
+
+        burnerFuelInventory = new BlueprintRequestFilterSection();
+        burnerFuelInventory.filters.Add(fuelFilter);
+    }
 
     public void Connect(BlueprintEntity other, bool red = true, bool secondPort = false, bool targetSecond = false) {
         ConnectSingle(other, red, secondPort, targetSecond);
@@ -131,12 +158,26 @@ public class BlueprintEntity {
 }
 
 [Serializable]
+public class BlueprintRequestFilterSections {
+    public List<BlueprintRequestFilterSection> sections { get; } = [];
+}
+
+[Serializable]
+public class BlueprintRequestFilterSection {
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? index { get; set; }
+    public List<BlueprintRequestFilter> filters { get; } = [];
+}
+
+[Serializable]
 public class BlueprintRequestFilter {
     public string? name { get; set; }
     public string? quality { get; set; }
     public string? comparator { get; set; }
     public int index { get; set; }
     public int count { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? max_count { get; set; }
 }
 
 [Serializable]
