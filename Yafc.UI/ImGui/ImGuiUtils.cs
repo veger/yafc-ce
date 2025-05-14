@@ -226,10 +226,19 @@ public static class ImGuiUtils {
         return evt;
     }
 
-    public static bool BuildCheckBox(this ImGui gui, string text, bool value, out bool newValue, SchemeColor color = SchemeColor.None, RectAllocator allocator = RectAllocator.LeftRow) {
+    public static bool BuildCheckBox(this ImGui gui, string text, bool value, out bool newValue, SchemeColor color = SchemeColor.None,
+        RectAllocator allocator = RectAllocator.LeftRow, string? tooltip = null) {
+
         using (gui.EnterRow(allocator: allocator)) {
             gui.BuildIcon(value ? Icon.CheckBoxCheck : Icon.CheckBoxEmpty, 1.5f, color);
             gui.BuildText(text, TextBlockDisplayStyle.Default(color));
+        }
+
+        if (tooltip != null) {
+            bool wasOver = gui.IsMouseOver(gui.lastContentRect);
+            if (gui.ConsumeMouseOver(gui.lastContentRect, RenderingUtils.cursorArrow) && !wasOver) {
+                gui.ShowTooltip(gui.lastContentRect, tooltip);
+            }
         }
 
         if (gui.enableDrawing && gui.OnClick(gui.lastRect)) {

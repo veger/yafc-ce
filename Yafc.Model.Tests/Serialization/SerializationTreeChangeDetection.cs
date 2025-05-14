@@ -116,6 +116,8 @@ public class SerializationTreeChangeDetection {
             [nameof(ProjectModuleTemplate.icon)] = typeof(FactorioObject),
             [nameof(ProjectModuleTemplate.name)] = typeof(string),
             [nameof(ProjectModuleTemplate.filterEntities)] = typeof(List<Entity>),
+            [nameof(ProjectModuleTemplate.autoApplyToNewRows)] = typeof(bool),
+            [nameof(ProjectModuleTemplate.autoApplyIfIncompatible)] = typeof(bool),
         },
         [typeof(ProjectPage)] = new() {
             [nameof(ProjectPage.icon)] = typeof(FactorioObject),
