@@ -21,4 +21,7 @@ public class ProjectModuleTemplate : ModelObject<Project> {
     /// added recipe rows, even if it contains modules that are not compatible with that row (e.g. prod modules in a non-prod recipe)
     /// </summary>
     public bool autoApplyIfIncompatible { get; set; }
+
+    // null-forgiving: non-nullable collections are happy to report they don't contain null values.
+    internal bool AcceptsEntity(EntityCrafter? target) => filterEntities.Count == 0 || filterEntities.Contains(target!);
 }
