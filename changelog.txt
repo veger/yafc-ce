@@ -15,8 +15,13 @@
 //     Internal changes:
 //         Changes to the code that do not affect the behavior of the program.
 ----------------------------------------------------------------------------------------------------------------------
-Version: 
-Date: 
+Version:
+Date:
+    Features:
+    Fixes:
+----------------------------------------------------------------------------------------------------------------------
+Version: 2.13.0
+Date: May 14th 2025
     Features:
         - Add support for exporting all building entities to one blueprint.
         - Support for new burner fuel inventory. Exported entities will now have burner fuel inventory slot set as filter (Configurable in preferences).
