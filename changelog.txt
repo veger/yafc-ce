@@ -15,8 +15,13 @@
 //     Internal changes:
 //         Changes to the code that do not affect the behavior of the program.
 ----------------------------------------------------------------------------------------------------------------------
-Version:
-Date:
+Version: 
+Date: 
+    Features:
+    Fixes:
+----------------------------------------------------------------------------------------------------------------------
+Version: 2.12.0
+Date: May 12th 2025
     Features:
         - When changing the language for Factorio objects, automatically switch to, or download, a font that can
           display that language.
