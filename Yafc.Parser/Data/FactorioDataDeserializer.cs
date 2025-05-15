@@ -425,7 +425,8 @@ internal partial class FactorioDataDeserializer {
 
         item.stackSize = table.Get("stack_size", 1);
 
-        if (item.locName == null && table.Get("placed_as_equipment_result", out string? result)) {
+        // place_as for 2.0, placed_as for 1.1
+        if (item.locName == null && (table.Get("place_as_equipment_result", out string? result) || table.Get("placed_as_equipment_result", out result))) {
             item.locName = LocalisedStringParser.ParseKey("equipment-name." + result, [])!;
         }
         if (table.Get("fuel_value", out string? fuelValue)) {
