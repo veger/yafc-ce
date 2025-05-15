@@ -55,7 +55,8 @@ public abstract class FactorioObject : IFactorioObjectWrapper, IComparable<Facto
             }
             else {
                 locName = other.locName;
-                locDescr = description.L(locName);
+                // locName could still be null at this point. Use name instead, since we have nothing better.
+                locDescr = description.L(locName ?? name);
             }
         }
 

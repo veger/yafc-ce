@@ -19,6 +19,7 @@ Version:
 Date:
     Features:
     Fixes:
+        - Personal equipment names are localized again.
 ----------------------------------------------------------------------------------------------------------------------
 Version: 2.13.0
 Date: May 14th 2025
