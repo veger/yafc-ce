@@ -200,8 +200,15 @@ public static class ImmediateWidgets {
 
     internal static bool BuildInlineObjectList<T>(this ImGui gui, IEnumerable<T> list, [NotNullWhen(true)] out T? selected, ObjectSelectOptions<T> options) where T : class, IFactorioObjectWrapper {
         if (options.Header != null) {
-            gui.BuildText(options.Header, Font.productionTableHeader);
+            gui.BuildText(options.Header, Font.subheader);
         }
+
+        if (options is QualitySelectOptions<T> qualityOptions) {
+            // The caller can react to a true return here by subscribing to QSO.SelectedQualitiesChanged. (Which was raised by BuildQualityList.)
+            // We don't have enough information to decide what to do.
+            _ = gui.BuildQualityList(qualityOptions);
+        }
+
         IEnumerable<T> sortedList = list;
 
         if (options.Ordering != DataUtils.AlreadySortedRecipe) {
@@ -228,6 +235,11 @@ public static class ImmediateWidgets {
         return selected != null;
     }
 
+    /// <param name="selectItem">An action to be called whenever an item is selected from the list, and for each selected item when the
+    /// subsequent <see cref="SelectObjectPanel{TResult, TDisplay}"/> is confirmed.</param>
+    /// <param name="options">The options controlling the display and behavior of this list and panel. If this parameter is a
+    /// <see cref="QualitySelectOptions{T}"/>, the corresponding quality prompts will be displayed and the supplied object will be modified to
+    /// reflect the selection(s) made by the user.</param>
     public static void BuildInlineObjectListAndButton<T>(this ImGui gui, ICollection<T> list, Action<T> selectItem, ObjectSelectOptions<T> options) where T : FactorioObject {
         using (gui.EnterGroup(default, RectAllocator.Stretch)) {
             if (gui.BuildInlineObjectList(list, out var selected, options)) {
@@ -248,12 +260,14 @@ public static class ImmediateWidgets {
         }
     }
 
+    /// <param name="selectItem">An action that is called for the selected object(s) at all selected qualities.</param>
     public static void BuildInlineObjectListAndButton<T>(this ImGui gui, ICollection<T> list, Action<IObjectWithQuality<T>> selectItem, QualitySelectOptions<T> options) where T : FactorioObject {
         using (gui.EnterGroup(default, RectAllocator.Stretch)) {
             if (gui.BuildInlineObjectList(list, out var selected, options) && options.SelectedQuality != null) {
-                foreach (Quality quality in options.SelectedQualities) {
-                    selectItem(selected.With(quality));
+                foreach (IObjectWithQuality<T> result in options.ApplyQualitiesTo(selected)) {
+                    selectItem(result);
                 }
+
                 if (!options.Multiple || !InputSystem.Instance.control) {
                     _ = gui.CloseDropdown();
                 }
@@ -270,6 +284,12 @@ public static class ImmediateWidgets {
         }
     }
 
+    /// <param name="selectItem">An action to be called when an item is selected from the list or subsequent
+    /// <see cref="SelectObjectPanel{TResult, TDisplay}"/>.</param>
+    /// <param name="options">The options controlling the display and behavior of this list and panel.
+    /// <see cref="ObjectSelectOptions{T}.Multiple"/> must be <see langword="false"/>. If this parameter is a
+    /// <see cref="QualitySelectOptions{T}"/>, the corresponding quality prompts will be displayed and the supplied object will be modified to
+    /// reflect the selection made by the user.</param>
     public static void BuildInlineObjectListAndButtonWithNone<T>(this ImGui gui, ICollection<T> list, Action<T?> selectItem, ObjectSelectOptions<T> options) where T : FactorioObject {
         using (gui.EnterGroup(default, RectAllocator.Stretch)) {
             if (gui.BuildInlineObjectList(list, out var selected, options)) {
@@ -286,6 +306,9 @@ public static class ImmediateWidgets {
         }
     }
 
+    /// <param name="selectItem">An action that is called for the selected object at the selected quality.</param>
+    /// <param name="options">The options controlling the display and behavior of this list and panel.
+    /// <see cref="ObjectSelectOptions{T}.Multiple"/> must be <see langword="false"/>.</param>
     public static void BuildInlineObjectListAndButtonWithNone<T>(this ImGui gui, ICollection<T> list, Action<IObjectWithQuality<T>?> selectItem, QualitySelectOptions<T> options) where T : FactorioObject {
         using (gui.EnterGroup(default, RectAllocator.Stretch)) {
             if (gui.BuildInlineObjectList(list, out var selected, options) && options.SelectedQuality != null && gui.CloseDropdown()) {
@@ -357,19 +380,12 @@ public static class ImmediateWidgets {
         => gui.ShowDropDown(imGui => imGui.BuildInlineObjectListAndButton(list, selectItem, options), width);
 
     /// <summary>Shows a dropdown containing the (partial) <paramref name="list"/> of elements, with an action for when an element is selected.
-    /// Also shows the available quality levels, and allows the user to select a quality. May or may not close after the user selects a quality, depending on <paramref name="selectQuality"/>.</summary>
-    /// <param name="selectQuality">If not <see langword="null"/>, this will be called, and the dropdown will be closed, when the user selects a quality.
-    /// In general, set this parameter when modifying an existing object, and leave it <see langword="null"/> when setting a new object.</param>
+    /// Also shows the available quality levels, and allows the user to select a quality.</summary>
     /// <param name="width">Width of the popup. Make sure the header text fits!</param>
-    public static void BuildObjectQualitySelectDropDown<T>(this ImGui gui, ICollection<T> list, Action<IObjectWithQuality<T>> selectItem, QualitySelectOptions<T> options,
-        Action<Quality>? selectQuality = null, float width = 20f) where T : FactorioObject
+    public static void BuildObjectQualitySelectDropDown<T>(this ImGui gui, ICollection<T> list, Action<IObjectWithQuality<T>> selectItem,
+        QualitySelectOptions<T> options, float width = 20f) where T : FactorioObject
 
-        => gui.ShowDropDown(gui => {
-            if (gui.BuildQualityList(options) && selectQuality != null && gui.CloseDropdown()) {
-                selectQuality(options.SelectedQuality!);
-            }
-            gui.BuildInlineObjectListAndButton(list, selectItem, options);
-        }, width);
+        => gui.ShowDropDown(gui => gui.BuildInlineObjectListAndButton(list, selectItem, options), width);
 
     /// <summary>Shows a dropdown containing the (partial) <paramref name="list"/> of elements, with an action for when an element is selected.
     /// An additional "Clear" or "None" option will also be displayed.</summary>
@@ -379,17 +395,11 @@ public static class ImmediateWidgets {
 
     /// <summary>Shows a dropdown containing the (partial) <paramref name="list"/> of elements, with an action for when an element is selected.
     /// Also shows the available quality levels, and allows the user to select a quality.</summary>
-    /// <param name="selectQuality">This will be called, and the dropdown will be closed, when the user selects a quality.</param>
     /// <param name="width">Width of the popup. Make sure the header text fits!</param>
-    public static void BuildObjectQualitySelectDropDownWithNone<T>(this ImGui gui, ICollection<T> list, Action<IObjectWithQuality<T>?> selectItem, QualitySelectOptions<T> options,
-        Action<Quality> selectQuality, float width = 20f) where T : FactorioObject
+    public static void BuildObjectQualitySelectDropDownWithNone<T>(this ImGui gui, ICollection<T> list, Action<IObjectWithQuality<T>?> selectItem,
+        QualitySelectOptions<T> options, float width = 20f) where T : FactorioObject
 
-        => gui.ShowDropDown(gui => {
-            if (gui.BuildQualityList(options) && options.SelectedQuality != null && gui.CloseDropdown()) {
-                selectQuality(options.SelectedQuality);
-            }
-            gui.BuildInlineObjectListAndButtonWithNone(list, selectItem, options);
-        }, width);
+        => gui.ShowDropDown(gui => gui.BuildInlineObjectListAndButtonWithNone(list, selectItem, options), width);
 
     /// <summary>Draws a button displaying the icon belonging to a <see cref="FactorioObject"/>, or an empty box as a placeholder if no object is available.
     /// Also draws an editable textbox under the button, containing the supplied <paramref name="amount"/>.</summary>
@@ -482,6 +492,7 @@ public static class ImmediateWidgets {
                         && options.Multiple && (options.AllowMultipleWithoutControl || InputSystem.Instance.control)) {
 
                         options.SelectedQualities.Remove(drawQuality);
+                        options.OnSelectedQualitiesChanged(gui);
                         return true;
                     }
                 }
@@ -490,6 +501,7 @@ public static class ImmediateWidgets {
                         options.SelectedQualities.Clear();
                     }
                     options.SelectedQualities.Add(drawQuality);
+                    options.OnSelectedQualitiesChanged(gui);
                     return true;
                 }
                 qualityCount++;
@@ -517,95 +529,4 @@ public record DisplayAmount(float Value, UnitOfMeasure Unit = UnitOfMeasure.None
     /// </summary>
     /// <param name="value">The initial value to be displayed to the user.</param>
     public static implicit operator DisplayAmount(float value) => new(value);
-}
-
-/// <summary>
-/// Encapsulates the options for drawing an object selection list, which may be a dropdown, a <see cref="SelectObjectPanel{TResult, TDisplay}"/>,
-/// or both with the dropdown displayed first.
-/// </summary>
-/// <typeparam name="T">The type of <see cref="FactorioObject"/> to be selected</typeparam>
-/// <param name="Header">The header text to display, or <see langword="null"/> to display no header text.</param>
-/// <param name="Ordering">The sort order to use when displaying the items. Defaults to <see cref="DataUtils.DefaultOrdering"/>.</param>
-/// <param name="MaxCount">The maximum number of elements in a dropdown list. If there are more, and a dropdown is being displayed, a
-/// <see cref="SelectObjectPanel{TResult, TDisplay}"/> can be opened by the user to show the full list.</param>
-/// <param name="Multiple">If <see langword="true"/>, the user will be allowed to select multiple items.<br/>
-/// Must be <see langword="false"/> when selecting with a 'None' item.</param>
-/// <param name="Checkmark">If not <see langword="null"/>, this will be called to determine if a checkmark should be drawn on the item.
-/// Not used when <paramref name="Multiple"/> is <see langword="false"/>.</param>
-/// <param name="YellowMark">If Checkmark is not set, draw a less distinct checkmark instead.</param>
-/// <param name="ExtraText">If not <see langword="null"/>, this will be called to get extra text to be displayed right-justified in a dropdown
-/// list, after the item's name. Not used when displaying <see cref="SelectObjectPanel{TResult, TDisplay}"/>s.</param>
-public record ObjectSelectOptions<T>(string? Header, [AllowNull] IComparer<T> Ordering = null, int MaxCount = 6, bool Multiple = false, Predicate<T>? Checkmark = null,
-    Predicate<T>? YellowMark = null, Func<T, string>? ExtraText = null) where T : class, IFactorioObjectWrapper {
-
-    public IComparer<T> Ordering { get; init; } = Ordering ?? DataUtils.DefaultOrdering;
-}
-
-/// <summary>
-/// Encapsulates the options for drawing an object selection list, which may be a dropdown, a <see cref="SelectObjectPanel{TResult, TDisplay}"/>,
-/// or both with the dropdown displayed first, along with options to select the quality.
-/// </summary>
-/// <typeparam name="T"><inheritdoc/></typeparam>
-/// <param name="Header">The header text to display, or <see langword="null"/> to display no header text.</param>
-/// <param name="Ordering">The sort order to use when displaying the items. Defaults to <see cref="DataUtils.DefaultOrdering"/>.</param>
-/// <param name="MaxCount">The maximum number of elements in a dropdown list. If there are more and a dropdown is being displayed, a
-/// <see cref="SelectObjectPanel{TResult, TDisplay}"/> can be opened by the user to show the full list.</param>
-/// <param name="Multiple">If <see langword="true"/>, the user will be allowed to select multiple items and multiple qualities. The result will
-/// be all combinations of a selected <typeparamref name="T"/> and a selected <see cref="Quality"/> (the Cartesian product).<br/>
-/// Must be <see langword="false"/> when selecting with a 'None' item.</param>
-/// <param name="Checkmark">If not <see langword="null"/>, this will be called to determine if a checkmark should be drawn on the item.
-/// Not used when <paramref name="Multiple"/> is <see langword="false"/>.</param>
-/// <param name="YellowMark">If Checkmark is not set, draw a less distinct checkmark instead.</param>
-/// <param name="ExtraText">If not <see langword="null"/>, this will be called to get extra text to be displayed right-justified in a dropdown
-/// list, after the item's name. Not used when displaying <see cref="SelectObjectPanel{TResult, TDisplay}"/>s.</param>
-/// <param name="AllowMultipleWithoutControl">When this and <paramref name="Multiple"/> are both <see langword="true"/>, the quality icons in the
-/// selection list will always behave like checkboxes. When <paramref name="Multiple"/> is <see langword="true"/> and this is
-/// <see langword="false"/>, the quality icons will behave like checkboxes when ctrl-clicking, and like radio buttons when clicking without
-/// control. When <paramref name="Multiple"/> is <see langword="false"/>, the quality icons will always behave like radio buttons.</param>
-/// <param name="SelectedQuality">The initially selected <see cref="Quality"/>. If this parameter is <see langword="null"/> and
-/// <paramref name="Multiple"/> is <see langword="false"/>, <see cref="SelectedQuality"/> will be initialized to <see cref="Quality.Normal"/>.
-/// </param>
-public record QualitySelectOptions<T>(string? Header, [AllowNull] IComparer<T> Ordering = null, int MaxCount = 6, bool Multiple = false,
-    Predicate<T>? Checkmark = null, Predicate<T>? YellowMark = null, Func<T, string>? ExtraText = null, bool AllowMultipleWithoutControl = false,
-    Quality? SelectedQuality = null)
-    : ObjectSelectOptions<T>(Header, Ordering, MaxCount, Multiple, Checkmark, YellowMark, ExtraText) where T : class, IFactorioObjectWrapper {
-
-    /// <summary>
-    /// Creates a new <see cref="QualitySelectOptions{T}"/> using just the header text and selected quality.
-    /// </summary>
-    /// <param name="header">The header text to display, or <see langword="null"/> to display no header text.</param>
-    /// <param name="selectedQuality">The initially selected <see cref="Quality"/>. If this parameter is <see langword="null"/>,
-    /// <see cref="SelectedQuality"/> will be initialized to <see cref="Quality.Normal"/>.</param>
-    // (Seven of the seventeen constructor calls use only these two parameters.)
-    public QualitySelectOptions(string? header, Quality? selectedQuality) : this(header, null, SelectedQuality: selectedQuality) { }
-
-    /// <summary>
-    /// The translation key for text to draw above the quality icons. By default this is <see cref="LSs.SelectQuality"/>, which will be
-    /// pluralized as appropriate based on <see cref="ObjectSelectOptions{T}.Multiple"/>.
-    /// </summary>
-    public LocalizableString QualityHeader { get; init; } = LSs.SelectQuality;
-
-    /// <summary>
-    /// Gets the (first) quality selected and sets the only quality selected. Gets or sets <see langword="null"/> if no qualities are (or should
-    /// be) selected. If the constructor parameter Multiple is <see langword="false"/> and the constructor parameter SelectedQuality is
-    /// <see langword="null"/>, this property's initial value is <see cref="Quality.Normal"/>. Otherwise, its initial value is the same as the
-    /// constructor parameter SelectedQuality.<br/>
-    /// When <see cref="ObjectSelectOptions{T}.Multiple"/> is <see langword="false"/>, this cannot become <see langword="null"/> as a result of
-    /// user action, though it may be programmatically set to <see langword="null"/>.<br/>
-    /// </summary>
-    public Quality? SelectedQuality {
-        get => SelectedQualities.FirstOrDefault();
-        set {
-            SelectedQualities.Clear();
-            if (value != null) {
-                SelectedQualities.Add(value);
-            }
-        }
-    }
-
-    /// <summary>
-    /// Gets all qualities selected by the user. If no qualities are selected (equivalently, if <see cref="SelectedQuality"/> is
-    /// <see langword="null"/>), this is an empty list.
-    /// </summary>
-    public List<Quality> SelectedQualities { get; } = SelectedQuality == null ? Multiple ? [] : [Quality.Normal] : [SelectedQuality];
 }

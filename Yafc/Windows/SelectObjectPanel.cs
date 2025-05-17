@@ -32,12 +32,16 @@ public abstract class SelectObjectPanel<TResult, TDisplay> : PseudoScreenWithRes
     protected void SelectWithQuality(IEnumerable<TDisplay> list, bool allowNone, QualitySelectOptions<TDisplay> options,
         Action<IObjectWithQuality<TDisplay>?> selectItem, Action<TResult?, Action<TDisplay?>> mapResult, string? noneTooltip) {
 
-        this.options = options;
         Select(list, allowNone, options, selectQualities, mapResult, noneTooltip);
 
         void selectQualities(TDisplay? u) {
-            foreach (Quality quality in options.SelectedQualities) {
-                selectItem(u.With(quality));
+            if (u == null) {
+                selectItem(null);
+            }
+            else {
+                foreach (var result in options.ApplyQualitiesTo(u)) {
+                    selectItem(result);
+                }
             }
         }
     }
@@ -57,6 +61,7 @@ public abstract class SelectObjectPanel<TResult, TDisplay> : PseudoScreenWithRes
         Action<TResult?, Action<TDisplay?>> mapResult, string? noneTooltip = null) {
 
         _ = MainScreen.Instance.ShowPseudoScreen(this);
+        this.options = options as QualitySelectOptions<TDisplay>;
         this.noneTooltip = noneTooltip;
         header = options.Header;
         showTypeInHeader = typeof(TDisplay) == typeof(FactorioObject);

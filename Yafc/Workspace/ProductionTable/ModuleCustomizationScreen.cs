@@ -223,13 +223,17 @@ public class ModuleCustomizationScreen : PseudoScreenWithResult<ModuleTemplateBu
             }, new(LSs.SelectBeacon, Quality.Normal));
         }
         else {
+            QualitySelectOptions<EntityBeacon> options = new(LSs.SelectBeacon, modules.beacon.quality);
+            options.SelectedQualitiesChanged += gui => {
+                gui.CloseDropdown();
+                modules.beacon = modules.beacon.With(options.SelectedQuality!);
+                contents.Rebuild();
+            };
+
             gui.BuildObjectQualitySelectDropDownWithNone(Database.allBeacons, sel => {
                 modules.beacon = sel;
                 contents.Rebuild();
-            }, new(LSs.SelectBeacon, modules.beacon.quality), quality => {
-                modules.beacon = modules.beacon.With(quality);
-                contents.Rebuild();
-            });
+            }, options);
         }
     }
 
@@ -257,6 +261,13 @@ public class ModuleCustomizationScreen : PseudoScreenWithResult<ModuleTemplateBu
                 case GoodsWithAmountEvent.LeftButtonClick:
                     int idx = i; // Capture the current value of i.
 
+                    QualitySelectOptions<Module> options = new(LSs.SelectModule, DataUtils.FavoriteModule) { SelectedQuality = list[idx].module.quality };
+                    options.SelectedQualitiesChanged += dropGui => {
+                        dropGui.CloseDropdown();
+                        list[idx] = list[idx] with { module = list[idx].module.target.With(options.SelectedQuality) };
+                        gui.Rebuild();
+                    };
+
                     gui.BuildObjectQualitySelectDropDownWithNone(GetModules(beacon), sel => {
                         if (sel == null) {
                             list.RemoveAt(idx);
@@ -265,10 +276,7 @@ public class ModuleCustomizationScreen : PseudoScreenWithResult<ModuleTemplateBu
                             list[idx] = (sel, list[idx].fixedCount);
                         }
                         gui.Rebuild();
-                    }, new(LSs.SelectModule, DataUtils.FavoriteModule, SelectedQuality: list[idx].module.quality), quality => {
-                        list[idx] = list[idx] with { module = list[idx].module.target.With(quality) };
-                        gui.Rebuild();
-                    });
+                    }, options);
                     break;
 
                 case GoodsWithAmountEvent.TextEditing when amount.Value >= 0:

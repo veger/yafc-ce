@@ -446,35 +446,36 @@ goodsHaveNoProduction:;
         }
 
         private static void ShowAccumulatorDropdown(ImGui gui, RecipeRow recipe, Entity currentAccumulator, Quality accumulatorQuality) {
+            QualitySelectOptions<EntityAccumulator> options = new(LSs.ProductionTableSelectAccumulator, ExtraText: extraText) { SelectedQuality = accumulatorQuality };
+            options.SelectedQualitiesChanged += gui => {
+                gui.CloseDropdown();
+                recipe.RecordUndo().ChangeVariant(accumulatorQuality, options.SelectedQuality);
+            };
             gui.BuildObjectQualitySelectDropDown(Database.allAccumulators,
                 newAccumulator => recipe.RecordUndo().ChangeVariant(currentAccumulator, newAccumulator.target),
-                new(LSs.ProductionTableSelectAccumulator, ExtraText: extraText, SelectedQuality: accumulatorQuality), selectQuality);
+                options);
 
             string extraText(EntityAccumulator x) => DataUtils.FormatAmount(x.AccumulatorCapacity(accumulatorQuality), UnitOfMeasure.Megajoule);
-            void selectQuality(Quality newQuality) => recipe.RecordUndo().ChangeVariant(accumulatorQuality, newQuality);
         }
 
         private static void ShowEntityDropdown(ImGui gui, RecipeRow recipe) {
             Quality quality = recipe.entity?.quality ?? Quality.Normal;
+
             QualitySelectOptions<EntityCrafter> options = null!;
             options = new(LSs.ProductionTableSelectCraftingEntity, DataUtils.FavoriteCrafter, ExtraText: extraText) { SelectedQuality = quality };
-
             string extraText(EntityCrafter x) => DataUtils.FormatAmount(x.CraftingSpeed(options.SelectedQuality!), UnitOfMeasure.Percent);
+
+            if (recipe.entity != null) {
+                options.SelectedQualitiesChanged += gui => {
+                    _ = gui.CloseDropdown();
+                    recipe.RecordUndo().entity = recipe.entity.With(options.SelectedQuality);
+                };
+            }
 
             gui.ShowDropDown(gui => {
                 EntityCrafter? favoriteCrafter = recipe.recipe.target.crafters.AutoSelect(DataUtils.FavoriteCrafter);
                 if (favoriteCrafter == recipe.entity?.target) { favoriteCrafter = null; }
                 bool willResetFixed = favoriteCrafter == null, willResetBuilt = willResetFixed && recipe.fixedBuildings == 0;
-
-                if (recipe.entity == null) {
-                    _ = gui.BuildQualityList(options);
-                }
-                else if (gui.BuildQualityList(options) && gui.CloseDropdown()) {
-                    if (options.SelectedQuality == recipe.entity.quality) {
-                        return;
-                    }
-                    recipe.RecordUndo().entity = recipe.entity.With(options.SelectedQuality);
-                }
 
                 gui.BuildInlineObjectListAndButton(recipe.recipe.target.crafters, sel => {
                     if (recipe.entity?.target == sel) {
@@ -791,23 +792,23 @@ goodsHaveNoProduction:;
                 .OrderByDescending(x => x.template.IsCompatibleWith(recipe))];
 
             QualitySelectOptions<Module> options = new(LSs.ProductionTableSelectModules, DataUtils.FavoriteModule) { SelectedQuality = Quality.Normal };
+
+            if (recipe.modules?.list.Count > 0) {
+                options.SelectedQuality = recipe.modules.list[0].module.quality;
+                options.SelectedQualitiesChanged += gui => {
+                    _ = gui.CloseDropdown();
+                    ModuleTemplateBuilder builder = recipe.modules.GetBuilder();
+                    builder.list[0] = builder.list[0] with { module = builder.list[0].module.With(options.SelectedQuality) };
+                    recipe.RecordUndo().modules = builder.Build(recipe);
+                };
+            }
+
             gui.ShowDropDown(dropGui => {
                 if (recipe.modules != null && dropGui.BuildButton(LSs.ProductionTableUseDefaultModules).WithTooltip(dropGui, LSs.ProductionTableShortcutRightClick) && dropGui.CloseDropdown()) {
                     recipe.RemoveFixedModules();
                 }
 
                 if (recipe.entity?.target.moduleSlots > 0) {
-                    if (recipe.modules?.list.Count > 0) {
-                        options.SelectedQuality = recipe.modules.list[0].module.quality;
-                        if (dropGui.BuildQualityList(options) && dropGui.CloseDropdown()) {
-                            ModuleTemplateBuilder builder = recipe.modules.GetBuilder();
-                            builder.list[0] = builder.list[0] with { module = builder.list[0].module.With(options.SelectedQuality) };
-                            recipe.RecordUndo().modules = builder.Build(recipe);
-                        }
-                    }
-                    else {
-                        _ = dropGui.BuildQualityList(options);
-                    }
                     dropGui.BuildInlineObjectListAndButton(modules, (Module m) => recipe.SetFixedModule(m.With(options.SelectedQuality)), options);
                 }
 

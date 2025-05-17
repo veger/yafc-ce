@@ -21,6 +21,7 @@ Date:
         - Module templates can be automatically applied to new recipe rows, on a per-template basis.
     Fixes:
         - Personal equipment names are localized again.
+        - Quality prompts from dropdowns now also appear in subsequent selection panels.
 ----------------------------------------------------------------------------------------------------------------------
 Version: 2.13.0
 Date: May 14th 2025
