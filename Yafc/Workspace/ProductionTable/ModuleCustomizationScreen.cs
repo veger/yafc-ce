@@ -54,6 +54,33 @@ public class ModuleCustomizationScreen : PseudoScreenWithResult<ModuleTemplateBu
                 }
             }
 
+            float textLength = gui.GetTextDimensions(out _, LSs.ModuleCustomizationAutoApply).X
+                + gui.GetTextDimensions(out _, LSs.ModuleCustomizationAutoIncompatible).X;
+            // 3 for the two checkboxes, and 1.3 for various extra padding:
+            bool singleRow = textLength < contents.width - 4.3f;
+
+            ImGui.Context row = default;
+            if (singleRow) {
+                // The text is short enough to draw in one row
+                row = gui.EnterRow();
+            }
+            if (gui.BuildCheckBox(LSs.ModuleCustomizationAutoApply, template.autoApplyToNewRows, out bool newValue,
+                tooltip: LSs.ModuleCustomizationAutoApplyHint)) {
+                template.RecordUndo().autoApplyToNewRows = newValue;
+            }
+            if (!singleRow) {
+                // Draw in two rows, nested
+                row = gui.EnterRow(1);
+                gui.AllocateSpacing();
+            }
+            if (gui.BuildCheckBox(LSs.ModuleCustomizationAutoIncompatible, template.autoApplyIfIncompatible, out newValue,
+                template.autoApplyToNewRows ? SchemeColor.None : SchemeColor.GreyAlt, tooltip: LSs.ModuleCustomizationAutoIncompatibleHint)
+                && template.autoApplyToNewRows) {
+
+                template.RecordUndo().autoApplyIfIncompatible = newValue;
+            }
+            row.Dispose();
+
             gui.BuildText(LSs.ModuleCustomizationFilterBuildings);
             using var grid = gui.EnterInlineGrid(2f, 1f);
 

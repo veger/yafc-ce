@@ -42,6 +42,15 @@ public class ModuleTemplateConfiguration : PseudoScreen {
             ModuleCustomizationScreen.Show(element);
         }
 
+        SchemeColor textColor = element.autoApplyToNewRows ? SchemeColor.PrimaryText : SchemeColor.PrimaryTextFaint;
+        using (gui.EnterGroup(ImGuiUtils.DefaultButtonPadding, textColor)) {
+            gui.BuildText(LSs.ModuleTemplatesAuto, TextBlockDisplayStyle.Centered);
+        }
+        LocalizableString0 tooltip = element.autoApplyToNewRows ? LSs.ModuleTemplatesAutoEnabledHint : LSs.ModuleTemplatesAutoDisabledHint;
+        if (gui.BuildButton(gui.lastRect, SchemeColor.None, SchemeColor.Grey).WithTooltip(gui, tooltip)) {
+            element.RecordUndo().autoApplyToNewRows = !element.autoApplyToNewRows;
+        }
+
         gui.allocator = RectAllocator.LeftRow;
         if (element.icon != null) {
             gui.BuildFactorioObjectIcon(element.icon);

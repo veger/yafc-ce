@@ -756,6 +756,21 @@ public class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Productio
         }
     }
 
+    /// <summary>
+    /// Search through <paramref name="moduleTemplates"/> to find a module template that can be used on this recipe. Apply the first one found.
+    /// </summary>
+    /// <param name="moduleTemplates">The templates to potentially use for this row.</param>
+    public void AutoApplyModuleTemplate(List<ProjectModuleTemplate> moduleTemplates) {
+        foreach (ProjectModuleTemplate template in moduleTemplates) {
+            if (template.autoApplyToNewRows && template.AcceptsEntity(entity?.target)) {
+                if (template.autoApplyIfIncompatible || template.template.IsCompatibleWith(this)) {
+                    modules = template.template;
+                    return;
+                }
+            }
+        }
+    }
+
     // To avoid leaking these variables/methods (or just the setter, for recipesPerSecond) into public context,
     // these explicit interface implementations connect to internal members, instead of using implicit implementation via public members
     RecipeParameters IRecipeRow.parameters { get => parameters; set => parameters = value; }

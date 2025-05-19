@@ -18,6 +18,7 @@
 Version:
 Date:
     Features:
+        - Module templates can be automatically applied to new recipe rows, on a per-template basis.
     Fixes:
         - Personal equipment names are localized again.
 ----------------------------------------------------------------------------------------------------------------------

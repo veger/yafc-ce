@@ -274,6 +274,8 @@ match:
                 _ = recipeRow.variants.Add(variants.AutoSelect(ingredientVariantComparer)!); // null-forgiving: variants is never empty, and AutoSelect never returns null from a non-empty collection (of non-null items).
             }
         }
+
+        recipeRow.AutoApplyModuleTemplate(Project.current.sharedModuleTemplates);
     }
 
     private static EntityCrafter? GetSelectedFuelCrafter(RecipeOrTechnology recipe, IObjectWithQuality<Goods>? selectedFuel) =>
