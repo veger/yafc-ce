@@ -329,7 +329,7 @@ public partial class MainScreen : WindowMain, IKeyboardFocus, IProgress<(string,
         }
     }
 
-    private static void ShowNeie() => SelectSingleObjectPanel.Select(Database.goods.explorable, LSs.MenuOpenNeie, NeverEnoughItemsPanel.Show);
+    private static void ShowNeie() => SelectSingleObjectPanel.Select(Database.goods.explorable, new(LSs.MenuOpenNeie), NeverEnoughItemsPanel.Show);
 
     private void SetSearch(SearchQuery searchQuery) {
         pageSearch = searchQuery;
@@ -412,7 +412,7 @@ public partial class MainScreen : WindowMain, IKeyboardFocus, IProgress<(string,
         }
 
         if (gui.BuildContextMenuButton(LSs.DependencyExplorer) && gui.CloseDropdown()) {
-            SelectSingleObjectPanel.Select(Database.objects.explorable, LSs.DependencyExplorer, DependencyExplorer.Show);
+            SelectSingleObjectPanel.Select(Database.objects.explorable, new(LSs.DependencyExplorer), DependencyExplorer.Show);
         }
 
         if (gui.BuildContextMenuButton(LSs.MenuImportFromClipboard, disabled: !ImGuiUtils.HasClipboardText()) && gui.CloseDropdown()) {

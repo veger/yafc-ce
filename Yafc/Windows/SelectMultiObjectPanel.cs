@@ -7,82 +7,108 @@ using Yafc.UI;
 
 namespace Yafc;
 
-public class SelectMultiObjectPanel : SelectObjectPanel<IEnumerable<FactorioObject>> {
-    private readonly HashSet<FactorioObject> results = [];
-    private readonly Predicate<FactorioObject> checkMark;
-    private readonly Predicate<FactorioObject> yellowMark;
-    private bool allowAutoClose = true;
+public static class SelectMultiObjectPanel {
+    /// <summary>
+    /// Opens a <see cref="SelectObjectPanel{TResult, TDisplay}"/> to allow the user to select one or more <see cref="FactorioObject"/>s.
+    /// </summary>
+    /// <param name="list">The items to be displayed in this panel.</param>
+    /// <param name="options">The <see cref="ObjectSelectOptions{T}"/> controlling the appearance and function of this panel.</param>
+    /// <param name="selectItem">An action to be called for each selected item when the panel is closed.</param>
+    public static void Select<T>(IEnumerable<T> list, ObjectSelectOptions<T> options, Action<T> selectItem) where T : FactorioObject {
+        ThrowIfSingle(options);
 
-    private SelectMultiObjectPanel(Predicate<FactorioObject> checkMark, Predicate<FactorioObject> yellowMark) {
-        this.checkMark = checkMark;
-        this.yellowMark = yellowMark;
+        Panel<T>.Select(list, options, selectItem);
     }
 
     /// <summary>
-    /// Opens a <see cref="SelectMultiObjectPanel"/> to allow the user to select one or more <see cref="FactorioObject"/>s.
+    /// Opens a <see cref="SelectObjectPanel{TResult, TDisplay}"/> to allow the user to select one or more <see cref="FactorioObject"/>s, along
+    /// with selecting the quality for those objects.
     /// </summary>
     /// <param name="list">The items to be displayed in this panel.</param>
-    /// <param name="header">The string that describes to the user why they're selecting these items.</param>
+    /// <param name="options">The <see cref="ObjectSelectOptions{T}"/> controlling the appearance and function of this panel.</param>
     /// <param name="selectItem">An action to be called for each selected item when the panel is closed.</param>
-    /// <param name="ordering">An optional ordering specifying how to sort the displayed items. If <see langword="null"/>, defaults to <see cref="DataUtils.DefaultOrdering"/>.</param>
-    public static void Select<T>(IEnumerable<T> list, string? header, Action<T> selectItem, IComparer<T>? ordering = null, Predicate<T>? checkMark = null, Predicate<T>? yellowMark = null) where T : FactorioObject {
-        SelectMultiObjectPanel panel = new(o => checkMark?.Invoke((T)o) ?? false, o => yellowMark?.Invoke((T)o) ?? false); // This casting is messy, but pushing T all the way around the call stack and type tree was messier.
-        panel.Select(list, header, selectItem!, ordering, (objs, mappedAction) => { // null-forgiving: selectItem will not be called with null, because allowNone is false.
-            foreach (var obj in objs!) { // null-forgiving: mapResult will not be called with null, because allowNone is false.
-                mappedAction(obj);
-            }
-        }, false);
+    public static void SelectWithQuality<T>(IEnumerable<T> list, QualitySelectOptions<T> options, Action<IObjectWithQuality<T>> selectItem)
+        where T : FactorioObject {
+        ThrowIfSingle(options);
+
+        Panel<T>.SelectWithQuality(list, options, selectItem);
     }
+
+    private static void ThrowIfSingle<T>(ObjectSelectOptions<T> options) where T : FactorioObject {
+        if (!options.Multiple) {
+            throw new ArgumentException($"Cannot open a {nameof(SelectMultiObjectPanel)} with {nameof(options)}.{nameof(ObjectSelectOptions<T>.Multiple)} set to false.", nameof(options));
+        }
+    }
+
+    private static readonly Predicate<FactorioObject> defaultCheckmark = _ => false;
 
     /// <summary>
-    /// Opens a <see cref="SelectMultiObjectPanel"/> to allow the user to select one or more <see cref="FactorioObject"/>s.
+    /// The actual panel that is displayed by <see cref="SelectMultiObjectPanel"/>'s static methods
     /// </summary>
-    /// <param name="list">The items to be displayed in this panel.</param>
-    /// <param name="header">The string that describes to the user why they're selecting these items.</param>
-    /// <param name="selectItem">An action to be called for each selected item when the panel is closed.</param>
-    /// <param name="ordering">An optional ordering specifying how to sort the displayed items. If <see langword="null"/>, defaults to <see cref="DataUtils.DefaultOrdering"/>.</param>
-    public static void SelectWithQuality<T>(IEnumerable<T> list, string header, Action<IObjectWithQuality<T>> selectItem, Quality currentQuality,
-        IComparer<T>? ordering = null, Predicate<T>? checkMark = null, Predicate<T>? yellowMark = null) where T : FactorioObject {
+    private class Panel<T>(Predicate<T>? checkMark, Predicate<T>? yellowMark) : SelectObjectPanel<IEnumerable<T>, T> where T : FactorioObject {
+        private readonly HashSet<T> results = [];
+        private readonly Predicate<T> checkMark = checkMark ?? defaultCheckmark;
+        private readonly Predicate<T> yellowMark = yellowMark ?? defaultCheckmark;
+        private bool allowAutoClose = true;
 
-        SelectMultiObjectPanel panel = new(o => checkMark?.Invoke((T)o) ?? false, o => yellowMark?.Invoke((T)o) ?? false); // This casting is messy, but pushing T all the way around the call stack and type tree was messier.
-        panel.SelectWithQuality(list, header, selectItem!, ordering, (objs, mappedAction) => { // null-forgiving: selectItem will not be called with null, because allowNone is false.
-            foreach (var obj in objs!) { // null-forgiving: mapResult will not be called with null, because allowNone is false.
-                mappedAction(obj);
+        public static void Select(IEnumerable<T> list, ObjectSelectOptions<T> options, Action<T> selectItem) {
+            // null-forgiving: selectItem and mapResult will not be called with null(s), because allowNone is false.
+            new Panel<T>(options.Checkmark, options.YellowMark).Select(list, false, options, selectItem!, mapResult!);
+
+            static void mapResult(IEnumerable<T> objs, Action<T?> mappedAction) {
+                foreach (var obj in objs) { // null-forgiving: mapResult will not be called with null, because allowNone is false.
+                    mappedAction(obj);
+                }
             }
-        }, false, null, currentQuality);
-    }
-
-    protected override void NonNullElementDrawer(ImGui gui, FactorioObject element) {
-        SchemeColor bgColor = results.Contains(element) ? SchemeColor.Primary : SchemeColor.None;
-        Click click = gui.BuildFactorioObjectButton(element, ButtonDisplayStyle.SelectObjectPanel(bgColor), new() { ShowTypeInHeader = showTypeInHeader });
-
-        if (checkMark(element)) {
-            gui.DrawIcon(Rect.SideRect(gui.lastRect.TopLeft + new Vector2(1, 0), gui.lastRect.BottomRight - new Vector2(0, 1)), Icon.Check, SchemeColor.Green);
-        }
-        else if (yellowMark(element)) {
-            gui.DrawIcon(Rect.SideRect(gui.lastRect.TopLeft + new Vector2(1, 0), gui.lastRect.BottomRight - new Vector2(0, 1)), Icon.Check, SchemeColor.TagColorYellowText);
         }
 
-        if (click == Click.Left) {
-            if (!results.Add(element)) {
-                _ = results.Remove(element);
+        public static void SelectWithQuality(IEnumerable<T> list, QualitySelectOptions<T> options, Action<IObjectWithQuality<T>> selectItem) {
+            // null-forgiving: selectItem and mapResult will not be called with null(s), because allowNone is false.
+            new Panel<T>(options.Checkmark, options.YellowMark).SelectWithQuality(list, false, options, selectItem!, mapResult!, null);
+
+            static void mapResult(IEnumerable<T> objs, Action<T?> mappedAction) {
+                foreach (var obj in objs) {
+                    mappedAction(obj);
+                }
             }
-            if (!InputSystem.Instance.control && allowAutoClose) {
+        }
+
+        protected override void NonNullElementDrawer(ImGui gui, T element) {
+            SchemeColor bgColor = results.Contains(element) ? SchemeColor.Primary : SchemeColor.None;
+            Click click = gui.BuildFactorioObjectButton(element, ButtonDisplayStyle.SelectObjectPanel(bgColor), new() { ShowTypeInHeader = showTypeInHeader });
+
+            if (checkMark(element)) {
+                gui.DrawIcon(Rect.SideRect(gui.lastRect.TopLeft + new Vector2(1, 0), gui.lastRect.BottomRight - new Vector2(0, 1)), Icon.Check, SchemeColor.Green);
+            }
+            else if (yellowMark(element)) {
+                gui.DrawIcon(Rect.SideRect(gui.lastRect.TopLeft + new Vector2(1, 0), gui.lastRect.BottomRight - new Vector2(0, 1)), Icon.Check, SchemeColor.TagColorYellowText);
+            }
+
+            if (click == Click.Left) {
+                if (!results.Add(element)) {
+                    _ = results.Remove(element);
+                }
+                if (!InputSystem.Instance.control && allowAutoClose) {
+                    CloseWithResult(results);
+                }
+                allowAutoClose = false;
+            }
+        }
+
+        public override void Build(ImGui gui) {
+            base.Build(gui);
+            using (gui.EnterGroup(default, RectAllocator.Center)) {
+                gui.BuildText(LSs.SelectMultipleObjectsHint, TextBlockDisplayStyle.HintText);
+                if (gui.BuildButton(LSs.Ok, active: options == null || options.SelectedQuality != null)) {
+                    CloseWithResult(results);
+                }
+            }
+        }
+
+        protected override void ReturnPressed() {
+            if (options == null || options.SelectedQuality != null) {
                 CloseWithResult(results);
             }
-            allowAutoClose = false;
         }
     }
-
-    public override void Build(ImGui gui) {
-        base.Build(gui);
-        using (gui.EnterGroup(default, RectAllocator.Center)) {
-            if (gui.BuildButton(LSs.Ok)) {
-                CloseWithResult(results);
-            }
-            gui.BuildText(LSs.SelectMultipleObjectsHint, TextBlockDisplayStyle.HintText);
-        }
-    }
-
-    protected override void ReturnPressed() => CloseWithResult(results);
 }

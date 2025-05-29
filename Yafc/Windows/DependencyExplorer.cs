@@ -116,7 +116,7 @@ public class DependencyExplorer : PseudoScreen {
         using (gui.EnterRow()) {
             gui.BuildText(LSs.DependencyCurrentlyInspecting, Font.subheader);
             if (gui.BuildFactorioObjectButtonWithText(current) == Click.Left) {
-                SelectSingleObjectPanel.Select(Database.objects.explorable, LSs.DependencySelectSomething, Change);
+                SelectSingleObjectPanel.Select(Database.objects.explorable, new(LSs.DependencySelectSomething), Change);
             }
 
             gui.DrawText(gui.lastRect, LSs.DependencyClickToChangeHint, RectAlignment.MiddleRight, color: TextBlockDisplayStyle.HintText.Color);

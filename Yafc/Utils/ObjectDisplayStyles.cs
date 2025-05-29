@@ -39,7 +39,8 @@ public record ButtonDisplayStyle(float Size, MilestoneDisplay MilestoneDisplay, 
     /// </summary>
     public static new ButtonDisplayStyle Default { get; } = new(2, MilestoneDisplay.Normal);
     /// <summary>
-    /// Gets the button style for the <see cref="SelectObjectPanel{T}"/>s: Size 2.5, <see cref="MilestoneDisplay.Contained"/>, and scaled.
+    /// Gets the button style for the <see cref="SelectObjectPanel{TResult, TDisplay}"/>s: Size 2.5, <see cref="MilestoneDisplay.Contained"/>,
+    /// and scaled.
     /// </summary>
     /// <param name="backgroundColor">The background color to use for this button.</param>
     public static ButtonDisplayStyle SelectObjectPanel(SchemeColor backgroundColor) => new(2.5f, MilestoneDisplay.Contained, backgroundColor);

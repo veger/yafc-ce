@@ -51,7 +51,7 @@ public class AutoPlannerView : ProjectPageView<AutoPlanner> {
                 }
                 grid.Next();
                 if (gui.BuildButton(Icon.Plus, SchemeColor.Primary, SchemeColor.PrimaryAlt, size: 2.5f)) {
-                    SelectSingleObjectPanel.Select(Database.goods.explorable, LSs.AutoPlannerSelectProductionGoal, x => {
+                    SelectSingleObjectPanel.Select(Database.goods.explorable, new(LSs.AutoPlannerSelectProductionGoal), x => {
                         goal.Add(new AutoPlannerGoal { amount = 1f, item = x });
                         gui.Rebuild();
                     });

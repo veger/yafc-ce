@@ -359,7 +359,7 @@ public class NeverEnoughItemsPanel : PseudoScreen, IComparer<NeverEnoughItemsPan
         }
 
         if (gui.BuildFactorioObjectButtonBackground(gui.lastRect, current, SchemeColor.Grey) == Click.Left) {
-            SelectSingleObjectPanel.Select(Database.goods.explorable, LSs.SelectItem, SetItem);
+            SelectSingleObjectPanel.Select(Database.goods.explorable, new(LSs.SelectItem), SetItem);
         }
 
         using (var split = gui.EnterHorizontalSplit(2)) {

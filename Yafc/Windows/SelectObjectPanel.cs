@@ -9,65 +9,76 @@ using Yafc.UI;
 namespace Yafc;
 
 /// <summary>
-/// Represents a panel that can generate a result by selecting zero or more <see cref="FactorioObject"/>s. (But doesn't have to, if the user selects a close or cancel button.)
+/// Represents a panel that can generate a result when the user selects zero or more <see cref="FactorioObject"/>s, or can generate no result, if
+/// the user selects a close or cancel button.
 /// </summary>
-/// <typeparam name="T">The type of result the panel can generate.</typeparam>
-public abstract class SelectObjectPanel<T> : PseudoScreenWithResult<T> {
-    private readonly SearchableList<FactorioObject?> list;
+/// <typeparam name="TResult">The type of result the panel can generate.</typeparam>
+/// <typeparam name="TDisplay">The type of object (derived from <see cref="FactorioObject"/>) the panel will display.</typeparam>
+public abstract class SelectObjectPanel<TResult, TDisplay> : PseudoScreenWithResult<TResult> where TDisplay : FactorioObject {
+    private readonly SearchableList<TDisplay?> list;
     private string? header;
     private Rect searchBox;
     private string? noneTooltip;
-    private Quality? currentQuality;
+    protected QualitySelectOptions<TDisplay>? options { get; private set; }
+
     /// <summary>
     /// If <see langword="true"/> and the object being hovered is not a <see cref="Goods"/>, the <see cref="ObjectTooltip"/> should specify the type of object.
     /// See also <see cref="ObjectTooltipOptions.ShowTypeInHeader"/>.
     /// </summary>
     protected bool showTypeInHeader { get; private set; }
 
-    protected SelectObjectPanel() : base(40f) => list = new SearchableList<FactorioObject?>(30, new Vector2(2.5f, 2.5f), ElementDrawer, ElementFilter);
+    protected SelectObjectPanel() : base(40f) => list = new SearchableList<TDisplay?>(30, new Vector2(2.5f, 2.5f), ElementDrawer, ElementFilter);
 
-    protected void SelectWithQuality<U>(IEnumerable<U> list, string? header, Action<IObjectWithQuality<U>?> selectItem, IComparer<U>? ordering, Action<T?, Action<FactorioObject?>> mapResult,
-        bool allowNone, string? noneTooltip, Quality? currentQuality) where U : FactorioObject
-        => Select(list, header, u => selectItem(u.With(this.currentQuality!)), ordering, mapResult, allowNone, noneTooltip, currentQuality ?? Quality.Normal);
+    protected void SelectWithQuality(IEnumerable<TDisplay> list, bool allowNone, QualitySelectOptions<TDisplay> options,
+        Action<IObjectWithQuality<TDisplay>?> selectItem, Action<TResult?, Action<TDisplay?>> mapResult, string? noneTooltip) {
+
+        Select(list, allowNone, options, selectQualities, mapResult, noneTooltip);
+
+        void selectQualities(TDisplay? u) {
+            if (u == null) {
+                selectItem(null);
+            }
+            else {
+                foreach (var result in options.ApplyQualitiesTo(u)) {
+                    selectItem(result);
+                }
+            }
+        }
+    }
 
     /// <summary>
-    /// Opens a <see cref="SelectObjectPanel{T}"/> to allow the user to select zero or more <see cref="FactorioObject"/>s.
+    /// Opens a <see cref="SelectObjectPanel{TResult, TDisplay}"/> to allow the user to select zero or more <see cref="FactorioObject"/>s.
     /// </summary>
-    /// <typeparam name="U"><see cref="FactorioObject"/> or one of its derived classes, to allow <paramref name="selectItem"/> and <paramref name="ordering"/>
-    /// to have better type checking.</typeparam>
     /// <param name="list">The items to be displayed in this panel.</param>
-    /// <param name="header">The string that describes to the user why they're selecting these items.</param>
     /// <param name="selectItem">An action to be called for each selected item when the panel is closed.
     /// The parameter may be <see langword="null"/> if <paramref name="allowNone"/> is <see langword="true"/>.</param>
-    /// <param name="ordering">An optional ordering specifying how to sort the displayed items. If <see langword="null"/>, defaults to <see cref="DataUtils.DefaultOrdering"/>.</param>
-    /// <param name="mapResult">An action that should convert the <typeparamref name="T"/>? result into zero or more <see cref="FactorioObject"/>s, and then call its second
-    /// parameter for each <see cref="FactorioObject"/>. The first parameter may be <see langword="null"/> if <paramref name="allowNone"/> is <see langword="true"/>.</param>
+    /// <param name="mapResult">An action that should convert the <typeparamref name="TResult"/>? result into zero or more <typeparamref name="TDisplay"/>s, and then call its second
+    /// parameter for each <typeparamref name="TDisplay"/>. The first parameter may be <see langword="null"/> if <paramref name="allowNone"/> is <see langword="true"/>.</param>
     /// <param name="allowNone">If <see langword="true"/>, a "none" option will be displayed. Selection of this item will be conveyed by calling <paramref name="mapResult"/>
-    /// and <paramref name="selectItem"/> with <see langword="default"/> values for <typeparamref name="T"/> and <typeparamref name="U"/>.</param>
+    /// and <paramref name="selectItem"/> with <see langword="null"/> values for <typeparamref name="TResult"/> and <typeparamref name="TDisplay"/>.</param>
     /// <param name="noneTooltip">If not <see langword="null"/>, this tooltip will be displayed when hovering over the "none" item.</param>
-    protected void Select<U>(IEnumerable<U> list, string? header, Action<U?> selectItem, IComparer<U>? ordering, Action<T?, Action<FactorioObject?>> mapResult, bool allowNone,
-        string? noneTooltip = null, Quality? currentQuality = null) where U : FactorioObject {
+    protected void Select(IEnumerable<TDisplay> list, bool allowNone, ObjectSelectOptions<TDisplay> options, Action<TDisplay?> selectItem,
+        Action<TResult?, Action<TDisplay?>> mapResult, string? noneTooltip = null) {
 
         _ = MainScreen.Instance.ShowPseudoScreen(this);
-        this.currentQuality = currentQuality;
+        this.options = options as QualitySelectOptions<TDisplay>;
         this.noneTooltip = noneTooltip;
-        showTypeInHeader = typeof(U) == typeof(FactorioObject);
-        List<U?> data = [.. list];
-        ordering ??= DataUtils.DefaultOrdering;
-        data.Sort(ordering!); // null-forgiving: We don't have any nulls in the list yet.
+        header = options.Header;
+        showTypeInHeader = typeof(TDisplay) == typeof(FactorioObject);
+        List<TDisplay?> data = [.. list];
+        data.Sort(options.Ordering!); // null-forgiving: We don't have any nulls in the list yet.
         if (allowNone) {
             data.Insert(0, null);
         }
 
         this.list.filter = default;
         this.list.data = data;
-        this.header = header;
         Rebuild();
         completionCallback = (hasResult, result) => {
             if (hasResult) {
                 mapResult(result, obj => {
-                    if (obj is U u) {
-                        if (ordering is DataUtils.FavoritesComparer<U> favoritesComparer) {
+                    if (obj is TDisplay u) {
+                        if (options.Ordering is DataUtils.FavoritesComparer<TDisplay> favoritesComparer) {
                             favoritesComparer.AddToFavorite(u);
                         }
 
@@ -81,7 +92,7 @@ public abstract class SelectObjectPanel<T> : PseudoScreenWithResult<T> {
         };
     }
 
-    private void ElementDrawer(ImGui gui, FactorioObject? element, int index) {
+    private void ElementDrawer(ImGui gui, TDisplay? element, int index) {
         if (element == null) {
             ButtonEvent evt = gui.BuildRedButton(Icon.Close);
             if (noneTooltip != null) {
@@ -98,17 +109,20 @@ public abstract class SelectObjectPanel<T> : PseudoScreenWithResult<T> {
 
     /// <summary>
     /// Called to draw a <see cref="FactorioObject"/> that should be displayed in this panel, and to handle mouse-over and click events.
-    /// <paramref name="element"/> will not be null. If a "none" or "clear" option is present, <see cref="SelectObjectPanel{T}"/> takes care of that option.
+    /// <paramref name="element"/> will not be null. If a "none" or "clear" option is present, <see cref="SelectObjectPanel{TResult, TDisplay}"/>
+    /// takes care of that option.
     /// </summary>
-    protected abstract void NonNullElementDrawer(ImGui gui, FactorioObject element);
+    protected abstract void NonNullElementDrawer(ImGui gui, TDisplay element);
 
-    private bool ElementFilter(FactorioObject? data, SearchQuery query) => data?.Match(query) ?? true;
+    private bool ElementFilter(TDisplay? data, SearchQuery query)
+        // data.Match would return false (do not display) when data is null, but we want to display the null element instead.
+        => data?.Match(query) ?? true;
 
     public override void Build(ImGui gui) {
         BuildHeader(gui, header);
 
-        if (currentQuality != null) {
-            _ = gui.BuildQualityList(currentQuality, out currentQuality, drawCentered: true);
+        if (options != null) {
+            _ = gui.BuildQualityList(options, drawCentered: true);
             gui.AllocateSpacing();
         }
 

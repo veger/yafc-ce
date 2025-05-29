@@ -30,7 +30,7 @@ public class ProjectPageSettingsPanel : PseudoScreen {
     private void Build(ImGui gui, Action<FactorioObject?> setIcon) {
         _ = gui.BuildTextInput(name, out name, LSs.PageSettingsNameHint, setKeyboardFocus: editingPage == null ? SetKeyboardFocus.OnFirstPanelDraw : SetKeyboardFocus.No);
         if (gui.BuildFactorioObjectButton(icon, new ButtonDisplayStyle(4f, MilestoneDisplay.None, SchemeColor.Grey) with { UseScaleSetting = false }) == Click.Left) {
-            SelectSingleObjectPanel.Select(Database.objects.all, LSs.SelectIcon, setIcon);
+            SelectSingleObjectPanel.Select(Database.objects.all, new(LSs.SelectIcon), setIcon);
         }
 
         if (icon == null && gui.isBuilding) {
