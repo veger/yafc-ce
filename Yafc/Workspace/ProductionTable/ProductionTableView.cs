@@ -269,17 +269,16 @@ goodsHaveNoProduction:;
         private static void BuildRecipeButton(ImGui gui, ProductionTable table) {
             if (gui.BuildButton(LSs.ProductionTableAddRawRecipe).WithTooltip(gui, LSs.ProductionTableAddTechnologyHint) && gui.CloseDropdown()) {
                 if (InputSystem.Instance.control) {
-                    SelectMultiObjectPanel.Select(Database.technologies.all, new(LSs.ProductionTableAddTechnology, Multiple: true, Checkmark: checkmark, YellowMark: r => table.GetAllRecipes().Any(rr => rr.recipe.target == r)),
+                    SelectMultiObjectPanel.Select(Database.technologies.all, new(LSs.ProductionTableAddTechnology, Multiple: true,
+                        Checkmark: table.Contains, YellowMark: table.ContainsAnywhere),
                         r => table.AddRecipe(r.With(Quality.Normal), DefaultVariantOrdering));
                 }
                 else {
-                    var prodTable = ProductionLinkSummaryScreen.FindProductionTable(table, out List<ModelObject> parents);
-                    SelectMultiObjectPanel.SelectWithQuality(Database.recipes.explorable, new(LSs.ProductionTableAddRawRecipe, Multiple: true, Checkmark: checkmark, YellowMark: r => prodTable?.GetAllRecipes().Any(rr => rr.recipe.target == r) ?? false, SelectedQuality: Quality.Normal),
+                    SelectMultiObjectPanel.SelectWithQuality(Database.recipes.explorable, new(LSs.ProductionTableAddRawRecipe, Multiple: true,
+                        Checkmark: table.Contains, YellowMark: table.ContainsAnywhere, SelectedQuality: Quality.Normal),
                         r => table.AddRecipe(r, DefaultVariantOrdering));
                 }
             }
-
-            bool checkmark(RecipeOrTechnology r) => table.recipes.Any(rr => rr.recipe.target == r);
         }
 
         private void ExportIo(float multiplier) {
@@ -902,12 +901,6 @@ goodsHaveNoProduction:;
         }
 
         var comparer = DataUtils.GetRecipeComparerFor(goods.target);
-        HashSet<IObjectWithQuality<RecipeOrTechnology>> curLevelRecipes = [.. context.recipes.Select(x => x.recipe)];
-        var prodTable = ProductionLinkSummaryScreen.FindProductionTable(context, out List<ModelObject> parents);
-        HashSet<IObjectWithQuality<RecipeOrTechnology>> allRecipes = [.. prodTable?.GetAllRecipes().Select(x => x.recipe) ?? []];
-
-        bool recipeExists(RecipeOrTechnology rec) => curLevelRecipes.Contains(rec.With(goods.quality));
-        bool recipeExistsAnywhere(RecipeOrTechnology rec) => allRecipes.Contains(rec.With(goods.quality));
 
         IObjectWithQuality<Goods>? selectedFuel = null;
         IObjectWithQuality<Goods>? spentFuel = null;
@@ -933,7 +926,7 @@ goodsHaveNoProduction:;
                 }
             }
 
-            if (!curLevelRecipes.Contains(qualityRecipe) || (await MessageBox.Show(LSs.ProductionTableAlertRecipeExists, LSs.ProductionTableQueryAddCopy.L(rec.locName), LSs.ProductionTableAddCopy, LSs.Cancel)).choice) {
+            if (!context.Contains(qualityRecipe) || (await MessageBox.Show(LSs.ProductionTableAlertRecipeExists, LSs.ProductionTableQueryAddCopy.L(rec.locName), LSs.ProductionTableAddCopy, LSs.Cancel)).choice) {
                 context.AddRecipe(qualityRecipe, DefaultVariantOrdering, selectedFuel, spentFuel);
             }
         }
@@ -1015,12 +1008,12 @@ goodsHaveNoProduction:;
 
             if (goods == Database.science) {
                 if (gui.BuildButton(LSs.ProductionTableAddTechnology) && gui.CloseDropdown()) {
-                    SelectMultiObjectPanel.Select(Database.technologies.all, new(LSs.ProductionTableAddTechnology, Multiple: true, Checkmark: r => context.recipes.Any(rr => rr.recipe.target == r)),
+                    SelectMultiObjectPanel.Select(Database.technologies.all, new(LSs.ProductionTableAddTechnology, Multiple: true, Checkmark: context.Contains, YellowMark: context.ContainsAnywhere),
                         r => context.AddRecipe(r.With(Quality.Normal), DefaultVariantOrdering));
                 }
             }
             else if (type <= ProductDropdownType.Ingredient && allProduction.Length > 0) {
-                gui.BuildInlineObjectListAndButton(allProduction, addRecipe, new(LSs.ProductionTableAddProductionRecipe, comparer, 6, true, recipeExists, recipeExistsAnywhere));
+                gui.BuildInlineObjectListAndButton(allProduction, addRecipe, new(LSs.ProductionTableAddProductionRecipe, comparer, 6, true, context.Contains, context.ContainsAnywhere));
                 numberOfShownRecipes += allProduction.Length;
 
                 if (iLink == null) {
@@ -1045,8 +1038,8 @@ goodsHaveNoProduction:;
                     DataUtils.AlreadySortedRecipe,
                     3,
                     true,
-                    recipeExists,
-                    recipeExistsAnywhere));
+                    context.Contains,
+                    context.ContainsAnywhere));
                 numberOfShownRecipes += spentFuelRecipes.Length;
             }
 
@@ -1058,8 +1051,8 @@ goodsHaveNoProduction:;
                     DataUtils.DefaultRecipeOrdering,
                     6,
                     true,
-                    recipeExists,
-                    recipeExistsAnywhere));
+                    context.Contains,
+                    context.ContainsAnywhere));
                 numberOfShownRecipes += goods.target.usages.Length;
             }
 
@@ -1071,8 +1064,8 @@ goodsHaveNoProduction:;
                     DataUtils.AlreadySortedRecipe,
                     6,
                     true,
-                    recipeExists,
-                    recipeExistsAnywhere));
+                    context.Contains,
+                    context.ContainsAnywhere));
                 numberOfShownRecipes += fuelUseList.Length;
             }
 
@@ -1080,11 +1073,11 @@ goodsHaveNoProduction:;
                 && gui.BuildButton(LSs.ProductionTableAddConsumptionTechnology) && gui.CloseDropdown()) {
                 // Select from the technologies that consume this science pack.
                 SelectMultiObjectPanel.Select(Database.technologies.all.Where(t => t.ingredients.Select(i => i.goods).Contains(goods.target)),
-                    new(LSs.ProductionTableAddTechnology, Multiple: true, Checkmark: recipeExists, YellowMark: recipeExistsAnywhere), addRecipe);
+                    new(LSs.ProductionTableAddTechnology, Multiple: true, Checkmark: context.Contains, YellowMark: context.ContainsAnywhere), addRecipe);
             }
 
             if (type >= ProductDropdownType.Product && allProduction.Length > 0) {
-                gui.BuildInlineObjectListAndButton(allProduction, addRecipe, new(LSs.ProductionTableAddProductionRecipe, comparer, 1, true, recipeExists, recipeExistsAnywhere));
+                gui.BuildInlineObjectListAndButton(allProduction, addRecipe, new(LSs.ProductionTableAddProductionRecipe, comparer, 1, true, context.Contains, context.ContainsAnywhere));
                 numberOfShownRecipes += allProduction.Length;
             }
 

@@ -18,8 +18,10 @@ public struct ProductionTableFlow(IObjectWithQuality<Goods> goods, float amount,
     public IProductionLink? link = link;
 }
 
+[DeserializeWithNonPublicConstructor]
 public sealed partial class ProductionTable : ProjectPageContents, IComparer<ProductionTableFlow>, IElementGroup<RecipeRow> {
     private static readonly ILogger logger = Logging.GetLogger<ProductionTable>();
+    private readonly ProductionTable rootTable;
     [SkipSerialization] public Dictionary<IObjectWithQuality<Goods>, IProductionLink> linkMap { get; } = [];
     List<RecipeRow> IElementGroup<RecipeRow>.elements => recipes;
     [NoUndo]
@@ -43,11 +45,25 @@ public sealed partial class ProductionTable : ProjectPageContents, IComparer<Pro
     public ModuleFillerParameters? modules { get; } // If you add a setter for this, ensure it calls RecipeRow.ModuleFillerParametersChanging().
     public bool containsDesiredProducts { get; private set; }
 
-    public ProductionTable(ModelObject owner) : base(owner) {
-        if (owner is ProjectPage) {
+    // For deserialization
+    private ProductionTable(ModelObject owner) : base(owner) {
+        if (owner is RecipeRow row) {
+            rootTable = row.owner.rootTable;
+        }
+        else {
             modules = new ModuleFillerParameters(this);
+            rootTable = this;
         }
     }
+
+    // For the ProjectPage constructor
+    public ProductionTable(ProjectPage owner) : base(owner) {
+        modules = new ModuleFillerParameters(this);
+        rootTable = this;
+    }
+
+    // For creating nested tables
+    public ProductionTable(RecipeRow owner) : base(owner) => rootTable = owner.owner.rootTable;
 
     protected internal override void ThisChanged(bool visualOnly) {
         RebuildLinkMap();
@@ -775,5 +791,36 @@ match:
 
         return amt1.CompareTo(amt2);
     }
-}
 
+    /// <summary>
+    /// Returns <see langword="true"/> if this table (including its parent recipe, if applicable) contains the specified recipe at the specified quality.
+    /// </summary>
+    public bool Contains(IObjectWithQuality<RecipeOrTechnology> obj) {
+        if (owner is RecipeRow { recipe: IObjectWithQuality<RecipeOrTechnology> recipe } && recipe == obj) {
+            return true;
+        }
+        return recipes.Any(r => r.recipe == obj);
+    }
+
+    /// <summary>
+    /// Returns <see langword="true"/> if this table (including its parent recipe, if applicable) contains the specified recipe at any quality.
+    /// </summary>
+    /// <remarks>This is most commonly used for deciding whether to draw a green checkmark.</remarks>
+    public bool Contains(RecipeOrTechnology obj) {
+        if (owner is RecipeRow { recipe.target: RecipeOrTechnology recipe } && recipe == obj) {
+            return true;
+        }
+        return recipes.Any(r => r.recipe.target == obj);
+    }
+
+    /// <summary>
+    /// Returns <see langword="true"/> if the specified recipe appears at the specified quality anywhere on this table's <see cref="ProjectPage"/>.
+    /// </summary>
+    public bool ContainsAnywhere(IObjectWithQuality<RecipeOrTechnology> obj) => rootTable.GetAllRecipes().Any(r => r.recipe == obj);
+
+    /// <summary>
+    /// Returns <see langword="true"/> if the specified recipe appears at any quality anywhere on this table's <see cref="ProjectPage"/>.
+    /// </summary>
+    /// <remarks>This is most commonly used for deciding whether to draw a yellow checkmark.</remarks>
+    public bool ContainsAnywhere(RecipeOrTechnology obj) => rootTable.GetAllRecipes().Any(r => r.recipe.target == obj);
+}
