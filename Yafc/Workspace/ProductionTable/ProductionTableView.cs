@@ -252,7 +252,7 @@ public class ProductionTableView : ProjectPageView<ProductionTable> {
 
                     foreach (var quality in Database.qualities.all) {
                         foreach (var product in recipe.products) {
-                            view.CreateLink(view.model, product.goods.With(quality));
+                            view.RebuildIf(view.model.CreateLink(product.goods.With(quality)));
                         }
 
                         view.model.AddRecipe(recipe.With(quality), DefaultVariantOrdering);
@@ -866,19 +866,8 @@ goodsHaveNoProduction:;
         DesiredIngredient,
     }
 
-    private void CreateLink(ProductionTable table, IObjectWithQuality<Goods> goods) {
-        if (table.linkMap.GetValueOrDefault(goods) is ProductionLink || !goods.target.isLinkable) {
-            return;
-        }
-
-        ProductionLink link = new ProductionLink(table, goods.target.With(goods.quality));
-        Rebuild();
-        table.RecordUndo().links.Add(link);
-    }
-
-    private void DestroyLink(ProductionLink link) {
-        if (link.owner.allLinks.Contains(link)) {
-            _ = link.owner.RecordUndo().links.Remove(link);
+    private void RebuildIf(bool rebuild) {
+        if (rebuild) {
             Rebuild();
         }
     }
@@ -908,12 +897,12 @@ goodsHaveNoProduction:;
         async void addRecipe(RecipeOrTechnology rec) {
             IObjectWithQuality<RecipeOrTechnology> qualityRecipe = rec.With(goods.quality);
             if (variants == null) {
-                CreateLink(context, goods);
+                RebuildIf(context.CreateLink(goods));
             }
             else {
                 foreach (var variant in variants) {
                     if (rec.GetProductionPerRecipe(variant) > 0f) {
-                        CreateLink(context, variant.With(goods.quality));
+                        RebuildIf(context.CreateLink(variant.With(goods.quality)));
 
                         if (variant != goods.target) {
                             // null-forgiving: If variants is not null, neither is recipe: Only the call from BuildGoodsIcon sets variants,
@@ -1111,11 +1100,11 @@ goodsHaveNoProduction:;
                     }
 
                     if (gui.BuildButton(LSs.ProductionTableRemoveAndUnlinkDesiredProduct).WithTooltip(gui, LSs.ProductionTableShortcutRightClick) && gui.CloseDropdown()) {
-                        DestroyLink(link);
+                        RebuildIf(link.Destroy());
                     }
                 }
                 else if (link.amount == 0 && gui.BuildButton(LSs.ProductionTableUnlink).WithTooltip(gui, LSs.ProductionTableShortcutRightClick) && gui.CloseDropdown()) {
-                    DestroyLink(link);
+                    RebuildIf(link.Destroy());
                 }
             }
             else if (goods != null) {
@@ -1126,13 +1115,13 @@ goodsHaveNoProduction:;
                     string implicitLink = LSs.ProductionTableImplicitlyLinked.L(goods.target.locName, goods.quality.locName);
                     gui.BuildText(implicitLink, TextBlockDisplayStyle.WrappedText);
                     if (gui.BuildButton(LSs.ProductionTableCreateLink).WithTooltip(gui, LSs.ProductionTableShortcutRightClick) && gui.CloseDropdown()) {
-                        CreateLink(context, goods);
+                        RebuildIf(context.CreateLink(goods));
                     }
                 }
                 else if (goods.target.isLinkable) {
                     gui.BuildText(LSs.ProductionTableNotLinked.L(goods.target.locName), TextBlockDisplayStyle.WrappedText);
                     if (gui.BuildButton(LSs.ProductionTableCreateLink).WithTooltip(gui, LSs.ProductionTableShortcutRightClick) && gui.CloseDropdown()) {
-                        CreateLink(context, goods);
+                        RebuildIf(context.CreateLink(goods));
                     }
                 }
             }
@@ -1249,7 +1238,7 @@ goodsHaveNoProduction:;
                     element.amount < 0 ? ProductDropdownType.DesiredIngredient : ProductDropdownType.DesiredProduct, null, element.owner);
                 break;
             case GoodsWithAmountEvent.RightButtonClick:
-                DestroyLink(element);
+                RebuildIf(element.Destroy());
                 break;
             case GoodsWithAmountEvent.TextEditing when amount.Value != 0:
                 element.RecordUndo().amount = amount.Value;
@@ -1334,10 +1323,10 @@ goodsHaveNoProduction:;
                 OpenProductDropdown(gui, gui.lastRect, goods, amount, link, dropdownType, recipe, context, variants);
                 break;
             case GoodsWithAmountEvent.RightButtonClick when goods is not null and { target.isLinkable: true } && (link is not ProductionLink || link.owner != context):
-                CreateLink(context, goods);
+                RebuildIf(context.CreateLink(goods));
                 break;
-            case GoodsWithAmountEvent.RightButtonClick when link is ProductionLink { amount: 0 } && link.owner == context:
-                DestroyLink((link as ProductionLink)!);
+            case GoodsWithAmountEvent.RightButtonClick when link is ProductionLink { amount: 0 } pLink && link.owner == context:
+                RebuildIf(pLink.Destroy());
                 break;
             case GoodsWithAmountEvent.TextEditing when displayAmount.Value >= 0:
                 // The amount is always stored in fixedBuildings. Scale it to match the requested change to this item.

@@ -823,4 +823,13 @@ match:
     /// </summary>
     /// <remarks>This is most commonly used for deciding whether to draw a yellow checkmark.</remarks>
     public bool ContainsAnywhere(RecipeOrTechnology obj) => rootTable.GetAllRecipes().Any(r => r.recipe.target == obj);
+
+    public bool CreateLink(IObjectWithQuality<Goods> goods) {
+        if (linkMap.GetValueOrDefault(goods) is ProductionLink || !goods.target.isLinkable) {
+            return false;
+        }
+
+        this.RecordUndo().links.Add(new(this, goods.target.With(goods.quality)));
+        return true;
+    }
 }

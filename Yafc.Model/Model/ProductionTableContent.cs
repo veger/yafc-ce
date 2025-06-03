@@ -909,6 +909,14 @@ public class ProductionLink(ProductionTable group, IObjectWithQuality<Goods> goo
             }
         }
     }
+
+    public bool Destroy() {
+        if (owner.links.Contains(this)) {
+            _ = owner.RecordUndo().links.Remove(this);
+            return true;
+        }
+        return false;
+    }
 }
 
 /// <summary>
