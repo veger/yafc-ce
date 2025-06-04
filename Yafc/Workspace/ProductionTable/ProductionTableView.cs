@@ -901,24 +901,7 @@ goodsHaveNoProduction:;
 
         async void addRecipe(RecipeOrTechnology rec) {
             IObjectWithQuality<RecipeOrTechnology> qualityRecipe = rec.With(goods.quality);
-            if (variants == null) {
-                RebuildIf(context.CreateLink(goods));
-            }
-            else {
-                foreach (var variant in variants) {
-                    if (rec.GetProductionPerRecipe(variant) > 0f) {
-                        RebuildIf(context.CreateLink(variant.With(goods.quality)));
-
-                        if (variant != goods.target) {
-                            // null-forgiving: If variants is not null, neither is recipe: variants is only set for ingredients, which requires
-                            // a recipe.
-                            recipe!.RecordUndo().ChangeVariant(goods.target, variant);
-                        }
-
-                        break;
-                    }
-                }
-            }
+            RebuildIf(context.CreateLink(goods));
 
             if (!context.Contains(qualityRecipe) || (await MessageBox.Show(LSs.ProductionTableAlertRecipeExists, LSs.ProductionTableQueryAddCopy.L(rec.locName), LSs.ProductionTableAddCopy, LSs.Cancel)).choice) {
                 context.AddRecipe(qualityRecipe, DefaultVariantOrdering, selectedFuel, spentFuel);
@@ -934,8 +917,6 @@ goodsHaveNoProduction:;
                 return;
             }
         }
-
-        Recipe[] allProduction = variants == null ? goods.target.production : [.. variants.SelectMany(x => x.production).Distinct()];
 
         Recipe[] fuelUseList = [.. goods.target.fuelFor.OfType<EntityCrafter>()
             .SelectMany(e => e.recipes).OfType<Recipe>()
@@ -983,7 +964,12 @@ goodsHaveNoProduction:;
                                 // variants are always fluids, so this could also be .With(Quality.Normal).
                                 recipe.fixedIngredient = variant.With(recipe.recipe.quality);
                             }
-                            _ = gui.CloseDropdown();
+
+                            goods = variant.With(recipe.recipe.quality);
+                            comparer = DataUtils.GetRecipeComparerFor(goods.target);
+                            if (recipe.FindLink(goods, out iLink) && iLink.flags.HasFlag(ProductionLink.Flags.HasProduction)) {
+                                _ = gui.CloseDropdown();
+                            }
                         }
                     }
                 }
@@ -999,6 +985,8 @@ goodsHaveNoProduction:;
 
             #region Recipe selection
             int numberOfShownRecipes = 0;
+
+            Recipe[] allProduction = goods.target.production;
 
             if (goods == Database.science) {
                 if (gui.BuildButton(LSs.ProductionTableAddTechnology) && gui.CloseDropdown()) {
