@@ -481,14 +481,14 @@ public class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Productio
     public HashSet<FactorioObject> variants { get; } = [];
     [SkipSerialization] public ProductionTable linkRoot => subgroup ?? owner;
 
-    public RecipeRowIngredient FuelInformation => new(fuel, fuelUsagePerSecond, links.fuel, (fuel?.target as Fluid)?.variants?.ToArray());
+    public RecipeRowIngredient FuelInformation => new(fuel, fuelUsagePerSecond, links.fuel);
     public IEnumerable<RecipeRowIngredient> Ingredients {
         get {
             if (hierarchyEnabled) {
                 return BuildIngredients(false).Select(RecipeRowIngredient.FromSolver);
             }
             else {
-                return Enumerable.Repeat(new RecipeRowIngredient(null, 0, null, null), recipe.target.ingredients.Length);
+                return Enumerable.Repeat(new RecipeRowIngredient(null, 0, null), recipe.target.ingredients.Length);
             }
         }
     }
@@ -922,13 +922,13 @@ public class ProductionLink(ProductionTable group, IObjectWithQuality<Goods> goo
 /// <summary>
 /// An ingredient for a recipe row, as reported to the UI.
 /// </summary>
-public record RecipeRowIngredient(IObjectWithQuality<Goods>? Goods, float Amount, ProductionLink? Link, Goods[]? Variants) {
+public record RecipeRowIngredient(IObjectWithQuality<Goods>? Goods, float Amount, ProductionLink? Link) {
     /// <summary>
     /// Convert from a <see cref="SolverIngredient"/> (the form initially generated when reporting ingredients) to a
     /// <see cref="RecipeRowIngredient"/>.
     /// </summary>
     internal static RecipeRowIngredient FromSolver(SolverIngredient value)
-        => new(value.Goods, value.Amount, value.Link as ProductionLink, value.Goods.target.fluid?.variants?.ToArray());
+        => new(value.Goods, value.Amount, value.Link as ProductionLink);
 }
 
 /// <summary>

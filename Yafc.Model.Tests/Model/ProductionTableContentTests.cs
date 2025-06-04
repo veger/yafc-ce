@@ -139,7 +139,7 @@ public class ProductionTableContentTests {
 
                         foreach (var (display, solver) in row.Ingredients.Zip(((IRecipeRow)row).IngredientsForSolver)) {
                             var (solverGoods, solverAmount, _, _) = solver;
-                            var (displayGoods, displayAmount, _, _) = display;
+                            var (displayGoods, displayAmount, _) = display;
 
                             try {
                                 // If this fails, something weird went wrong
@@ -211,7 +211,7 @@ public class ProductionTableContentTests {
 
         // Ensure that the fuel consumption remains constant, except when the entity and fuel change simultaneously.
         row.fixedFuel = true;
-        ((Goods oldFuel, _), float fuelAmount, _, _) = row.FuelInformation;
+        ((Goods oldFuel, _), float fuelAmount, _) = row.FuelInformation;
         testCombinations(row, table, testFuel(row, table));
         row.fixedFuel = false;
 
@@ -243,7 +243,7 @@ public class ProductionTableContentTests {
                 row.fixedBuildings = 1;
                 row.fixedFuel = true;
                 table.Solve((ProjectPage)table.owner).Wait();
-                ((oldFuel, _), fuelAmount, _, _) = row.FuelInformation;
+                ((oldFuel, _), fuelAmount, _) = row.FuelInformation;
                 assertCalls++;
             }
         };
