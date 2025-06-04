@@ -127,10 +127,11 @@ internal partial class FactorioDataDeserializer {
         }
 
         allModules.AddRange(allObjects.OfType<Module>());
-        progress.Report((LSs.ProgressLoading, LSs.ProgressLoadingTiles));
-        DeserializePrototypes(raw, "tile", DeserializeTile, progress, errorCollector);
         progress.Report((LSs.ProgressLoading, LSs.ProgressLoadingFluids));
         DeserializePrototypes(raw, "fluid", DeserializeFluid, progress, errorCollector);
+        progress.Report((LSs.ProgressLoading, LSs.ProgressLoadingTiles));
+        // pumpable tiles depend on fluids, so they can read the default fluid temperature
+        DeserializePrototypes(raw, "tile", DeserializeTile, progress, errorCollector);
         progress.Report((LSs.ProgressLoading, LSs.ProgressLoadingRecipes));
         DeserializePrototypes(raw, "recipe", DeserializeRecipe, progress, errorCollector);
         progress.Report((LSs.ProgressLoading, LSs.ProgressLoadingLocations));
@@ -627,7 +628,9 @@ nextWeightCalculation:;
         var tile = DeserializeCommon<Tile>(table, "tile");
 
         if (table.Get("fluid", out string? fluid)) {
-            Fluid pumpingFluid = GetObject<Fluid>(fluid);
+            Fluid baseFluid = GetObject<Fluid>(fluid);
+            // Explicitly produce this fluid at the default temperature, to ensure the temperature split is created.
+            Fluid pumpingFluid = GetFluidFixedTemp(fluid, baseFluid.temperatureRange.min);
             tile.Fluid = pumpingFluid;
 
             string recipeCategory = SpecialNames.PumpingRecipe + "tile";
@@ -667,9 +670,16 @@ nextWeightCalculation:;
                     return GetObject<Item>(table);
                 }
                 else if (type == "fluid") {
-                    if (useTemperature && table.Get("temperature", out int temperature)) {
-                        return GetFluidFixedTemp(name, temperature);
+                    if (useTemperature) {
+                        if (table.Get("temperature", out int temperature)) {
+                            return GetFluidFixedTemp(name, temperature);
+                        }
+                        else {
+                            // If the temperature isn't specified, produce the default (minimum) temperature
+                            return GetFluidFixedTemp(name, GetObject<Fluid>(table).temperatureRange.min);
+                        }
                     }
+
                     return GetObject<Fluid>(table);
                 }
             }
