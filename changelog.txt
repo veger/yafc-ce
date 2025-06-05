@@ -22,6 +22,7 @@ Date:
     Fixes:
         - Personal equipment names are localized again.
         - Quality prompts from dropdowns now also appear in subsequent selection panels.
+        - Fix output temperature selection for recipes that didn't specify the output fluid temperature.
 ----------------------------------------------------------------------------------------------------------------------
 Version: 2.13.0
 Date: May 14th 2025

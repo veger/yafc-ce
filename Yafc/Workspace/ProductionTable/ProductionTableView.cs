@@ -252,7 +252,7 @@ public class ProductionTableView : ProjectPageView<ProductionTable> {
 
                     foreach (var quality in Database.qualities.all) {
                         foreach (var product in recipe.products) {
-                            view.CreateLink(view.model, product.goods.With(quality));
+                            view.RebuildIf(view.model.CreateLink(product.goods.With(quality)));
                         }
 
                         view.model.AddRecipe(recipe.With(quality), DefaultVariantOrdering);
@@ -269,17 +269,16 @@ goodsHaveNoProduction:;
         private static void BuildRecipeButton(ImGui gui, ProductionTable table) {
             if (gui.BuildButton(LSs.ProductionTableAddRawRecipe).WithTooltip(gui, LSs.ProductionTableAddTechnologyHint) && gui.CloseDropdown()) {
                 if (InputSystem.Instance.control) {
-                    SelectMultiObjectPanel.Select(Database.technologies.all, new(LSs.ProductionTableAddTechnology, Multiple: true, Checkmark: checkmark, YellowMark: r => table.GetAllRecipes().Any(rr => rr.recipe.target == r)),
+                    SelectMultiObjectPanel.Select(Database.technologies.all, new(LSs.ProductionTableAddTechnology, Multiple: true,
+                        Checkmark: table.Contains, YellowMark: table.ContainsAnywhere),
                         r => table.AddRecipe(r.With(Quality.Normal), DefaultVariantOrdering));
                 }
                 else {
-                    var prodTable = ProductionLinkSummaryScreen.FindProductionTable(table, out List<ModelObject> parents);
-                    SelectMultiObjectPanel.SelectWithQuality(Database.recipes.explorable, new(LSs.ProductionTableAddRawRecipe, Multiple: true, Checkmark: checkmark, YellowMark: r => prodTable?.GetAllRecipes().Any(rr => rr.recipe.target == r) ?? false, SelectedQuality: Quality.Normal),
+                    SelectMultiObjectPanel.SelectWithQuality(Database.recipes.explorable, new(LSs.ProductionTableAddRawRecipe, Multiple: true,
+                        Checkmark: table.Contains, YellowMark: table.ContainsAnywhere, SelectedQuality: Quality.Normal),
                         r => table.AddRecipe(r, DefaultVariantOrdering));
                 }
             }
-
-            bool checkmark(RecipeOrTechnology r) => table.recipes.Any(rr => rr.recipe.target == r);
         }
 
         private void ExportIo(float multiplier) {
@@ -378,7 +377,7 @@ goodsHaveNoProduction:;
 
             gui.AllocateSpacing(0.5f);
             if (recipe.fuel != Database.voidEnergy || recipe.entity == null || recipe.entity.target.energy.type != EntityEnergyType.Void) {
-                var (fuel, fuelAmount, fuelLink, _) = recipe.FuelInformation;
+                var (fuel, fuelAmount, fuelLink) = recipe.FuelInformation;
                 view.BuildGoodsIcon(gui, fuel, fuelLink, fuelAmount, ProductDropdownType.Fuel, recipe, recipe.linkRoot, HintLocations.OnProducingRecipes);
             }
             else {
@@ -648,9 +647,9 @@ goodsHaveNoProduction:;
                 view.BuildTableIngredients(gui, recipe.subgroup, recipe.owner, ref grid);
             }
             else {
-                foreach (var (goods, amount, link, variants) in recipe.Ingredients) {
+                foreach (var (goods, amount, link) in recipe.Ingredients) {
                     grid.Next();
-                    view.BuildGoodsIcon(gui, goods, link, amount, ProductDropdownType.Ingredient, recipe, recipe.linkRoot, HintLocations.OnProducingRecipes, variants);
+                    view.BuildGoodsIcon(gui, goods, link, amount, ProductDropdownType.Ingredient, recipe, recipe.linkRoot, HintLocations.OnProducingRecipes);
                 }
                 if (recipe.fixedIngredient == Database.itemInput || recipe.showTotalIO) {
                     grid.Next();
@@ -867,19 +866,8 @@ goodsHaveNoProduction:;
         DesiredIngredient,
     }
 
-    private void CreateLink(ProductionTable table, IObjectWithQuality<Goods> goods) {
-        if (table.linkMap.GetValueOrDefault(goods) is ProductionLink || !goods.target.isLinkable) {
-            return;
-        }
-
-        ProductionLink link = new ProductionLink(table, goods.target.With(goods.quality));
-        Rebuild();
-        table.RecordUndo().links.Add(link);
-    }
-
-    private void DestroyLink(ProductionLink link) {
-        if (link.owner.allLinks.Contains(link)) {
-            _ = link.owner.RecordUndo().links.Remove(link);
+    private void RebuildIf(bool rebuild) {
+        if (rebuild) {
             Rebuild();
         }
     }
@@ -893,7 +881,7 @@ goodsHaveNoProduction:;
     }
 
     private void OpenProductDropdown(ImGui targetGui, Rect rect, IObjectWithQuality<Goods> goods, float amount, IProductionLink? iLink,
-        ProductDropdownType type, RecipeRow? recipe, ProductionTable context, Goods[]? variants = null) {
+        ProductDropdownType type, RecipeRow? recipe, ProductionTable context) {
 
         if (InputSystem.Instance.shift) {
             Project.current.preferences.SetSourceResource(goods.target, !goods.IsSourceResource());
@@ -902,38 +890,20 @@ goodsHaveNoProduction:;
         }
 
         var comparer = DataUtils.GetRecipeComparerFor(goods.target);
-        HashSet<IObjectWithQuality<RecipeOrTechnology>> curLevelRecipes = [.. context.recipes.Select(x => x.recipe)];
-        var prodTable = ProductionLinkSummaryScreen.FindProductionTable(context, out List<ModelObject> parents);
-        HashSet<IObjectWithQuality<RecipeOrTechnology>> allRecipes = [.. prodTable?.GetAllRecipes().Select(x => x.recipe) ?? []];
-
-        bool recipeExists(RecipeOrTechnology rec) => curLevelRecipes.Contains(rec.With(goods.quality));
-        bool recipeExistsAnywhere(RecipeOrTechnology rec) => allRecipes.Contains(rec.With(goods.quality));
 
         IObjectWithQuality<Goods>? selectedFuel = null;
         IObjectWithQuality<Goods>? spentFuel = null;
 
+        List<Fluid>? variants = null;
+        if (type == ProductDropdownType.Ingredient) {
+            variants = goods.target.fluid?.variants;
+        }
+
         async void addRecipe(RecipeOrTechnology rec) {
             IObjectWithQuality<RecipeOrTechnology> qualityRecipe = rec.With(goods.quality);
-            if (variants == null) {
-                CreateLink(context, goods);
-            }
-            else {
-                foreach (var variant in variants) {
-                    if (rec.GetProductionPerRecipe(variant) > 0f) {
-                        CreateLink(context, variant.With(goods.quality));
+            RebuildIf(context.CreateLink(goods));
 
-                        if (variant != goods.target) {
-                            // null-forgiving: If variants is not null, neither is recipe: Only the call from BuildGoodsIcon sets variants,
-                            // and the only call to BuildGoodsIcon that sets variants also sets recipe.
-                            recipe!.RecordUndo().ChangeVariant(goods.target, variant);
-                        }
-
-                        break;
-                    }
-                }
-            }
-
-            if (!curLevelRecipes.Contains(qualityRecipe) || (await MessageBox.Show(LSs.ProductionTableAlertRecipeExists, LSs.ProductionTableQueryAddCopy.L(rec.locName), LSs.ProductionTableAddCopy, LSs.Cancel)).choice) {
+            if (!context.Contains(qualityRecipe) || (await MessageBox.Show(LSs.ProductionTableAlertRecipeExists, LSs.ProductionTableQueryAddCopy.L(rec.locName), LSs.ProductionTableAddCopy, LSs.Cancel)).choice) {
                 context.AddRecipe(qualityRecipe, DefaultVariantOrdering, selectedFuel, spentFuel);
             }
         }
@@ -947,8 +917,6 @@ goodsHaveNoProduction:;
                 return;
             }
         }
-
-        Recipe[] allProduction = variants == null ? goods.target.production : [.. variants.SelectMany(x => x.production).Distinct()];
 
         Recipe[] fuelUseList = [.. goods.target.fuelFor.OfType<EntityCrafter>()
             .SelectMany(e => e.recipes).OfType<Recipe>()
@@ -988,15 +956,20 @@ goodsHaveNoProduction:;
                         if (gui.BuildFactorioObjectButton(variant, ButtonDisplayStyle.ProductionTableScaled(variant == goods.target ? SchemeColor.Primary : SchemeColor.None),
                             tooltipOptions: HintLocations.OnProducingRecipes) == Click.Left && variant != goods.target) {
 
-                            // null-forgiving: If variants is not null, neither is recipe: Only the call from BuildGoodsIcon sets variants,
-                            // and the only call to BuildGoodsIcon that sets variants also sets recipe.
+                            // null-forgiving: If variants is not null, neither is recipe: variants is only set for ingredients, which requires
+                            // a recipe.
                             recipe!.RecordUndo().ChangeVariant(goods.target, variant);
 
                             if (recipe!.fixedIngredient == goods) {
                                 // variants are always fluids, so this could also be .With(Quality.Normal).
                                 recipe.fixedIngredient = variant.With(recipe.recipe.quality);
                             }
-                            _ = gui.CloseDropdown();
+
+                            goods = variant.With(recipe.recipe.quality);
+                            comparer = DataUtils.GetRecipeComparerFor(goods.target);
+                            if (recipe.FindLink(goods, out iLink) && iLink.flags.HasFlag(ProductionLink.Flags.HasProduction)) {
+                                _ = gui.CloseDropdown();
+                            }
                         }
                     }
                 }
@@ -1013,14 +986,16 @@ goodsHaveNoProduction:;
             #region Recipe selection
             int numberOfShownRecipes = 0;
 
+            Recipe[] allProduction = goods.target.production;
+
             if (goods == Database.science) {
                 if (gui.BuildButton(LSs.ProductionTableAddTechnology) && gui.CloseDropdown()) {
-                    SelectMultiObjectPanel.Select(Database.technologies.all, new(LSs.ProductionTableAddTechnology, Multiple: true, Checkmark: r => context.recipes.Any(rr => rr.recipe.target == r)),
+                    SelectMultiObjectPanel.Select(Database.technologies.all, new(LSs.ProductionTableAddTechnology, Multiple: true, Checkmark: context.Contains, YellowMark: context.ContainsAnywhere),
                         r => context.AddRecipe(r.With(Quality.Normal), DefaultVariantOrdering));
                 }
             }
             else if (type <= ProductDropdownType.Ingredient && allProduction.Length > 0) {
-                gui.BuildInlineObjectListAndButton(allProduction, addRecipe, new(LSs.ProductionTableAddProductionRecipe, comparer, 6, true, recipeExists, recipeExistsAnywhere));
+                gui.BuildInlineObjectListAndButton(allProduction, addRecipe, new(LSs.ProductionTableAddProductionRecipe, comparer, 6, true, context.Contains, context.ContainsAnywhere));
                 numberOfShownRecipes += allProduction.Length;
 
                 if (iLink == null) {
@@ -1045,8 +1020,8 @@ goodsHaveNoProduction:;
                     DataUtils.AlreadySortedRecipe,
                     3,
                     true,
-                    recipeExists,
-                    recipeExistsAnywhere));
+                    context.Contains,
+                    context.ContainsAnywhere));
                 numberOfShownRecipes += spentFuelRecipes.Length;
             }
 
@@ -1058,8 +1033,8 @@ goodsHaveNoProduction:;
                     DataUtils.DefaultRecipeOrdering,
                     6,
                     true,
-                    recipeExists,
-                    recipeExistsAnywhere));
+                    context.Contains,
+                    context.ContainsAnywhere));
                 numberOfShownRecipes += goods.target.usages.Length;
             }
 
@@ -1071,8 +1046,8 @@ goodsHaveNoProduction:;
                     DataUtils.AlreadySortedRecipe,
                     6,
                     true,
-                    recipeExists,
-                    recipeExistsAnywhere));
+                    context.Contains,
+                    context.ContainsAnywhere));
                 numberOfShownRecipes += fuelUseList.Length;
             }
 
@@ -1080,11 +1055,11 @@ goodsHaveNoProduction:;
                 && gui.BuildButton(LSs.ProductionTableAddConsumptionTechnology) && gui.CloseDropdown()) {
                 // Select from the technologies that consume this science pack.
                 SelectMultiObjectPanel.Select(Database.technologies.all.Where(t => t.ingredients.Select(i => i.goods).Contains(goods.target)),
-                    new(LSs.ProductionTableAddTechnology, Multiple: true, Checkmark: recipeExists, YellowMark: recipeExistsAnywhere), addRecipe);
+                    new(LSs.ProductionTableAddTechnology, Multiple: true, Checkmark: context.Contains, YellowMark: context.ContainsAnywhere), addRecipe);
             }
 
             if (type >= ProductDropdownType.Product && allProduction.Length > 0) {
-                gui.BuildInlineObjectListAndButton(allProduction, addRecipe, new(LSs.ProductionTableAddProductionRecipe, comparer, 1, true, recipeExists, recipeExistsAnywhere));
+                gui.BuildInlineObjectListAndButton(allProduction, addRecipe, new(LSs.ProductionTableAddProductionRecipe, comparer, 1, true, context.Contains, context.ContainsAnywhere));
                 numberOfShownRecipes += allProduction.Length;
             }
 
@@ -1118,11 +1093,11 @@ goodsHaveNoProduction:;
                     }
 
                     if (gui.BuildButton(LSs.ProductionTableRemoveAndUnlinkDesiredProduct).WithTooltip(gui, LSs.ProductionTableShortcutRightClick) && gui.CloseDropdown()) {
-                        DestroyLink(link);
+                        RebuildIf(link.Destroy());
                     }
                 }
                 else if (link.amount == 0 && gui.BuildButton(LSs.ProductionTableUnlink).WithTooltip(gui, LSs.ProductionTableShortcutRightClick) && gui.CloseDropdown()) {
-                    DestroyLink(link);
+                    RebuildIf(link.Destroy());
                 }
             }
             else if (goods != null) {
@@ -1133,13 +1108,13 @@ goodsHaveNoProduction:;
                     string implicitLink = LSs.ProductionTableImplicitlyLinked.L(goods.target.locName, goods.quality.locName);
                     gui.BuildText(implicitLink, TextBlockDisplayStyle.WrappedText);
                     if (gui.BuildButton(LSs.ProductionTableCreateLink).WithTooltip(gui, LSs.ProductionTableShortcutRightClick) && gui.CloseDropdown()) {
-                        CreateLink(context, goods);
+                        RebuildIf(context.CreateLink(goods));
                     }
                 }
                 else if (goods.target.isLinkable) {
                     gui.BuildText(LSs.ProductionTableNotLinked.L(goods.target.locName), TextBlockDisplayStyle.WrappedText);
                     if (gui.BuildButton(LSs.ProductionTableCreateLink).WithTooltip(gui, LSs.ProductionTableShortcutRightClick) && gui.CloseDropdown()) {
-                        CreateLink(context, goods);
+                        RebuildIf(context.CreateLink(goods));
                     }
                 }
             }
@@ -1256,7 +1231,7 @@ goodsHaveNoProduction:;
                     element.amount < 0 ? ProductDropdownType.DesiredIngredient : ProductDropdownType.DesiredProduct, null, element.owner);
                 break;
             case GoodsWithAmountEvent.RightButtonClick:
-                DestroyLink(element);
+                RebuildIf(element.Destroy());
                 break;
             case GoodsWithAmountEvent.TextEditing when amount.Value != 0:
                 element.RecordUndo().amount = amount.Value;
@@ -1270,7 +1245,7 @@ goodsHaveNoProduction:;
     }
 
     private void BuildGoodsIcon(ImGui gui, IObjectWithQuality<Goods>? goods, IProductionLink? link, float amount, ProductDropdownType dropdownType,
-        RecipeRow? recipe, ProductionTable context, ObjectTooltipOptions tooltipOptions, Goods[]? variants = null) {
+        RecipeRow? recipe, ProductionTable context, ObjectTooltipOptions tooltipOptions) {
 
         SchemeColor iconColor;
         bool drawTransparent = false;
@@ -1338,13 +1313,13 @@ goodsHaveNoProduction:;
 
         switch (evt) {
             case GoodsWithAmountEvent.LeftButtonClick when goods is not null:
-                OpenProductDropdown(gui, gui.lastRect, goods, amount, link, dropdownType, recipe, context, variants);
+                OpenProductDropdown(gui, gui.lastRect, goods, amount, link, dropdownType, recipe, context);
                 break;
             case GoodsWithAmountEvent.RightButtonClick when goods is not null and { target.isLinkable: true } && (link is not ProductionLink || link.owner != context):
-                CreateLink(context, goods);
+                RebuildIf(context.CreateLink(goods));
                 break;
-            case GoodsWithAmountEvent.RightButtonClick when link is ProductionLink { amount: 0 } && link.owner == context:
-                DestroyLink((link as ProductionLink)!);
+            case GoodsWithAmountEvent.RightButtonClick when link is ProductionLink { amount: 0 } pLink && link.owner == context:
+                RebuildIf(pLink.Destroy());
                 break;
             case GoodsWithAmountEvent.TextEditing when displayAmount.Value >= 0:
                 // The amount is always stored in fixedBuildings. Scale it to match the requested change to this item.
