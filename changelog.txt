@@ -14,9 +14,17 @@
 //         Bugfixes go there.
 //     Internal changes:
 //         Changes to the code that do not affect the behavior of the program.
+
 ----------------------------------------------------------------------------------------------------------------------
 Version:
 Date:
+    Features:
+        
+    Fixes:
+        
+----------------------------------------------------------------------------------------------------------------------
+Version: 2.14.0
+Date: June 15th 2025
     Features:
         - Module templates can be automatically applied to new recipe rows, on a per-template basis.
     Fixes:
