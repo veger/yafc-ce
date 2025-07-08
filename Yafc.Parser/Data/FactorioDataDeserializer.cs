@@ -299,11 +299,15 @@ internal partial class FactorioDataDeserializer {
             };
 
             if (icon.x != 0) {
-                targetRect.x = MathUtils.Clamp(targetRect.x + MathUtils.Round(icon.x * iconSize / icon.size), 0, iconSize - targetRect.w);
+                // These two formulas have variously multiplied icon.x (or icon.y) by a scaling factor of iconSize / icon.size,
+                // iconSize * icon.scale, or iconSize. (const int iconSize = 32)
+                // Presumably the scaling factor had a purpose, but I can't find it. Py and Vanilla objects (e.g. Recipe.Moss-1 and
+                // Entity.lane-splitter) draw correctly after removing the scaling factor.
+                targetRect.x = MathUtils.Clamp(targetRect.x + MathUtils.Round(icon.x), 0, iconSize - targetRect.w);
             }
 
             if (icon.y != 0) {
-                targetRect.y = MathUtils.Clamp(targetRect.y + MathUtils.Round(icon.y * iconSize / icon.size), 0, iconSize - targetRect.h);
+                targetRect.y = MathUtils.Clamp(targetRect.y + MathUtils.Round(icon.y), 0, iconSize - targetRect.h);
             }
 
             SDL.SDL_Rect srcRect = new SDL.SDL_Rect {
