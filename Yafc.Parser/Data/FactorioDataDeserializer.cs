@@ -299,11 +299,15 @@ internal partial class FactorioDataDeserializer {
             };
 
             if (icon.x != 0) {
-                targetRect.x = MathUtils.Clamp(targetRect.x + MathUtils.Round(icon.x * iconSize / icon.size), 0, iconSize - targetRect.w);
+                // These two formulas have variously multiplied icon.x (or icon.y) by a scaling factor of iconSize / icon.size,
+                // iconSize * icon.scale, or iconSize. (const int iconSize = 32)
+                // Presumably the scaling factor had a purpose, but I can't find it. Py and Vanilla objects (e.g. Recipe.Moss-1 and
+                // Entity.lane-splitter) draw correctly after removing the scaling factor.
+                targetRect.x = MathUtils.Clamp(targetRect.x + MathUtils.Round(icon.x), 0, iconSize - targetRect.w);
             }
 
             if (icon.y != 0) {
-                targetRect.y = MathUtils.Clamp(targetRect.y + MathUtils.Round(icon.y * iconSize / icon.size), 0, iconSize - targetRect.h);
+                targetRect.y = MathUtils.Clamp(targetRect.y + MathUtils.Round(icon.y), 0, iconSize - targetRect.h);
             }
 
             SDL.SDL_Rect srcRect = new SDL.SDL_Rect {
@@ -737,10 +741,8 @@ nextWeightCalculation:;
             target.locDescr = LocalisedStringParser.ParseKey(prototypeType + "-description." + target.name, []);
         }
 
-        _ = table.Get("icon_size", out float defaultIconSize);
-
         if (table.Get("icon", out string? s)) {
-            target.iconSpec = [new FactorioIconPart(s) { size = defaultIconSize }];
+            target.iconSpec = [new FactorioIconPart(s) { size = table.Get("icon_size", 64f) }];
         }
         else if (table.Get("icons", out LuaTable? iconList)) {
             target.iconSpec = [.. iconList.ArrayElements<LuaTable>().Select(x => {
@@ -748,20 +750,21 @@ nextWeightCalculation:;
                     throw new NotSupportedException($"One of the icon layers for {name} does not have a path.");
                 }
 
-                FactorioIconPart part = new FactorioIconPart(path);
-                _ = x.Get("icon_size", out part.size, defaultIconSize);
-                _ = x.Get("scale", out part.scale, 1f);
+                FactorioIconPart part = new(path) {
+                    size = x.Get("icon_size", 64f),
+                    scale = x.Get("scale", 1f)
+                };
 
                 if (x.Get("shift", out LuaTable? shift)) {
-                    _ = shift.Get(1, out part.x);
-                    _ = shift.Get(2, out part.y);
+                    part.x = shift.Get<float>(1);
+                    part.y = shift.Get<float>(2);
                 }
 
                 if (x.Get("tint", out LuaTable? tint)) {
-                    _ = tint.Get("r", out part.r, 1f);
-                    _ = tint.Get("g", out part.g, 1f);
-                    _ = tint.Get("b", out part.b, 1f);
-                    _ = tint.Get("a", out part.a, 1f);
+                    part.r = tint.Get("r", 1f);
+                    part.g = tint.Get("g", 1f);
+                    part.b = tint.Get("b", 1f);
+                    part.a = tint.Get("a", 1f);
                 }
 
                 return part;
