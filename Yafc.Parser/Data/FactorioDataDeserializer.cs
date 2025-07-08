@@ -737,7 +737,7 @@ nextWeightCalculation:;
             target.locDescr = LocalisedStringParser.ParseKey(prototypeType + "-description." + target.name, []);
         }
 
-        _ = table.Get("icon_size", out float defaultIconSize);
+        _ = table.Get("icon_size", out float defaultIconSize, 64f);
 
         if (table.Get("icon", out string? s)) {
             target.iconSpec = [new FactorioIconPart(s) { size = defaultIconSize }];
@@ -749,7 +749,7 @@ nextWeightCalculation:;
                 }
 
                 FactorioIconPart part = new FactorioIconPart(path);
-                _ = x.Get("icon_size", out part.size, defaultIconSize);
+                _ = x.Get("icon_size", out part.size, 64f);
                 _ = x.Get("scale", out part.scale, 1f);
 
                 if (x.Get("shift", out LuaTable? shift)) {
