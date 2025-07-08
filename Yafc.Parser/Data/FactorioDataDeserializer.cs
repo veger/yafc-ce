@@ -737,10 +737,8 @@ nextWeightCalculation:;
             target.locDescr = LocalisedStringParser.ParseKey(prototypeType + "-description." + target.name, []);
         }
 
-        _ = table.Get("icon_size", out float defaultIconSize, 64f);
-
         if (table.Get("icon", out string? s)) {
-            target.iconSpec = [new FactorioIconPart(s) { size = defaultIconSize }];
+            target.iconSpec = [new FactorioIconPart(s) { size = table.Get("icon_size", 64f) }];
         }
         else if (table.Get("icons", out LuaTable? iconList)) {
             target.iconSpec = [.. iconList.ArrayElements<LuaTable>().Select(x => {
@@ -748,20 +746,21 @@ nextWeightCalculation:;
                     throw new NotSupportedException($"One of the icon layers for {name} does not have a path.");
                 }
 
-                FactorioIconPart part = new FactorioIconPart(path);
-                _ = x.Get("icon_size", out part.size, 64f);
-                _ = x.Get("scale", out part.scale, 1f);
+                FactorioIconPart part = new(path) {
+                    size = x.Get("icon_size", 64f),
+                    scale = x.Get("scale", 1f)
+                };
 
                 if (x.Get("shift", out LuaTable? shift)) {
-                    _ = shift.Get(1, out part.x);
-                    _ = shift.Get(2, out part.y);
+                    part.x = shift.Get<float>(1);
+                    part.y = shift.Get<float>(2);
                 }
 
                 if (x.Get("tint", out LuaTable? tint)) {
-                    _ = tint.Get("r", out part.r, 1f);
-                    _ = tint.Get("g", out part.g, 1f);
-                    _ = tint.Get("b", out part.b, 1f);
-                    _ = tint.Get("a", out part.a, 1f);
+                    part.r = tint.Get("r", 1f);
+                    part.g = tint.Get("g", 1f);
+                    part.b = tint.Get("b", 1f);
+                    part.a = tint.Get("a", 1f);
                 }
 
                 return part;
