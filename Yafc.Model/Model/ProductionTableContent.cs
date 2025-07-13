@@ -500,7 +500,7 @@ public class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Productio
         for (int i = 0; i < recipe.target.ingredients.Length; i++) {
             Ingredient ingredient = recipe.target.ingredients[i];
             IObjectWithQuality<Goods> option = (ingredient.variants == null ? ingredient.goods : GetVariant(ingredient.variants)).With(recipe.quality);
-            yield return (option, ingredient.amount * factor, links.ingredients[i], i);
+            yield return (option, ingredient.amount * factor, links.ingredients[i], i, ingredient.variants);
         }
     }
 
@@ -928,7 +928,7 @@ public record RecipeRowIngredient(IObjectWithQuality<Goods>? Goods, float Amount
     /// <see cref="RecipeRowIngredient"/>.
     /// </summary>
     internal static RecipeRowIngredient FromSolver(SolverIngredient value)
-        => new(value.Goods, value.Amount, value.Link as ProductionLink, value.Goods.target.fluid?.variants?.ToArray());
+        => new(value.Goods, value.Amount, value.Link as ProductionLink, value.Variants);
 }
 
 /// <summary>
@@ -946,9 +946,9 @@ public record RecipeRowProduct(IObjectWithQuality<Goods>? Goods, float Amount, I
 /// An ingredient for a recipe row, as reported to the solver.
 /// Alternatively, an intermediate value that will be used by the UI after conversion using <see cref="RecipeRowIngredient.FromSolver"/>.
 /// </summary>
-internal record SolverIngredient(IObjectWithQuality<Goods> Goods, float Amount, IProductionLink? Link, int LinkIndex) {
-    public static implicit operator SolverIngredient((IObjectWithQuality<Goods> Goods, float Amount, IProductionLink? Link, int LinkIndex) value)
-        => new(value.Goods, value.Amount, value.Link, value.LinkIndex);
+internal record SolverIngredient(IObjectWithQuality<Goods> Goods, float Amount, IProductionLink? Link, int LinkIndex, Goods[]? Variants) {
+    public static implicit operator SolverIngredient((IObjectWithQuality<Goods> Goods, float Amount, IProductionLink? Link, int LinkIndex, Goods[]? Variants) value)
+        => new(value.Goods, value.Amount, value.Link, value.LinkIndex, value.Variants);
 }
 
 /// <summary>

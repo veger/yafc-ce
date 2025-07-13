@@ -880,6 +880,12 @@ goodsHaveNoProduction:;
         content.RebuildLinkMap();
     }
 
+    /// <param name="recipe">If not <see langword="null"/>, the source icon for this dropdown is associated with this <see cref="RecipeRow"/>.
+    /// If <see langword="null"/>, the icon is from a non-<see cref="RecipeRow"/> location, such as the desired products box or a collapsed
+    /// sub-table.</param>
+    /// <param name="variants">If not <see langword="null"/>, the fluid variants (temperatures) that are valid for this particular ingredient.
+    /// This may exclude some fluid temperatures that aren't acceptable for the current <paramref name="recipe"/>. This is always
+    /// <see cref="null"/> if the source icon is not directly owned by a <see cref="RecipeRow"/>.</param>
     private void OpenProductDropdown(ImGui targetGui, Rect rect, IObjectWithQuality<Goods> goods, float amount, IProductionLink? iLink,
         ProductDropdownType type, RecipeRow? recipe, ProductionTable context, Goods[]? variants = null) {
 
@@ -1239,6 +1245,12 @@ goodsHaveNoProduction:;
         base.Rebuild(visualOnly);
     }
 
+    /// <param name="recipe">If not <see langword="null"/>, this icon is directly associated with this <see cref="RecipeRow"/>.
+    /// If <see langword="null"/>, the icon is from a non-<see cref="RecipeRow"/> location, such as the desired products box or a collapsed
+    /// sub-table.</param>
+    /// <param name="variants">If not <see langword="null"/>, the fluid variants (temperatures) that are valid for this particular ingredient.
+    /// This may exclude some fluid temperatures that aren't acceptable for the current <paramref name="recipe"/>. This is always
+    /// <see cref="null"/> if <paramref name="recipe"/> is <see cref="null"/>.</param>
     private void BuildGoodsIcon(ImGui gui, IObjectWithQuality<Goods>? goods, IProductionLink? link, float amount, ProductDropdownType dropdownType,
         RecipeRow? recipe, ProductionTable context, ObjectTooltipOptions tooltipOptions, Goods[]? variants = null) {
 

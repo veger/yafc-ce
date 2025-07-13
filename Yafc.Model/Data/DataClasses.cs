@@ -459,7 +459,9 @@ public class Fluid : Goods {
     public TemperatureRange temperatureRange { get; internal set; }
     public int temperature { get; internal set; }
     public float heatValue { get; internal set; }
-    public List<Fluid>? variants { get; internal set; }
+    // This is unlikely to be what you want. Use Ingredient.variants or RecipeRowIngredient.Variants instead; that will be filtered to only the
+    // variants (temperatures) that are acceptable for the current recipe.
+    internal List<Fluid>? variants { get; set; }
     public override bool isPower => false;
     public override UnitOfMeasure flowUnitOfMeasure => UnitOfMeasure.FluidPerSecond;
     internal override FactorioObjectSortOrder sortingOrder => FactorioObjectSortOrder.Fluids;

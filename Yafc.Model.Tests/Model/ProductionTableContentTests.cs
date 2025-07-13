@@ -138,7 +138,7 @@ public class ProductionTableContentTests {
                         await table.Solve(page);
 
                         foreach (var (display, solver) in row.Ingredients.Zip(((IRecipeRow)row).IngredientsForSolver)) {
-                            var (solverGoods, solverAmount, _, _) = solver;
+                            var (solverGoods, solverAmount, _, _, _) = solver;
                             var (displayGoods, displayAmount, _, _) = display;
 
                             try {
