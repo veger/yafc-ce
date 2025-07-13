@@ -377,7 +377,7 @@ goodsHaveNoProduction:;
 
             gui.AllocateSpacing(0.5f);
             if (recipe.fuel != Database.voidEnergy || recipe.entity == null || recipe.entity.target.energy.type != EntityEnergyType.Void) {
-                var (fuel, fuelAmount, fuelLink) = recipe.FuelInformation;
+                var (fuel, fuelAmount, fuelLink, _) = recipe.FuelInformation;
                 view.BuildGoodsIcon(gui, fuel, fuelLink, fuelAmount, ProductDropdownType.Fuel, recipe, recipe.linkRoot, HintLocations.OnProducingRecipes);
             }
             else {
@@ -647,9 +647,9 @@ goodsHaveNoProduction:;
                 view.BuildTableIngredients(gui, recipe.subgroup, recipe.owner, ref grid);
             }
             else {
-                foreach (var (goods, amount, link) in recipe.Ingredients) {
+                foreach (var (goods, amount, link, variants) in recipe.Ingredients) {
                     grid.Next();
-                    view.BuildGoodsIcon(gui, goods, link, amount, ProductDropdownType.Ingredient, recipe, recipe.linkRoot, HintLocations.OnProducingRecipes);
+                    view.BuildGoodsIcon(gui, goods, link, amount, ProductDropdownType.Ingredient, recipe, recipe.linkRoot, HintLocations.OnProducingRecipes, variants);
                 }
                 if (recipe.fixedIngredient == Database.itemInput || recipe.showTotalIO) {
                     grid.Next();
@@ -881,7 +881,7 @@ goodsHaveNoProduction:;
     }
 
     private void OpenProductDropdown(ImGui targetGui, Rect rect, IObjectWithQuality<Goods> goods, float amount, IProductionLink? iLink,
-        ProductDropdownType type, RecipeRow? recipe, ProductionTable context) {
+        ProductDropdownType type, RecipeRow? recipe, ProductionTable context, Goods[]? variants = null) {
 
         if (InputSystem.Instance.shift) {
             Project.current.preferences.SetSourceResource(goods.target, !goods.IsSourceResource());
@@ -893,11 +893,6 @@ goodsHaveNoProduction:;
 
         IObjectWithQuality<Goods>? selectedFuel = null;
         IObjectWithQuality<Goods>? spentFuel = null;
-
-        List<Fluid>? variants = null;
-        if (type == ProductDropdownType.Ingredient) {
-            variants = goods.target.fluid?.variants;
-        }
 
         async void addRecipe(RecipeOrTechnology rec) {
             IObjectWithQuality<RecipeOrTechnology> qualityRecipe = rec.With(goods.quality);
@@ -956,8 +951,8 @@ goodsHaveNoProduction:;
                         if (gui.BuildFactorioObjectButton(variant, ButtonDisplayStyle.ProductionTableScaled(variant == goods.target ? SchemeColor.Primary : SchemeColor.None),
                             tooltipOptions: HintLocations.OnProducingRecipes) == Click.Left && variant != goods.target) {
 
-                            // null-forgiving: If variants is not null, neither is recipe: variants is only set for ingredients, which requires
-                            // a recipe.
+                            // null-forgiving: If variants is not null, neither is recipe: Only the call from BuildGoodsIcon sets variants,
+                            // and the only call to BuildGoodsIcon that sets variants also sets recipe.
                             recipe!.RecordUndo().ChangeVariant(goods.target, variant);
 
                             if (recipe!.fixedIngredient == goods) {
@@ -1245,7 +1240,7 @@ goodsHaveNoProduction:;
     }
 
     private void BuildGoodsIcon(ImGui gui, IObjectWithQuality<Goods>? goods, IProductionLink? link, float amount, ProductDropdownType dropdownType,
-        RecipeRow? recipe, ProductionTable context, ObjectTooltipOptions tooltipOptions) {
+        RecipeRow? recipe, ProductionTable context, ObjectTooltipOptions tooltipOptions, Goods[]? variants = null) {
 
         SchemeColor iconColor;
         bool drawTransparent = false;
@@ -1313,7 +1308,7 @@ goodsHaveNoProduction:;
 
         switch (evt) {
             case GoodsWithAmountEvent.LeftButtonClick when goods is not null:
-                OpenProductDropdown(gui, gui.lastRect, goods, amount, link, dropdownType, recipe, context);
+                OpenProductDropdown(gui, gui.lastRect, goods, amount, link, dropdownType, recipe, context, variants);
                 break;
             case GoodsWithAmountEvent.RightButtonClick when goods is not null and { target.isLinkable: true } && (link is not ProductionLink || link.owner != context):
                 RebuildIf(context.CreateLink(goods));
