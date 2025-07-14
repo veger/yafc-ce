@@ -19,7 +19,7 @@ public class SelectableVariantsTests {
         await table.Solve((ProjectPage)table.owner);
         Assert.Equal("steam@165", row.FuelInformation.Goods.target.name);
 
-        row.fuel = row.FuelInformation.Goods.target.fluid.variants[1].With(Quality.Normal);
+        row.fuel = row.FuelInformation.Variants[1].With(Quality.Normal);
         await table.Solve((ProjectPage)table.owner);
         Assert.Equal("steam@500", row.FuelInformation.Goods.target.name);
     }
@@ -38,7 +38,7 @@ public class SelectableVariantsTests {
         await table.Solve((ProjectPage)table.owner);
         Assert.Equal("steam@500", row.FuelInformation.Goods.target.name);
 
-        row.fuel = row.FuelInformation.Goods.target.fluid.variants[0].With(Quality.Normal);
+        row.fuel = row.FuelInformation.Variants[0].With(Quality.Normal);
         await table.Solve((ProjectPage)table.owner);
         Assert.Equal("steam@165", row.FuelInformation.Goods.target.name);
     }
@@ -56,7 +56,7 @@ public class SelectableVariantsTests {
         await table.Solve((ProjectPage)table.owner);
         Assert.Equal("steam@165", row.Ingredients.Single().Goods.target.name);
 
-        row.ChangeVariant(row.Ingredients.Single().Goods.target, row.Ingredients.Single().Goods.target.fluid.variants[1]);
+        row.ChangeVariant(row.Ingredients.Single().Goods.target, row.Ingredients.Single().Variants[1]);
         await table.Solve((ProjectPage)table.owner);
         Assert.Equal("steam@500", row.Ingredients.Single().Goods.target.name);
     }

@@ -481,14 +481,14 @@ public class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Productio
     public HashSet<FactorioObject> variants { get; } = [];
     [SkipSerialization] public ProductionTable linkRoot => subgroup ?? owner;
 
-    public RecipeRowIngredient FuelInformation => new(fuel, fuelUsagePerSecond, links.fuel);
+    public RecipeRowIngredient FuelInformation => new(fuel, fuelUsagePerSecond, links.fuel, (fuel?.target as Fluid)?.variants?.ToArray());
     public IEnumerable<RecipeRowIngredient> Ingredients {
         get {
             if (hierarchyEnabled) {
                 return BuildIngredients(false).Select(RecipeRowIngredient.FromSolver);
             }
             else {
-                return Enumerable.Repeat(new RecipeRowIngredient(null, 0, null), recipe.target.ingredients.Length);
+                return Enumerable.Repeat(new RecipeRowIngredient(null, 0, null, null), recipe.target.ingredients.Length);
             }
         }
     }
@@ -500,7 +500,7 @@ public class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Productio
         for (int i = 0; i < recipe.target.ingredients.Length; i++) {
             Ingredient ingredient = recipe.target.ingredients[i];
             IObjectWithQuality<Goods> option = (ingredient.variants == null ? ingredient.goods : GetVariant(ingredient.variants)).With(recipe.quality);
-            yield return (option, ingredient.amount * factor, links.ingredients[i], i);
+            yield return (option, ingredient.amount * factor, links.ingredients[i], i, ingredient.variants);
         }
     }
 
@@ -922,13 +922,13 @@ public class ProductionLink(ProductionTable group, IObjectWithQuality<Goods> goo
 /// <summary>
 /// An ingredient for a recipe row, as reported to the UI.
 /// </summary>
-public record RecipeRowIngredient(IObjectWithQuality<Goods>? Goods, float Amount, ProductionLink? Link) {
+public record RecipeRowIngredient(IObjectWithQuality<Goods>? Goods, float Amount, ProductionLink? Link, Goods[]? Variants) {
     /// <summary>
     /// Convert from a <see cref="SolverIngredient"/> (the form initially generated when reporting ingredients) to a
     /// <see cref="RecipeRowIngredient"/>.
     /// </summary>
     internal static RecipeRowIngredient FromSolver(SolverIngredient value)
-        => new(value.Goods, value.Amount, value.Link as ProductionLink);
+        => new(value.Goods, value.Amount, value.Link as ProductionLink, value.Variants);
 }
 
 /// <summary>
@@ -946,9 +946,9 @@ public record RecipeRowProduct(IObjectWithQuality<Goods>? Goods, float Amount, I
 /// An ingredient for a recipe row, as reported to the solver.
 /// Alternatively, an intermediate value that will be used by the UI after conversion using <see cref="RecipeRowIngredient.FromSolver"/>.
 /// </summary>
-internal record SolverIngredient(IObjectWithQuality<Goods> Goods, float Amount, IProductionLink? Link, int LinkIndex) {
-    public static implicit operator SolverIngredient((IObjectWithQuality<Goods> Goods, float Amount, IProductionLink? Link, int LinkIndex) value)
-        => new(value.Goods, value.Amount, value.Link, value.LinkIndex);
+internal record SolverIngredient(IObjectWithQuality<Goods> Goods, float Amount, IProductionLink? Link, int LinkIndex, Goods[]? Variants) {
+    public static implicit operator SolverIngredient((IObjectWithQuality<Goods> Goods, float Amount, IProductionLink? Link, int LinkIndex, Goods[]? Variants) value)
+        => new(value.Goods, value.Amount, value.Link, value.LinkIndex, value.Variants);
 }
 
 /// <summary>

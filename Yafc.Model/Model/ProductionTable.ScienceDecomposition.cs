@@ -23,7 +23,7 @@ public partial class ProductionTable {
         public float fixedBuildings => 0;
 
         /// <inheritdoc/>
-        public IEnumerable<SolverIngredient> IngredientsForSolver => [new SolverIngredient(pack.With(quality), 1, ingredientLink, 0)];
+        public IEnumerable<SolverIngredient> IngredientsForSolver => [new SolverIngredient(pack.With(quality), 1, ingredientLink, 0, null)];
         /// <inheritdoc/>
         public IEnumerable<SolverProduct> ProductsForSolver => [new SolverProduct(pack.With(Quality.Normal), quality.level + 1, productLink, 0, null)];
 
