@@ -38,11 +38,11 @@ brew install SDL2
 brew install SDL2_image
 brew install SDL2_ttf
 ```
-- Copy the following files from `(brew --prefix)/lib`, which is usually `/opt/homebrew/lib/`, to `Yafc/lib/osx`:
+- Copy the following files from `$(brew --prefix)/lib`, which is usually `/opt/homebrew/lib/`, to `Yafc/lib/osx`:
 ```
 libSDL2.dylib
 libSDL2_image.dylib
-libSDL2_tff.dylib
+libSDL2_ttf.dylib
 ```
 - Run `build.sh` to build Yafc. If you get an error `grep: invalid option -- P`, then you need to either remove the mentions of `VERSION` from `build.sh` so `grep` is not used, or you need to install GNU grep with `brew install grep` and change `grep` in `build.sh` to `ggrep`.
 - The folder `Build/OSX` will contain all of the files and should run in place. It will also create an archive `OSX.tar.gz` for the distro.
