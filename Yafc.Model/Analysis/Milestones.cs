@@ -107,7 +107,10 @@ public class Milestones : Analysis {
     }
 
     public void ComputeWithParameters(Project project, ErrorCollector warnings, FactorioObject[] milestones, bool autoSort) {
-        if (this.project == null) {
+        if (this.project != project) {
+            if (this.project != null) {
+                this.project.settings.changed -= ProjectSettingsChanged;
+            }
             this.project = project;
             project.settings.changed += ProjectSettingsChanged;
         }
