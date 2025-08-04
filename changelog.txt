@@ -22,6 +22,7 @@
 Version:
 Date:
     Features:
+        - Add Ctrl+Shift+Click to add the most cost-effective, accessible recipe for an item.
         
     Fixes:
         - Fix icon rendering.
