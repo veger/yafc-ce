@@ -1557,7 +1557,7 @@ goodsHaveNoProduction:;
     private static readonly (Icon icon, SchemeColor color)[] tagIcons = [
         (Icon.Empty, SchemeColor.BackgroundTextFaint),
         (Icon.Check, SchemeColor.Green),
-        (Icon.Warning, SchemeColor.Secondary),
+        (Icon.Warning, SchemeColor.WarningIcon),
         (Icon.Error, SchemeColor.Error),
         (Icon.Edit, SchemeColor.Primary),
         (Icon.Help, SchemeColor.BackgroundText),
