@@ -25,6 +25,7 @@ Date:
         - Support tables without a header recipe.
         - Retain scroll when switching tabs.
         - Added placeholder text on project file selection.
+        - Add icons and a Delete Page option to tab right-click menu items.
     Fixes:
         - Support craft-fluid and scripted research triggers.
         - Consider quality restrictions when analyzing craft-item or build-item technology triggers.
