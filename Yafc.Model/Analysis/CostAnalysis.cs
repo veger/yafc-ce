@@ -47,6 +47,17 @@ public class CostAnalysis(bool onlyCurrentMilestones) : Analysis {
         objective.SetMaximization();
         Stopwatch time = Stopwatch.StartNew();
 
+        // Find the best accessible container for spoilage cost calculation
+        float bestContainerSlotsPerTile = 1f;
+        foreach (var container in Database.allContainers) {
+            if (ShouldInclude(container) && container.size > 0) {
+                float slotsPerTile = (float)container.inventorySize / container.size;
+                if (slotsPerTile > bestContainerSlotsPerTile) {
+                    bestContainerSlotsPerTile = slotsPerTile;
+                }
+            }
+        }
+
         var variables = Database.goods.CreateMapping<Variable>();
         var constraints = Database.recipes.CreateMapping<Constraint>();
 
@@ -180,6 +191,15 @@ public class CostAnalysis(bool onlyCurrentMilestones) : Analysis {
             int size = Math.Max(minSize, (recipe.ingredients.Length + recipe.products.Length) / 2);
             float sizeUsage = CostPerSecond * recipe.time * size;
             float logisticsCost = (sizeUsage * (1f + (CostPerIngredientPerSize * recipe.ingredients.Length) + (CostPerProductPerSize * recipe.products.Length))) + (CostPerMj * minPower);
+
+            // Special handling for spoilage recipes: cost depends on container efficiency and stack size
+            // Spoilage happens in storage containers where many stacks spoil in parallel
+            if (recipe is Mechanics && recipe.name.StartsWith("spoil.") && recipe.ingredients.Length == 1 && recipe.ingredients[0].goods is Item spoilingItem) {
+                int stackSize = spoilingItem.stackSize;
+                // Cost is based on storage space needed: time / (stackSize * slotsPerTile)
+                // This reflects that larger stacks and better containers reduce infrastructure cost
+                logisticsCost = CostPerSecond * recipe.time / (stackSize * bestContainerSlotsPerTile);
+            }
 
             if (singleUsedFuel == Database.electricity.target || singleUsedFuel == Database.voidEnergy.target || singleUsedFuel == Database.heat.target) {
                 singleUsedFuel = null;
