@@ -25,11 +25,6 @@ public class AutomationAnalysis : Analysis {
         int unknowns = 0;
 
         foreach (Recipe recipe in Database.recipes.all.ExceptExcluded(this)) {
-            // Skip crafter check for spoilage recipes - they happen automatically
-            if (recipe is Mechanics && recipe.name.StartsWith("spoil.", System.StringComparison.Ordinal)) {
-                continue;
-            }
-
             bool hasAutomatableCrafter = false;
 
             foreach (var crafter in recipe.crafters) {
