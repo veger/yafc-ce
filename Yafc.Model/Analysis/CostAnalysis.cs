@@ -50,8 +50,9 @@ public class CostAnalysis(bool onlyCurrentMilestones) : Analysis {
         // Find the best accessible container for spoilage cost calculation
         float bestContainerSlotsPerTile = 1f;
         foreach (var container in Database.allContainers) {
-            if (ShouldInclude(container) && container.size > 0) {
-                float slotsPerTile = (float)container.inventorySize / container.size;
+            float area = container.width * container.height;
+            if (ShouldInclude(container) && area > 0) {
+                float slotsPerTile = container.inventorySize / area;
                 if (slotsPerTile > bestContainerSlotsPerTile) {
                     bestContainerSlotsPerTile = slotsPerTile;
                 }
