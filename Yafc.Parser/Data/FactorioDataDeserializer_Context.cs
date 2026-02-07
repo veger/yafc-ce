@@ -784,6 +784,7 @@ internal partial class FactorioDataDeserializer {
             locName = LSs.SpecialEntitySpoilage,
             locDescr = LSs.SpecialEntitySpoilageDescription,
             factorioType = "spoilage",
+            iconSpec = [new FactorioIconPart("__core__/graphics/clock-icon.png")],
             energy = voidEntityEnergy,
             mapGenerated = true,
             itemInputs = 1,
