@@ -539,6 +539,7 @@ internal partial class FactorioDataDeserializer {
         }
 
         if (GetRef(table, "spoil_result", out Item? spoiled)) {
+            EnsureSpoilageEntityExists();
             var recipe = CreateSpecialRecipe(item, SpecialNames.SpoilRecipe, LSs.SpecialRecipeSpoiling);
             recipe.ingredients = [new Ingredient(item, 1)];
             recipe.products = [new Product(spoiled, 1)];

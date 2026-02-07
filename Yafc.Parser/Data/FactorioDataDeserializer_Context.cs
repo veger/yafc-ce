@@ -35,7 +35,7 @@ internal partial class FactorioDataDeserializer {
     private readonly EntityEnergy voidEntityEnergy;
     private readonly EntityEnergy laborEntityEnergy;
     private Entity? character;
-    private readonly EntityCrafter spoilageEntity;
+    private EntityCrafter? spoilageEntity;
     private readonly Version factorioVersion;
     private int rocketCapacity;
     private int defaultItemWeight;
@@ -117,21 +117,6 @@ internal partial class FactorioDataDeserializer {
 
         voidEntityEnergy = new EntityEnergy { type = EntityEnergyType.Void, effectivity = float.PositiveInfinity };
         laborEntityEnergy = new EntityEnergy { type = EntityEnergyType.Labor, effectivity = float.PositiveInfinity };
-
-        // Create a special entity for spoilage - it's not tied to milestones and shouldn't be treated like character
-        spoilageEntity = new EntityCrafter {
-            name = "spoilage",
-            locName = LSs.SpecialEntitySpoilage,
-            locDescr = LSs.SpecialEntitySpoilageDescription,
-            factorioType = "spoilage",
-            energy = voidEntityEnergy,
-            mapGenerated = true,
-            itemInputs = 1,
-        };
-        allObjects.Add(spoilageEntity);
-        registeredObjects[(typeof(Entity), "spoilage")] = spoilageEntity;
-        rootAccessible.Add(spoilageEntity);
-        recipeCrafters.Add(spoilageEntity, SpecialNames.SpoilRecipe);
 
         // Note: These must be Items (or possibly a derived type) so belt capacity can be displayed and set.
         totalItemInput = createSpecialItem("item-total-input", LSs.SpecialItemTotalConsumption, LSs.SpecialItemTotalConsumptionDescription, "__base__/graphics/icons/signal/signal_I.png");
@@ -784,6 +769,35 @@ internal partial class FactorioDataDeserializer {
         recipeCategories.Add(category, recipe);
 
         return recipe;
+    }
+
+    /// <summary>
+    /// Creates the spoilage entity if it doesn't exist yet. Called when the first spoil recipe is created.
+    /// </summary>
+    private void EnsureSpoilageEntityExists() {
+        if (spoilageEntity != null) {
+            return;
+        }
+
+        spoilageEntity = new EntityCrafter {
+            name = "spoilage",
+            locName = LSs.SpecialEntitySpoilage,
+            locDescr = LSs.SpecialEntitySpoilageDescription,
+            factorioType = "spoilage",
+            energy = voidEntityEnergy,
+            mapGenerated = true,
+            itemInputs = 1,
+            effectReceiver = new EffectReceiver {
+                baseEffect = new Effect(),
+                usesModuleEffects = false,
+                usesBeaconEffects = false,
+                usesSurfaceEffects = false,
+            },
+        };
+        allObjects.Add(spoilageEntity);
+        registeredObjects[(typeof(Entity), "spoilage")] = spoilageEntity;
+        rootAccessible.Add(spoilageEntity);
+        recipeCrafters.Add(spoilageEntity, SpecialNames.SpoilRecipe);
     }
 
     private void ParseCaptureEffects() {
