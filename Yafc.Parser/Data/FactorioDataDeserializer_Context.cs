@@ -24,7 +24,6 @@ internal partial class FactorioDataDeserializer {
     private readonly Dictionary<string, FactorioObject> formerAliases = [];
 
     private readonly Recipe generatorProduction;
-    private readonly Recipe reactorProduction;
     private readonly Special voidEnergy;
     private readonly Special heat;
     private readonly Special electricity;
@@ -109,11 +108,6 @@ internal partial class FactorioDataDeserializer {
         generatorProduction.products = [new Product(electricity, 1f)];
         generatorProduction.flags |= RecipeFlags.ScaleProductionWithPower;
         generatorProduction.ingredients = [];
-
-        reactorProduction = CreateSpecialRecipe(heat, SpecialNames.ReactorRecipe, LSs.SpecialRecipeGenerating);
-        reactorProduction.products = [new Product(heat, 1f)];
-        reactorProduction.flags |= RecipeFlags.ScaleProductionWithPower;
-        reactorProduction.ingredients = [];
 
         voidEntityEnergy = new EntityEnergy { type = EntityEnergyType.Void, effectivity = float.PositiveInfinity };
         laborEntityEnergy = new EntityEnergy { type = EntityEnergyType.Labor, effectivity = float.PositiveInfinity };
@@ -322,6 +316,7 @@ internal partial class FactorioDataDeserializer {
         Database.qualities = new FactorioIdRange<Quality>(firstQuality, firstLocation, allObjects);
         Database.locations = new FactorioIdRange<Location>(firstLocation, firstTrigger, allObjects);
         Database.fluidVariants = fluidVariants;
+        Database.heatVariants = heat.variants;
 
         Database.allModules = [.. allModules];
         Database.allBeacons = [.. Database.entities.all.OfType<EntityBeacon>()];
@@ -529,6 +524,11 @@ internal partial class FactorioDataDeserializer {
 
                         if (entity.energy.type == EntityEnergyType.FluidHeat) {
                             fuelList = fuelList.Where(x => x is Fluid f && entity.energy.acceptedTemperature.Contains(f.temperature) && f.temperature > entity.energy.workingTemperature.min);
+                        }
+
+                        if (entity.energy.type == EntityEnergyType.Heat && heat.variants != null) {
+                            fuelList = fuelList.Where(x => x is Special s
+                                && s.temperature >= entity.energy.workingTemperature.min);
                         }
 
                         var fuelListArr = fuelList.ToArray();
@@ -740,6 +740,12 @@ internal partial class FactorioDataDeserializer {
         foreach (var (_, list) in fluidVariants) {
             foreach (var fluid in list) {
                 fluid.locName = LSs.FluidNameWithTemperature.L(fluid.locName, fluid.temperature);
+            }
+        }
+
+        if (heat.variants != null) {
+            foreach (var heatVariant in heat.variants) {
+                heatVariant.locName = LSs.FluidNameWithTemperature.L(heatVariant.locName, heatVariant.temperature);
             }
         }
 

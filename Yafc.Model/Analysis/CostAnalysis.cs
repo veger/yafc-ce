@@ -202,7 +202,7 @@ public class CostAnalysis(bool onlyCurrentMilestones) : Analysis {
                 logisticsCost = CostPerSecond * recipe.time / (stackSize * bestContainerSlotsPerTile);
             }
 
-            if (singleUsedFuel == Database.electricity.target || singleUsedFuel == Database.voidEnergy.target || singleUsedFuel == Database.heat.target) {
+            if (singleUsedFuel?.isPower == true) {
                 singleUsedFuel = null;
             }
 
@@ -286,6 +286,18 @@ public class CostAnalysis(bool onlyCurrentMilestones) : Analysis {
             for (int i = 1; i < fluids.Count; i++) {
                 var cur = fluids[i];
                 var constraint = workspaceSolver.MakeConstraint(double.NegativeInfinity, 0, "fluid-" + name + "-" + prev.temperature);
+                constraint.SetCoefficient(variables[prev], 1);
+                constraint.SetCoefficient(variables[cur], -1);
+                prev = cur;
+            }
+        }
+
+        if (Database.heatVariants != null) {
+            var prev = Database.heatVariants[0];
+
+            for (int i = 1; i < Database.heatVariants.Count; i++) {
+                var cur = Database.heatVariants[i];
+                var constraint = workspaceSolver.MakeConstraint(double.NegativeInfinity, 0, "heat-" + prev.temperature);
                 constraint.SetCoefficient(variables[prev], 1);
                 constraint.SetCoefficient(variables[cur], -1);
                 prev = cur;
