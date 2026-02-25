@@ -13,11 +13,13 @@ public class ModuleCustomizationScreen : PseudoScreenWithResult<ModuleTemplateBu
     private RecipeRow? recipe;
     private ProjectModuleTemplate? template;
     private ModuleTemplateBuilder? modules;
+    private bool closeRequestedByEnter;
 
     public static void Show(RecipeRow recipe) {
         Instance.template = null;
         Instance.recipe = recipe;
         Instance.modules = recipe.modules?.GetBuilder();
+        Instance.closeRequestedByEnter = false;
         Instance.completionCallback = (hasResult, builder) => {
             if (hasResult) {
                 recipe.RecordUndo().modules = builder?.Build(recipe);
@@ -30,6 +32,7 @@ public class ModuleCustomizationScreen : PseudoScreenWithResult<ModuleTemplateBu
         Instance.recipe = null;
         Instance.template = template;
         Instance.modules = template.template.GetBuilder();
+        Instance.closeRequestedByEnter = false;
         Instance.completionCallback = (hasResult, builder) => {
             if (hasResult) {
                 template.RecordUndo().template = builder!.Build(template);
@@ -196,21 +199,33 @@ public class ModuleCustomizationScreen : PseudoScreenWithResult<ModuleTemplateBu
             }
         }
 
+        if (closeRequestedByEnter) {
+            closeRequestedByEnter = false;
+            CloseWithResult(modules);
+            return;
+        }
+
         gui.AllocateSpacing(3f);
         using (gui.EnterRow(allocator: RectAllocator.RightRow)) {
             if (template == null && gui.BuildButton(LSs.Cancel)) {
                 Close();
+                return;
             }
             if (template != null && gui.BuildButton(LSs.PartialCancel)) {
                 Close();
+                return;
             }
             if (gui.BuildButton(LSs.Done)) {
+                closeRequestedByEnter = false;
                 CloseWithResult(modules);
+                return;
             }
 
             gui.allocator = RectAllocator.LeftRow;
             if (modules != null && recipe != null && gui.BuildRedButton(LSs.ModuleCustomizationRemove)) {
+                closeRequestedByEnter = false;
                 CloseWithResult(null);
+                return;
             }
         }
     }
@@ -306,5 +321,8 @@ public class ModuleCustomizationScreen : PseudoScreenWithResult<ModuleTemplateBu
         }
     }
 
-    protected override void ReturnPressed() => CloseWithResult(modules);
+    protected override void ReturnPressed() {
+        closeRequestedByEnter = true;
+        contents.Rebuild();
+    }
 }
