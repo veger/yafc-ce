@@ -32,6 +32,7 @@ Date:
         - Remove incorrect speed bonus for quality mining drills.
         - Show beacons added by the per-page settings on each row they affect.
         - Fix the temperature overlay for fluids with non-64px icons.
+        - In Module customization, pressing Enter after editing module amounts now applies the changes like clicking Done.
 ----------------------------------------------------------------------------------------------------------------------
 Version: 2.16.0
 Date: October 24th 2025
