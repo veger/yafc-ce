@@ -323,7 +323,7 @@ goodsHaveNoProduction:;
                 goods.Add((flow.goods, rounded));
             }
 
-            _ = BlueprintUtilities.ExportConstantCombinators(view.projectPage!.name, goods); // null-forgiving: An active view always has an active page.
+            _ = SDL.SDL_SetClipboardText(BlueprintUtilities.ExportConstantCombinators(view.projectPage!.name, goods)); // null-forgiving: An active view always has an active page.
         }
     }
 
@@ -656,7 +656,7 @@ goodsHaveNoProduction:;
                     .GetRecipesRecursive()
                     .DistinctBy(row => (row.entity, row.recipe, includeFuel ? row.fuel : null));
 
-                _ = BlueprintUtilities.ExportRecipiesAsBlueprint(view.projectPage!.name, uniqueEntites, includeFuel);
+                _ = SDL.SDL_SetClipboardText(BlueprintUtilities.ExportRecipiesAsBlueprint(view.projectPage!.name, uniqueEntites, includeFuel));
             }
         }
     }
