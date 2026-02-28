@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using SDL2;
 using Yafc.Blueprints;
 using Yafc.I18n;
 using Yafc.Model;
@@ -204,12 +205,12 @@ public class ShoppingListScreen : PseudoScreen {
         if (Database.objectsByTypeName.TryGetValue("Entity.constant-combinator", out var combinator)
             && gui.BuildFactorioObjectButtonWithText(combinator) == Click.Left && gui.CloseDropdown()) {
 
-            _ = BlueprintUtilities.ExportConstantCombinators(LSs.ShoppingList, ExportGoods<Goods>());
+            _ = SDL.SDL_SetClipboardText(BlueprintUtilities.ExportConstantCombinators(LSs.ShoppingList, ExportGoods<Goods>()));
         }
 
         foreach (var container in Database.allContainers) {
             if (container.logisticMode == "requester" && gui.BuildFactorioObjectButtonWithText(container) == Click.Left && gui.CloseDropdown()) {
-                _ = BlueprintUtilities.ExportRequesterChests(LSs.ShoppingList, ExportGoods<Item>(), container);
+                _ = SDL.SDL_SetClipboardText(BlueprintUtilities.ExportRequesterChests(LSs.ShoppingList, ExportGoods<Item>(), container));
             }
         }
     }

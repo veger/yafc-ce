@@ -2,23 +2,12 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using SDL2;
 using Yafc.Model;
 
 namespace Yafc.Blueprints;
 
 public static class BlueprintUtilities {
-    private static string ExportBlueprint(BlueprintString blueprint, bool copyToClipboard) {
-        string result = blueprint.ToBpString();
-
-        if (copyToClipboard) {
-            _ = SDL.SDL_SetClipboardText(result);
-        }
-
-        return result;
-    }
-
-    public static string ExportConstantCombinators(string name, IReadOnlyList<(IObjectWithQuality<Goods> item, int amount)> goods, bool copyToClipboard = true) {
+    public static string ExportConstantCombinators(string name, IReadOnlyList<(IObjectWithQuality<Goods> item, int amount)> goods) {
         int combinatorCount = ((goods.Count - 1) / Database.constantCombinatorCapacity) + 1;
         int offset = -combinatorCount / 2;
         BlueprintString blueprint = new BlueprintString(name);
@@ -48,10 +37,10 @@ public static class BlueprintUtilities {
             last = entity;
         }
 
-        return ExportBlueprint(blueprint, copyToClipboard);
+        return blueprint.ToBpString();
     }
 
-    public static string ExportRequesterChests(string name, IReadOnlyList<(IObjectWithQuality<Item> item, int amount)> goods, EntityContainer chest, bool copyToClipboard = true) {
+    public static string ExportRequesterChests(string name, IReadOnlyList<(IObjectWithQuality<Item> item, int amount)> goods, EntityContainer chest) {
         if (chest.logisticSlotsCount <= 0) {
             throw new ArgumentException("Chest does not have logistic slots");
         }
@@ -84,7 +73,7 @@ public static class BlueprintUtilities {
             }
         }
 
-        return ExportBlueprint(blueprint, copyToClipboard);
+        return blueprint.ToBpString();
     }
 
     private class PlacedEntity {
@@ -105,7 +94,7 @@ public static class BlueprintUtilities {
         public List<PlacedEntity> Placements { get; set; } = new();
     }
 
-    public static string ExportRecipiesAsBlueprint(string name, IEnumerable<RecipeRow> recipies, bool includeFuel, bool copyToClipboard = true) {
+    public static string ExportRecipiesAsBlueprint(string name, IEnumerable<RecipeRow> recipies, bool includeFuel) {
         // Sort buildings largest to smallest (by height then width) for better packing
         var entities = recipies
             .Where(r => r.entity is not null && r.recipe is not null)
@@ -196,6 +185,6 @@ public static class BlueprintUtilities {
             buildingIndex += 1;
         }
 
-        return ExportBlueprint(blueprint, copyToClipboard);
+        return blueprint.ToBpString();
     }
 }
