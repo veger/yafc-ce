@@ -7,10 +7,7 @@ internal partial class SourceGenerator {
 
     private static void Main() {
         // Find the solution root directory
-        string rootDirectory = Environment.CurrentDirectory;
-        while (!Directory.Exists(Path.Combine(rootDirectory, ".git"))) {
-            rootDirectory = Path.GetDirectoryName(rootDirectory)!;
-        }
+        string rootDirectory = FindSolutionRootDirectory(Environment.CurrentDirectory);
         Environment.CurrentDirectory = rootDirectory;
 
         HashSet<string> keys = [];
@@ -156,6 +153,19 @@ internal partial class SourceGenerator {
         if (!File.Exists(filePath) || File.ReadAllText(filePath) != new StreamReader(newContent, leaveOpen: true).ReadToEnd()) {
             File.WriteAllBytes(filePath, newContent.ToArray());
         }
+    }
+
+    private static string FindSolutionRootDirectory(string startDirectory) {
+        DirectoryInfo? current = new(startDirectory);
+        while (current is not null) {
+            string dotGitPath = Path.Combine(current.FullName, ".git");
+            if (Directory.Exists(dotGitPath) || File.Exists(dotGitPath) || File.Exists(Path.Combine(current.FullName, "FactorioCalc.sln"))) {
+                return current.FullName;
+            }
+            current = current.Parent;
+        }
+
+        throw new DirectoryNotFoundException($"Could not locate repository root from '{startDirectory}'.");
     }
 
     [GeneratedRegex("__(\\d+)__")]
