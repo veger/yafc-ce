@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -906,6 +907,7 @@ public static class ObjectWithQuality {
     /// Represents a <see cref="FactorioObject"/> with an attached <see cref="Quality"/> modifier.
     /// </summary>
     /// <typeparam name="T">The concrete type of the quality-modified object.</typeparam>
+    [DebuggerDisplay("{DebuggerDisplay,nq}", Type = "{DebuggerType,nq}")]
     private sealed class ConcreteObjectWithQuality<T>(T target, Quality quality) : IObjectWithQuality<T> where T : FactorioObject {
         /// <inheritdoc/>
         public T target { get; } = target ?? throw new ArgumentNullException(nameof(target));
@@ -915,6 +917,12 @@ public static class ObjectWithQuality {
         string IFactorioObjectWrapper.text => ((IFactorioObjectWrapper)target).text;
         FactorioObject IFactorioObjectWrapper.target => target;
         float IFactorioObjectWrapper.amount => ((IFactorioObjectWrapper)target).amount;
+
+        // The debugger is already displaying these as the value and type; don't display them again.
+        [DebuggerBrowsable(DebuggerBrowsableState.Never)]
+        private string DebuggerDisplay => $"{{{target.typeDotName} ({quality})}}";
+        [DebuggerBrowsable(DebuggerBrowsableState.Never)]
+        private static string DebuggerType => $"{typeof(T).FullName} with quality";
     }
 }
 

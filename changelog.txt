@@ -34,6 +34,8 @@ Date:
         - Fix the temperature overlay for fluids with non-64px icons.
         - In Module customization, pressing Enter after editing module amounts now applies the changes like clicking Done.
         - Fix initial New Page was not displayed in tab bar after creating new project.
+    Internal changes:
+        - Remove boilerplate from the debugger display of quality-aware objects.
 ----------------------------------------------------------------------------------------------------------------------
 Version: 2.16.0
 Date: October 24th 2025
