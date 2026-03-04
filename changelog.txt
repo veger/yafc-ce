@@ -23,7 +23,12 @@ Version:
 Date:
     Features:
         - Improve early-startup error logging
+        - Extended main window title - append current project name (with * indicator for unsaved changes).
+        - Main dropdown - disable Save/Undo when there is nothing to do.
     Fixes:
+    Internal changes:
+        - Rename SettingsDropdown to MainDropdown.
+        - Rename LoadProjectHeavy to ReturnToWelcomeScreen.
 ----------------------------------------------------------------------------------------------------------------------
 Version: 2.18.1
 Date: April 21st 2026
