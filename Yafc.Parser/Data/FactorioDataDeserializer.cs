@@ -539,10 +539,11 @@ internal partial class FactorioDataDeserializer {
         }
 
         if (GetRef(table, "spoil_result", out Item? spoiled)) {
+            EnsureSpoilageEntityExists();
             var recipe = CreateSpecialRecipe(item, SpecialNames.SpoilRecipe, LSs.SpecialRecipeSpoiling);
             recipe.ingredients = [new Ingredient(item, 1)];
             recipe.products = [new Product(spoiled, 1)];
-            recipe.time = table.Get("spoil_ticks", 0) / 60f;
+            recipe.time = table.Get("spoil_ticks", 0L) / 60f;
         }
         // Read spoil-into-entity triggers
         else if (table["spoil_to_trigger_result"] is LuaTable spoil && spoil["trigger"] is LuaTable triggers) {
@@ -560,7 +561,7 @@ internal partial class FactorioDataDeserializer {
             }
             void readEffect(LuaTable effect) {
                 if (effect.Get<string>("type") == "create-entity") {
-                    float spoilTime = table.Get("spoil_ticks", 0) / 60f;
+                    float spoilTime = table.Get("spoil_ticks", 0L) / 60f;
                     string entityName = "Entity." + effect.Get<string>("entity_name");
                     item.getBaseSpoilTime = new(() => spoilTime);
                     item.getSpoilResult = new(() => {

@@ -323,7 +323,6 @@ internal partial class FactorioDataDeserializer {
                 }
 
                 recipeCrafters.Add(character, SpecialNames.TechnologyTrigger);
-                recipeCrafters.Add(character, SpecialNames.SpoilRecipe);
 
                 character.energy = laborEntityEnergy;
                 if (character.name == "character") {

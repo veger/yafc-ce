@@ -35,6 +35,7 @@ internal partial class FactorioDataDeserializer {
     private readonly EntityEnergy voidEntityEnergy;
     private readonly EntityEnergy laborEntityEnergy;
     private Entity? character;
+    private EntityCrafter? spoilageEntity;
     private readonly Version factorioVersion;
     private int rocketCapacity;
     private int defaultItemWeight;
@@ -768,6 +769,36 @@ internal partial class FactorioDataDeserializer {
         recipeCategories.Add(category, recipe);
 
         return recipe;
+    }
+
+    /// <summary>
+    /// Creates the spoilage entity if it doesn't exist yet. Called when the first spoil recipe is created.
+    /// </summary>
+    private void EnsureSpoilageEntityExists() {
+        if (spoilageEntity != null) {
+            return;
+        }
+
+        spoilageEntity = new EntityCrafter {
+            name = "spoilage",
+            locName = LSs.SpecialEntitySpoilage,
+            locDescr = LSs.SpecialEntitySpoilageDescription,
+            factorioType = "spoilage",
+            iconSpec = [new FactorioIconPart("__core__/graphics/clock-icon.png")],
+            energy = voidEntityEnergy,
+            mapGenerated = true,
+            itemInputs = 1,
+            effectReceiver = new EffectReceiver {
+                baseEffect = new Effect(),
+                usesModuleEffects = false,
+                usesBeaconEffects = false,
+                usesSurfaceEffects = false,
+            },
+        };
+        allObjects.Add(spoilageEntity);
+        registeredObjects[(typeof(Entity), "spoilage")] = spoilageEntity;
+        rootAccessible.Add(spoilageEntity);
+        recipeCrafters.Add(spoilageEntity, SpecialNames.SpoilRecipe);
     }
 
     private void ParseCaptureEffects() {
