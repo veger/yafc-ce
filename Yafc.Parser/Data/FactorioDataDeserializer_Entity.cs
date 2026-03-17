@@ -475,7 +475,9 @@ internal partial class FactorioDataDeserializer {
                 pump.basePower = ParseEnergy(usesPower);
                 pump.baseCraftingSpeed = table.Get("pumping_speed", 20f) / 20f;
 
-                if (table.Get("fluid_box", out LuaTable? fluidBox) && fluidBox.Get("fluid", out string? fluidName)) {
+                if ((table.Get("fluid_box", out LuaTable? fluidBox) && fluidBox.Get("filter", out string? fluidName)) // 1.1 and 2.0
+                    || table.Get("fluid", out fluidName)) { // simpler structure for 1.1 only
+
                     var pumpingFluid = GetFluidFixedTemp(fluidName, 0);
                     string recipeCategory = SpecialNames.PumpingRecipe + pumpingFluid.name;
                     recipe = CreateSpecialRecipe(pumpingFluid, recipeCategory, LSs.SpecialRecipePumping);
