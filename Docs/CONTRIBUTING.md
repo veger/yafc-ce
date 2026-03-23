@@ -2,9 +2,9 @@
 
 Here are a couple of things to make your experience in the community more enjoyable. 
 
-### Before you start coding: The Design Phase
+### Before you start coding, please submit the Feature Design
 
-The code of Yafc is complicated enough that we want to make it simpler. In other words, if your feature increases the complexity, then please make a github issue with your proposal before coding, so we can discuss if this feature can be added to Yafc.
+The code of Yafc is complicated enough that we want to make it simpler. In other words, if your feature increases the complexity, then please make a Feature Design issue with your proposal before coding, so we can discuss if this feature can be added to Yafc.
 
 ### Setting up environment
 * Please inspect and run [set-up-git-hooks.sh](/set-up-git-hooks.sh) once. It sets up a formatting check to be run before `git push`, to make sure that the basic formatting is fine.
