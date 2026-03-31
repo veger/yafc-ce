@@ -25,6 +25,9 @@ data.script_enabled:insert({{ type = "item", name = "iron-ore" }, { type = "item
 data.script_enabled:insert({{{ type = "item", name = "iron-ore" }, { type = "item", name = "copper-ore" }}, { type = "item", name = "coal" }})
 ```
 
+### Helper methods
+`yafc.parseEnergy` and `yafc.parsePower` will parse an energy or power string into the effective value in MJ or MW.
+
 ## Example of a valid mod fix
 <filename: core.lualib.util.lua>
 ```lua

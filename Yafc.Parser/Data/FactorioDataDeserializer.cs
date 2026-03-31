@@ -487,7 +487,10 @@ internal partial class FactorioDataDeserializer {
         }
     }
 
-    private static float ParseEnergy(string? energy) {
+    private static float ParseEnergy(string? energy) => (float)ParseEnergyDouble(energy);
+
+    // Mod fixes need the higher precision calculations.
+    public static double ParseEnergyDouble(string? energy) {
         if (energy is null || energy.Length < 2) {
             return 0f;
         }
@@ -495,23 +498,23 @@ internal partial class FactorioDataDeserializer {
         char energyMul = energy[^2];
         // internally store energy in megawatts / megajoules to be closer to 1
         if (char.IsLetter(energyMul)) {
-            float energyBase = float.Parse(energy[..^2]);
+            double energyBase = double.Parse(energy[..^2]);
 
             switch (energyMul) {
                 // 2.0 only allows k; 1.1 allows either. Assume 2.0 mods don't rely on whatever Factorio does with 'K'.
-                case 'k' or 'K': return energyBase * 1e-3f;
+                case 'k' or 'K': return energyBase * 1e-3;
                 case 'M': return energyBase;
-                case 'G': return energyBase * 1e3f;
-                case 'T': return energyBase * 1e6f;
-                case 'P': return energyBase * 1e9f;
-                case 'E': return energyBase * 1e12f;
-                case 'Z': return energyBase * 1e15f;
-                case 'Y': return energyBase * 1e18f;
-                case 'R': return energyBase * 1e21f;
-                case 'Q': return energyBase * 1e24f;
+                case 'G': return energyBase * 1e3;
+                case 'T': return energyBase * 1e6;
+                case 'P': return energyBase * 1e9;
+                case 'E': return energyBase * 1e12;
+                case 'Z': return energyBase * 1e15;
+                case 'Y': return energyBase * 1e18;
+                case 'R': return energyBase * 1e21;
+                case 'Q': return energyBase * 1e24;
             }
         }
-        return float.Parse(energy[..^1]) * 1e-6f;
+        return double.Parse(energy[..^1]) * 1e-6;
     }
 
     private static Effect ParseEffect(LuaTable table) {

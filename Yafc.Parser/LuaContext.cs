@@ -156,6 +156,7 @@ internal partial class LuaContext : IDisposable {
         var helpers = NewTable();
         helpers["game_version"] = gameVersion.ToString(3);
         SetGlobal("helpers", helpers);
+        SetGlobal("yafc", NewTable());
 
         RegisterApi(Log, "raw_log");
         RegisterApi(Require, "require");
@@ -164,6 +165,8 @@ internal partial class LuaContext : IDisposable {
         RegisterApi(DebugTraceback, "debug", "traceback");
         RegisterApi(CompareVersions, "helpers", "compare_versions");
         RegisterApi(EvaluateExpression, "helpers", "evaluate_expression");
+        RegisterApi(ParseEnergy, "yafc", "parse_energy");
+        RegisterApi(ParsePower, "yafc", "parse_power");
         _ = lua_pushstring(L, Project.currentYafcVersion.ToString());
         lua_setglobal(L, "yafc_version");
         var mods = NewTable();
@@ -346,6 +349,19 @@ internal partial class LuaContext : IDisposable {
         else {
             lua_pushnumber(lua, 0);
         }
+        return 1;
+    }
+
+    // Differentiate between energy and power parsing, for clarity and in preparation for an update to the underlying parser.
+    private int ParseEnergy(IntPtr lua) {
+        string? value = GetString(1);
+        lua_pushnumber(lua, FactorioDataDeserializer.ParseEnergyDouble(value));
+        return 1;
+    }
+
+    private int ParsePower(IntPtr lua) {
+        string? value = GetString(1);
+        lua_pushnumber(lua, FactorioDataDeserializer.ParseEnergyDouble(value));
         return 1;
     }
 
