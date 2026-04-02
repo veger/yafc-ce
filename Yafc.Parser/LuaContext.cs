@@ -107,6 +107,12 @@ internal partial class LuaContext : IDisposable {
     private static partial void lua_pushcclosure(IntPtr state, IntPtr callback, int n);
     [LibraryImport(LUA)]
     [UnmanagedCallConv(CallConvs = [typeof(System.Runtime.CompilerServices.CallConvCdecl)])]
+    private static partial void lua_pushvalue(IntPtr state, int index);
+    [LibraryImport(LUA)]
+    [UnmanagedCallConv(CallConvs = [typeof(System.Runtime.CompilerServices.CallConvCdecl)])]
+    private static partial void lua_replace(IntPtr state, int index);
+    [LibraryImport(LUA)]
+    [UnmanagedCallConv(CallConvs = [typeof(System.Runtime.CompilerServices.CallConvCdecl)])]
     private static partial void lua_createtable(IntPtr state, int narr, int nrec);
 
     [LibraryImport(LUA)]
@@ -154,6 +160,7 @@ internal partial class LuaContext : IDisposable {
         RegisterApi(Log, "raw_log");
         RegisterApi(Require, "require");
         RegisterApi(SourceFixups, "yafc_sourcefixups");
+        RegisterApi(StringFormat, "yafc_format");
         RegisterApi(DebugTraceback, "debug", "traceback");
         RegisterApi(CompareVersions, "helpers", "compare_versions");
         RegisterApi(EvaluateExpression, "helpers", "evaluate_expression");
@@ -251,6 +258,70 @@ internal partial class LuaContext : IDisposable {
             return 2; // Return the fixed names
         }
         return 2; // This didn't look like one of our names; just return the input values
+    }
+
+    /// <summary>
+    /// The documentation states that %e/%E/%g/%G produce two-digit exponents when possible. Some mods rely on this behavior.
+    /// If this method is called, our Lua build produces three-digit exponents instead. (The Windows build is known to have this bug.) It appears this
+    /// has to do with the underlying C runtime. I was able to build a new Windows Lua library that produced the correct strings, but it also crashed
+    /// (heap corruption) on some modpacks, including AngelBob.
+    /// This is only called for format strings that match the pattern in Sandbox.lua, and only if the C runtime has that bug.
+    /// </summary>
+    private int StringFormat(IntPtr lua) {
+        // The incoming parameters are: string.format, pattern, value1, value2, ...
+        // Outgoing parameters will be: newPattern, value1, newValue2, ...
+        //   On success, all %e-type conversion specifications in the pattern are replaced with %s, and each corresponding value is replaced with a
+        //     correctly-formatted string.
+        //   On failure, at least value could not be converted. The value and its specification were not modified.
+
+        int resultCount = lua_gettop(lua) - 1; // Discard the real string.format when returning
+        string pattern = GetString(2)!; // null-forgiving: The Lua patch guarantees this is a string.
+
+        int currentIndex = 3;
+        for (int i = 0; i < pattern.Length - 1; i++) { // Don't check the last character so we can safely do `pattern[++i]`.
+            if (pattern[i] == '%') {
+                // Found a %. Is this %<something>[eEgG]?
+                if (FindFloatFormatSpecifier().Match(pattern[i..]) is Match { Success: true } match) {
+                    // It is. Run string.format with just this conversion and value.
+                    lua_pushvalue(lua, 1);                  // string.format
+                    lua_pushstring(lua, match.ToString());  // "%...e"
+                    lua_pushvalue(lua, currentIndex);       // value to be formatted
+                    if (lua_pcallk(lua, 2, 1, 0, IntPtr.Zero, IntPtr.Zero) != Result.LUA_OK) {
+                        // Formatting error
+                        Pop(1); // Remove the error message
+                        break; // Let the original string.format regenerate the error
+                    }
+
+                    string result = (string)PopManagedValue(1)!;
+                    // If the formatted string contains an exponent that starts with 0, remove that 0.
+                    // (We know it's a three digit exponent because this shim isn't applied unless 1 converts to "...e+000")
+                    result = result.Replace("e+0", "e+");
+                    result = result.Replace("e-0", "e-");
+                    result = result.Replace("E+0", "E+");
+                    result = result.Replace("E-0", "E-");
+
+                    // Replace the number with our new string, and the substitution with %s.
+                    lua_pushstring(lua, result);
+                    lua_replace(lua, currentIndex);
+                    pattern = pattern[..i] + "%s" + pattern[(i + match.Length)..];
+                    i++;
+                    currentIndex++; // We dealt with this value; move on to the next.
+                }
+                // It's not %...[eEgG] Skip a possible %%. More likely, skip the specifier; e.g. the 's' in "%s"
+                else if (pattern[++i] != '%') {
+                    // It wasn't a %%, so skip the corresponding value, which doesn't need to be fixed.
+                    currentIndex++;
+                    // We don't need to determine the length of this specification. % is not valid in a conversion specification,
+                    // so the next % (if present) must introduce the next one.
+                }
+            }
+        }
+
+        // Replace the old format string
+        lua_pushstring(lua, pattern);
+        lua_replace(lua, 2);
+        // Return the patched values to be passed to the original string.format.
+        return resultCount;
     }
 
     private int CompareVersions(IntPtr lua) {
@@ -635,6 +706,11 @@ internal partial class LuaContext : IDisposable {
 
     [GeneratedRegex("^[0-9]+ ")]
     private static partial Regex FindChunkId();
+
+    // The full list of characters printf accepts between % and e is [-+ #0-9*.l] (https://en.cppreference.com/w/c/io/fprintf)
+    // Lua does not support * or l (https://www.lua.org/manual/5.2/manual.html#pdf-string.format)
+    [GeneratedRegex("^%[-+ #0-9.]*[eEgG]")]
+    private static partial Regex FindFloatFormatSpecifier();
 }
 
 internal class LuaTable : ILocalizable {
