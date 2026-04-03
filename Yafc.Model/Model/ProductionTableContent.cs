@@ -494,7 +494,11 @@ public sealed class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Pr
                 return [];
             }
             else if (hierarchyEnabled) {
-                return BuildIngredients(false).Select(RecipeRowIngredient.FromSolver);
+                var result = BuildIngredients(false).Select(RecipeRowIngredient.FromSolver);
+                if (fixedIngredient == Database.itemInput || showTotalIO) {
+                    result = result.Append(new(Database.itemInput, result.Where(i => i.Goods.Is<Item>()).Sum(i => i.Amount), null, null));
+                }
+                return result;
             }
             else {
                 return Enumerable.Repeat(new RecipeRowIngredient(null, 0, null, null), recipe.target.ingredients.Length);
@@ -523,7 +527,11 @@ public sealed class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Pr
                 return [];
             }
             else if (hierarchyEnabled) {
-                return BuildProducts(false).Select(RecipeRowProduct.FromSolver);
+                var result = BuildProducts(false).Select(RecipeRowProduct.FromSolver);
+                if (fixedProduct == Database.itemOutput || showTotalIO) {
+                    result = result.Append(new(Database.itemOutput, result.Where(p => p.Goods.Is<Item>()).Sum(p => p.Amount), null, null));
+                }
+                return result;
             }
             else {
                 return Enumerable.Repeat(new RecipeRowProduct(null, 0, null, null), recipe.target.products.Length);

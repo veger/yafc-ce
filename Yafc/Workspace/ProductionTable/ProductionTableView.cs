@@ -673,11 +673,6 @@ goodsHaveNoProduction:;
                     grid.Next();
                     view.BuildGoodsIcon(gui, goods, link, amount, ProductDropdownType.Ingredient, recipe, recipe.linkRoot, HintLocations.OnProducingRecipes, variants);
                 }
-                if (recipe.fixedIngredient == Database.itemInput || recipe.showTotalIO) {
-                    grid.Next();
-                    view.BuildGoodsIcon(gui, recipe.hierarchyEnabled ? Database.itemInput : null, null, recipe.Ingredients.Where(i => i.Goods?.target is Item).Sum(i => i.Amount),
-                        ProductDropdownType.Ingredient, recipe, recipe.linkRoot, HintLocations.None);
-                }
             }
             grid.Dispose();
         }
@@ -711,11 +706,6 @@ goodsHaveNoProduction:;
                             ExtraSpoilInformation = gui => gui.BuildText(LSs.ProductionTableOutputFixedSpoilage.L(DataUtils.FormatAmount(percentSpoiled.Value, UnitOfMeasure.Percent)))
                         });
                     }
-                }
-                if (recipe.fixedProduct == Database.itemOutput || recipe.showTotalIO) {
-                    grid.Next();
-                    view.BuildGoodsIcon(gui, recipe.hierarchyEnabled ? Database.itemOutput : null, null, recipe.Products.Where(i => i.Goods?.target is Item).Sum(i => i.Amount),
-                        ProductDropdownType.Product, recipe, recipe.linkRoot, HintLocations.None);
                 }
             }
             grid.Dispose();
