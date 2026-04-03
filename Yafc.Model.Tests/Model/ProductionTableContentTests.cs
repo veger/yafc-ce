@@ -17,13 +17,14 @@ public class ProductionTableContentTests {
         ProductionTable table = (ProductionTable)page.content;
         table.AddRecipe(Database.recipes.all.Single(r => r.name == "recipe").With(Quality.Normal), DataUtils.DeterministicComparer);
         RecipeRow row = table.GetAllRecipes().Single();
+        row.showTotalIO = true;
 
         table.modules.beacon = Database.allBeacons.Single().With(Quality.Normal);
         table.modules.beaconModule = Database.allModules.Single(m => m.name == "speed-module").With(Quality.Normal);
         table.modules.beaconsPerBuilding = 2;
         table.modules.autoFillPayback = MathF.Sqrt(float.MaxValue);
 
-        RunTest(row, testCombinations, (3 * 3 + 3 * 1) * (9 + 2) * 6); // Crafter&fuel * modules * available fixed values
+        RunTest(row, testCombinations, (3 * 3 + 3 * 1) * (9 + 2) * 8); // Crafter&fuel * modules * available fixed values
 
         // Cycle through all crafters (3 burner, 3 electric), fuels (3+1), and internal modules (9 + empty + default), and call assert for each combination.
         // assert will ensure the currently fixed value has not changed by more than 0.01%.

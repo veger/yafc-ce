@@ -357,13 +357,15 @@ public sealed class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Pr
             if (SerializationMap.IsDeserializing || fixedBuildings == 0 || _fuel == value) {
                 _fuel = value;
             }
-            else if (fixedProduct != null && (fuel.FuelResult() == fixedProduct || value.FuelResult() == fixedProduct)) {
+            else if (fixedProduct != null) {
+                // We're changing the fuel and there's a fixed product. Make sure the amount doesn't change.
+                // (This usually has no effect, but the test for "will it have an effect?" isn't worth the extra effort.)
+
                 if (Products.SingleOrDefault(p => p.Goods == fixedProduct, false) is not RecipeRowProduct product) {
                     fixedBuildings = 0; // We couldn't find the Product corresponding to fixedProduct. Just clear the fixed amount.
                     _fuel = value;
                 }
                 else {
-                    // We're changing the fuel and at least one of the current or new fuel burns to the fixed product
                     float oldAmount = product.Amount;
 
                     _fuel = value;
@@ -748,7 +750,7 @@ public sealed class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Pr
             // Step 4 is only performed after step 1 and when the possibly-changed entity accepts the old fuel.
             //      If the entity does not accept the old fuel, a caller must set an appropriate fuel.
 
-            if (row.fixedProduct != null && row.fixedProduct == row.fuel.FuelResult()) {
+            if (row.fixedProduct != null && (row.fixedProduct == row.fuel.FuelResult() || row.fixedProduct == Database.itemOutput)) {
                 oldFuel = row.fuel;
                 row.fuel = Database.voidEnergy; // step 1
             }
