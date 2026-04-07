@@ -117,13 +117,14 @@ internal partial class FactorioDataDeserializer {
         // Calculate the size/position of the overlay digits to correspond to the size of the first icon layer.
         int size = obj.iconSpec?.FirstOrDefault()?.size ?? 64;
         int shift = 7 * size / 32;
-        int xoffset = 12 * size / 32;
-        int yoffset = size / -2;
+        // 11.5 is the (X and Y) offset of the upper-left corner of a 9x9 square centered on a 32x32 canvas. Then move the render 1/4 px into the
+        // canvas, so it never rounds from -11.5 to -12. (Our 7x9 digits are drawn on the left side of a 9x9 square offset from the center.)
+        float offset = -11.5f * size / 32 + .25f;
 
         obj.iconSpec =
         [
             .. obj.iconSpec ?? [],
-            .. iconStr.Take(4).Select((x, n) => new FactorioIconPart("__.__/" + x) { size = size, y = yoffset, x = (n * shift) - xoffset, scale = 0.28f }),
+            .. iconStr.Take(4).Select((x, n) => new FactorioIconPart("__.__/" + x) { size = size, y = offset, x = (n * shift) + offset, scale = 0.28f }),
         ];
     }
 
@@ -397,11 +398,11 @@ internal partial class FactorioDataDeserializer {
                 // iconSize * icon.scale, or iconSize (iconSize is now const int cachedIconSize = 32).
                 // Presumably the scaling factor had a purpose, but I can't find it. Py and Vanilla objects (e.g. Recipe.Moss-1 and
                 // Entity.lane-splitter) draw correctly after removing the scaling factor.
-                targetRect.x = MathUtils.Clamp(targetRect.x + MathUtils.Round(icon.x), 0, renderSize - targetRect.w);
+                targetRect.x = targetRect.x + MathUtils.Round(icon.x);
             }
 
             if (icon.y != 0) {
-                targetRect.y = MathUtils.Clamp(targetRect.y + MathUtils.Round(icon.y), 0, renderSize - targetRect.h);
+                targetRect.y = targetRect.y + MathUtils.Round(icon.y);
             }
 
             SDL.SDL_Rect srcRect = new SDL.SDL_Rect {
