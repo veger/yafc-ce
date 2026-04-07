@@ -22,6 +22,11 @@
 Version:
 Date:
     Features:
+    Fixes:
+----------------------------------------------------------------------------------------------------------------------
+Version: 2.18.0
+Date: April 7th 2026
+    Features:
         - Pressing Ctrl + LeftClick on the Close icon of the page now deletes it instead of closing. LeftClick wihout Ctrl closes it as usual.
         - Track heat temperature variants from different reactor types.
         - Support RecipePrototype.additional_categories  (added in 2.0.49)
