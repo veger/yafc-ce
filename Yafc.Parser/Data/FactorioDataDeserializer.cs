@@ -933,10 +933,26 @@ nextWeightCalculation:;
                 }
 
                 if (x.Get("tint", out LuaTable? tint)) {
-                    part.r = tint.Get("r", 1f);
-                    part.g = tint.Get("g", 1f);
-                    part.b = tint.Get("b", 1f);
-                    part.a = tint.Get("a", 1f);
+                    // Question: How is { 1, 1, 1, a = 0.5 } handled? We ignore a and read it as { 1, 1, 1 }.
+                    if (tint.ArrayElements.Count is 3 or 4) {
+                        part.r = tint.Get(1, 0f);
+                        part.g = tint.Get(2, 0f);
+                        part.b = tint.Get(3, 0f);
+                        part.a = tint.Get(4, 1f);
+                    }
+                    else {
+                        part.r = tint.Get("r", 0f);
+                        part.g = tint.Get("g", 0f);
+                        part.b = tint.Get("b", 0f);
+                        part.a = tint.Get("a", 1f);
+                    }
+
+                    if (part.r > 1 || part.g > 1 || part.b > 1 || part.a > 1) {
+                        part.r /= 255;
+                        part.g /= 255;
+                        part.b /= 255;
+                        part.a /= 255;
+                    }
                 }
 
                 return part;
