@@ -117,13 +117,14 @@ internal partial class FactorioDataDeserializer {
         // Calculate the size/position of the overlay digits to correspond to the size of the first icon layer.
         int size = obj.iconSpec?.FirstOrDefault()?.size ?? 64;
         int shift = 7 * size / 32;
-        int xoffset = 12 * size / 32;
-        int yoffset = size / -2;
+        // 11.5 is the (X and Y) offset of the upper-left corner of a 9x9 square centered on a 32x32 canvas. Then move the render 1/4 px into the
+        // canvas, so it never rounds from -11.5 to -12. (Our 7x9 digits are drawn on the left side of a 9x9 square offset from the center.)
+        float offset = -11.5f * size / 32 + .25f;
 
         obj.iconSpec =
         [
             .. obj.iconSpec ?? [],
-            .. iconStr.Take(4).Select((x, n) => new FactorioIconPart("__.__/" + x) { size = size, y = yoffset, x = (n * shift) - xoffset, scale = 0.28f }),
+            .. iconStr.Take(4).Select((x, n) => new FactorioIconPart("__.__/" + x) { size = size, y = offset, x = (n * shift) + offset, scale = 0.28f }),
         ];
     }
 
@@ -397,11 +398,11 @@ internal partial class FactorioDataDeserializer {
                 // iconSize * icon.scale, or iconSize (iconSize is now const int cachedIconSize = 32).
                 // Presumably the scaling factor had a purpose, but I can't find it. Py and Vanilla objects (e.g. Recipe.Moss-1 and
                 // Entity.lane-splitter) draw correctly after removing the scaling factor.
-                targetRect.x = MathUtils.Clamp(targetRect.x + MathUtils.Round(icon.x), 0, renderSize - targetRect.w);
+                targetRect.x = targetRect.x + MathUtils.Round(icon.x);
             }
 
             if (icon.y != 0) {
-                targetRect.y = MathUtils.Clamp(targetRect.y + MathUtils.Round(icon.y), 0, renderSize - targetRect.h);
+                targetRect.y = targetRect.y + MathUtils.Round(icon.y);
             }
 
             SDL.SDL_Rect srcRect = new SDL.SDL_Rect {
@@ -905,6 +906,8 @@ nextWeightCalculation:;
             target.iconSpec = [new FactorioIconPart(s) { size = table.Get("icon_size", 64) }];
         }
         else if (table.Get("icons", out LuaTable? iconList)) {
+            float? scale = null;
+
             target.iconSpec = [.. iconList.ArrayElements<LuaTable>().Select(x => {
                 if (!x.Get("icon", out string? path)) {
                     throw new NotSupportedException($"One of the icon layers for {name} does not have a path.");
@@ -926,16 +929,46 @@ nextWeightCalculation:;
                     part.scale *= part.size / 64f;
                 }
 
+                if (scale is null) { // If first icon layer
+                    // Scale up to a minimum of 1x, to reduce pixelization.
+                    if (part.scale < 1) {
+                        scale = part.scale;
+                        part.scale = 1;
+                    }
+                    else {
+                        scale = 1;
+                    }
+                }
+                else {
+                    part.scale /= scale.Value;
+                }
+
                 if (x.Get("shift", out LuaTable? shift)) {
-                    part.x = shift.Get<float>(1);
-                    part.y = shift.Get<float>(2);
+                    part.x = shift.Get<float>(1) / scale.Value;
+                    part.y = shift.Get<float>(2) / scale.Value;
                 }
 
                 if (x.Get("tint", out LuaTable? tint)) {
-                    part.r = tint.Get("r", 1f);
-                    part.g = tint.Get("g", 1f);
-                    part.b = tint.Get("b", 1f);
-                    part.a = tint.Get("a", 1f);
+                    // Question: How is { 1, 1, 1, a = 0.5 } handled? We ignore a and read it as { 1, 1, 1 }.
+                    if (tint.ArrayElements.Count is 3 or 4) {
+                        part.r = tint.Get(1, 0f);
+                        part.g = tint.Get(2, 0f);
+                        part.b = tint.Get(3, 0f);
+                        part.a = tint.Get(4, 1f);
+                    }
+                    else {
+                        part.r = tint.Get("r", 0f);
+                        part.g = tint.Get("g", 0f);
+                        part.b = tint.Get("b", 0f);
+                        part.a = tint.Get("a", 1f);
+                    }
+
+                    if (part.r > 1 || part.g > 1 || part.b > 1 || part.a > 1) {
+                        part.r /= 255;
+                        part.g /= 255;
+                        part.b /= 255;
+                        part.a /= 255;
+                    }
                 }
 
                 return part;
