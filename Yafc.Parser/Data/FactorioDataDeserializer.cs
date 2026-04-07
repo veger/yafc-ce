@@ -906,6 +906,8 @@ nextWeightCalculation:;
             target.iconSpec = [new FactorioIconPart(s) { size = table.Get("icon_size", 64) }];
         }
         else if (table.Get("icons", out LuaTable? iconList)) {
+            float? scale = null;
+
             target.iconSpec = [.. iconList.ArrayElements<LuaTable>().Select(x => {
                 if (!x.Get("icon", out string? path)) {
                     throw new NotSupportedException($"One of the icon layers for {name} does not have a path.");
@@ -927,9 +929,23 @@ nextWeightCalculation:;
                     part.scale *= part.size / 64f;
                 }
 
+                if (scale is null) { // If first icon layer
+                    // Scale up to a minimum of 1x, to reduce pixelization.
+                    if (part.scale < 1) {
+                        scale = part.scale;
+                        part.scale = 1;
+                    }
+                    else {
+                        scale = 1;
+                    }
+                }
+                else {
+                    part.scale /= scale.Value;
+                }
+
                 if (x.Get("shift", out LuaTable? shift)) {
-                    part.x = shift.Get<float>(1);
-                    part.y = shift.Get<float>(2);
+                    part.x = shift.Get<float>(1) / scale.Value;
+                    part.y = shift.Get<float>(2) / scale.Value;
                 }
 
                 if (x.Get("tint", out LuaTable? tint)) {
