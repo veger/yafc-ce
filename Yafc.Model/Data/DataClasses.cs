@@ -32,7 +32,11 @@ internal enum FactorioObjectSortOrder {
 
 public enum FactorioId { }
 
+#pragma warning disable CS0660, CS0661
+// Type overrides == and != but not Equals and GetHashCode: Operators == and != are typically used to implement structural equality. We maintain
+// reference equality, so Equals and GetHashCode should maintain their default reference-equality behavior.
 public abstract class FactorioObject : IFactorioObjectWrapper, IComparable<FactorioObject> {
+#pragma warning restore
     public string? factorioType { get; internal set; }
     public string name { get; internal set; } = null!; // null-forgiving: Initialized to non-null by GetObject.
     public string typeDotName => type + '.' + name;
@@ -79,6 +83,24 @@ public abstract class FactorioObject : IFactorioObjectWrapper, IComparable<Facto
     public int CompareTo(FactorioObject? other) => DataUtils.DefaultOrdering.Compare(this, other);
 
     public bool showInExplorers { get; internal set; } = true;
+
+    [OverloadResolutionPriority(1)] // Use these for `== null` and `!= null`, which are otherwise ambiguous.
+    public static bool operator ==(FactorioObject? left, FactorioObject? right) => ReferenceEquals(left, right);
+    [OverloadResolutionPriority(1)] // Use these for `== null` and `!= null`, which are otherwise ambiguous.
+    public static bool operator !=(FactorioObject? left, FactorioObject? right) => !ReferenceEquals(left, right);
+
+    [Obsolete("Do not compare a FactorioObject and an IObjectWithQuality", true)]
+    public static bool operator ==(FactorioObject? left, IObjectWithQuality<FactorioObject>? right)
+        => throw new InvalidOperationException("Do not compare a FactorioObject and an IObjectWithQuality");
+
+    [Obsolete("Do not compare a FactorioObject and an IObjectWithQuality", true)]
+    public static bool operator !=(FactorioObject? left, IObjectWithQuality<FactorioObject>? right)
+        => throw new InvalidOperationException("Do not compare a FactorioObject and an IObjectWithQuality");
+
+    [Obsolete("Do not compare a FactorioObject and an IObjectWithQuality", true)]
+    public static bool operator ==(IObjectWithQuality<FactorioObject>? left, FactorioObject? right) => right == left;
+    [Obsolete("Do not compare a FactorioObject and an IObjectWithQuality", true)]
+    public static bool operator !=(IObjectWithQuality<FactorioObject>? left, FactorioObject? right) => right != left;
 }
 
 public class FactorioIconPart(string path) {
