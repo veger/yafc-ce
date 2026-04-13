@@ -23,6 +23,7 @@ Version:
 Date:
     Features:
     Fixes:
+        - Fixed production amounts will stay fixed on the "Total Output" object.
 ----------------------------------------------------------------------------------------------------------------------
 Version: 2.18.0
 Date: April 7th 2026
