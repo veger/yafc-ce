@@ -21,7 +21,7 @@ public abstract class WindowMain(Padding padding, bool forceSoftwareRenderer) : 
         // Initial width/height define the initial size of the MainWindow when it is opened.
         int initialWidthPixels = Math.Max(minWidth, MathUtils.Round(initialWidth * pixelsPerUnit));
         int initialHeightPixels = Math.Max(minHeight, MathUtils.Round(initialHeight * pixelsPerUnit));
-        SDL.SDL_WindowFlags flags = SDL.SDL_WindowFlags.SDL_WINDOW_RESIZABLE | (RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? 0 : SDL.SDL_WindowFlags.SDL_WINDOW_OPENGL);
+        SDL.SDL_WindowFlags flags = SDL.SDL_WindowFlags.SDL_WINDOW_RESIZABLE;
 
         if (maximized) {
             flags |= SDL.SDL_WindowFlags.SDL_WINDOW_MAXIMIZED;
