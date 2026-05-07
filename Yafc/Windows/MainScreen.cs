@@ -94,7 +94,7 @@ public partial class MainScreen : WindowMain, IKeyboardFocus, IProgress<(string,
         project.saveStateChanged += ProjectSaveStateChanged;
 
         _ = InputSystem.Instance.SetDefaultKeyboardFocus(this);
-        UpdateWindowTitle(false);
+        UpdateWindowTitle(project.unsavedChangesCount > 0);
     }
 
     private void ProjectSettingsChanged(bool visualOnly) {
@@ -491,8 +491,7 @@ public partial class MainScreen : WindowMain, IKeyboardFocus, IProgress<(string,
         var projectName = string.IsNullOrEmpty(project.attachedFileName)
             ? LSs.UntitledProject
             : (unsavedChanges ? "*" : string.Empty) + Path.GetFileNameWithoutExtension(project.attachedFileName);
-        var title = $"{LSs.FullNameWithVersion.L(YafcLib.version.ToString(3))} - {projectName}";
-        SetWindowTitle(title);
+        SetWindowTitle($"{projectName} - {LSs.FullNameWithVersion.L(YafcLib.version.ToString(3))}");
     }
 
     private async Task<bool> ConfirmUnsavedChanges() {
