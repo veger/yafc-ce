@@ -857,7 +857,7 @@ public sealed class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Pr
             //Update if this module is better (milestone order)
             Bits moduleMilestoneOrder = Milestones.Instance.GetMilestoneResult(module.id);
             if (bestModule == null || moduleMilestoneOrder > bestUnlockOrder) {
-                bestModule = module.With(Quality.Normal);
+                bestModule = module.With(Quality.MaxAccessible);
                 bestUnlockOrder = moduleMilestoneOrder;
             }
         }
