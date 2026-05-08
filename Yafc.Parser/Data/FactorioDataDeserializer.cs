@@ -583,10 +583,10 @@ internal partial class FactorioDataDeserializer {
             || factorioVersion < v2_0) {
 
             if (table.Get("rocket_launch_product", out LuaTable? product)) {
-                launchProducts = [LoadProduct("rocket_launch_product", item.stackSize)(product)];
+                launchProducts = [LoadProduct("rocket_launch_product", item.stackSize, isAlwaysItem: true)(product)];
             }
             else if (table.Get("rocket_launch_products", out LuaTable? products)) {
-                launchProducts = [.. products.ArrayElements<LuaTable>().Select(LoadProduct(item.typeDotName, item.stackSize))];
+                launchProducts = [.. products.ArrayElements<LuaTable>().Select(LoadProduct(item.typeDotName, item.stackSize, isAlwaysItem: true))];
             }
             else if (factorioVersion >= v2_0) {
                 launchProducts = [];
@@ -816,10 +816,11 @@ nextWeightCalculation:;
         fluid.temperatureRange = new TemperatureRange(table.Get("default_temperature", 0), table.Get("max_temperature", 0));
     }
 
-    private Goods? LoadItemOrFluid(LuaTable table, bool useTemperature) {
-        if (table.Get("type", out string? type)) {
+    private Goods? LoadItemOrFluid(LuaTable table, bool useTemperature, bool isAlwaysItem) {
+        string? type = null;
+        if (isAlwaysItem || table.Get("type", out type)) {
             if (table.Get("name", out string? name)) {
-                if (type == "item") {
+                if (isAlwaysItem || type == "item") {
                     return GetObject<Item>(table);
                 }
                 else if (type == "fluid") {
