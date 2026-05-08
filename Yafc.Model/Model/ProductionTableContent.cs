@@ -839,7 +839,7 @@ public sealed class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Pr
         //Loop over all modules finding the one that is usable, unlocked, and unlocks latest according to milestones
         foreach (Module module in Database.allModules) {
             //Check module is in the building's allowed category
-            if (!string.Equals(module.moduleSpecification.category, moduleCategory, StringComparison.Ordinal)) {
+            if (module.moduleSpecification.category != moduleCategory) {
                 continue;
             }
 
@@ -856,7 +856,7 @@ public sealed class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Pr
 
             //Update if this module is better (milestone order)
             Bits moduleMilestoneOrder = Milestones.Instance.GetMilestoneResult(module.id);
-            if (bestModule == null || moduleMilestoneOrder.CompareTo(bestUnlockOrder) > 0) {
+            if (bestModule == null || moduleMilestoneOrder > bestUnlockOrder) {
                 bestModule = module.With(Quality.Normal);
                 bestUnlockOrder = moduleMilestoneOrder;
             }
