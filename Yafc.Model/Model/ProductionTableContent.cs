@@ -831,8 +831,6 @@ public sealed class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Pr
             return;
         }
 
-        Bits recipeUnlockOrder = DataUtils.GetMilestoneOrder(targetRecipe.id);
-
         IObjectWithQuality<Module>? bestModule = null;
         Bits bestUnlockOrder = default;
 
@@ -848,9 +846,8 @@ public sealed class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Pr
                 continue;
             }
 
-            //Check if this module is currently available for this recipe with the active milestones
-            Bits moduleUnlockOrder = DataUtils.GetMilestoneOrder(module.id);
-            if (moduleUnlockOrder.CompareTo(recipeUnlockOrder) > 0) {
+            //Check if this module is currently available with the active milestones
+            if (!module.IsAccessibleWithCurrentMilestones()) {
                 continue;
             }
 
