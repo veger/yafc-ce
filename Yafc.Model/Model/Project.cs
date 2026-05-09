@@ -33,9 +33,12 @@ public partial class Project : ModelObject {
     private int autosaveIndex;
     private const int AutosaveRollingLimit = 5;
 
+    public event Action<bool>? saveStateChanged;
+
     public Project() : base(new UndoSystem()) {
         settings = new ProjectSettings(this);
         preferences = new ProjectPreferences(this);
+        base.undo.versionChanged += () => saveStateChanged?.Invoke(unsavedChangesCount > 0);
     }
 
     public event Action? metaInfoChanged;
@@ -188,6 +191,8 @@ public partial class Project : ModelObject {
 
         attachedFileName = fileName;
         lastSavedVersion = projectVersion;
+
+        saveStateChanged?.Invoke(false);
     }
 
     public void Save(Stream stream) {
