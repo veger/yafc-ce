@@ -175,7 +175,7 @@ public class ShoppingListScreen : PseudoScreen {
                 Decompose();
             }
 
-            if (gui.BuildButton(LSs.ShoppingListExportBlueprint, SchemeColor.Grey)) {
+            if (gui.BuildButton(LSs.ShoppingListExportBlueprint, SchemeColor.Grey, active: list.data.Count > 0)) {
                 gui.ShowDropDown(ExportBlueprintDropdown);
             }
         }
