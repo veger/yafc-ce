@@ -185,6 +185,8 @@ public partial class Project : ModelObject {
     }
 
     public void Save(string fileName) {
+        undo.FlushPendingChanges();
+
         if (lastSavedVersion == projectVersion && fileName == attachedFileName) {
             return;
         }
@@ -205,7 +207,13 @@ public partial class Project : ModelObject {
     }
 
     public void PerformAutoSave() {
-        if (!string.IsNullOrWhiteSpace(attachedFileName) && lastAutoSavedVersion != projectVersion) {
+        if (string.IsNullOrWhiteSpace(attachedFileName)) {
+            return;
+        }
+
+        undo.FlushPendingChanges();
+
+        if (lastAutoSavedVersion != projectVersion) {
             autosaveIndex = (autosaveIndex % AutosaveRollingLimit) + 1;
             var fileName = GenerateAutosavePath(attachedFileName, autosaveIndex);
 
