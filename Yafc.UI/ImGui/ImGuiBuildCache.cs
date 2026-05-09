@@ -39,6 +39,18 @@ public partial class ImGui {
     private int buildGroupsIndex = -1;
     private readonly List<BuildGroup> buildGroups = [];
 
+    public void ClearBuildGroupCache() {
+        buildGroups.Clear();
+        buildGroupsIndex = -1;
+    }
+
+    private void TrimUnusedBuildGroups() {
+        int usedCount = buildGroupsIndex + 1;
+        if (usedCount < buildGroups.Count) {
+            buildGroups.RemoveRange(usedCount, buildGroups.Count - usedCount);
+        }
+    }
+
     public bool ShouldBuildGroup(object o, [MaybeNullWhen(false)] out BuildGroup group) {
         buildGroupsIndex++;
         BuildGroup current;
