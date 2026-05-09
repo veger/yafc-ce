@@ -20,7 +20,7 @@ public class UndoSystem {
 
     /// <summary>Initialises a new <see cref="UndoSystem"/> with an explicit <paramref name="scheduler"/>.</summary>
     public UndoSystem(IUndoBatchScheduler scheduler) {
-        _scheduler = scheduler;
+        _scheduler = scheduler ?? throw new ArgumentNullException(nameof(scheduler));
     }
 
     public uint version {
@@ -47,14 +47,13 @@ public class UndoSystem {
             throw new InvalidOperationException("Do not record an undo event while deserializing.");
         }
 
-        if (changedList.Count == 0) {
-            version++;
+        bool isFirstChangeInBatch = changedList.Count == 0;
 
-            if (!suspended && !scheduled) {
-                Schedule();
-            }
+        if (isFirstChangeInBatch) {
+            version++;
         }
 
+        bool shouldSchedule = isFirstChangeInBatch && !suspended && !scheduled;
         undoBatchVisualOnly &= visualOnly;
 
         if (target.objectVersion == version) {
@@ -65,38 +64,77 @@ public class UndoSystem {
         target.objectVersion = version;
 
         if (visualOnly && undo.Count > 0 && undo.Peek().Contains(target)) {
+            if (shouldSchedule) {
+                Schedule();
+            }
+
             return;
         }
 
         var builder = target.GetUndoBuilder();
         currentUndoBatch.Add(builder.MakeUndoSnapshot(target));
+
+        if (shouldSchedule) {
+            Schedule();
+        }
     }
 
     private static void MakeUndoBatch(object? state) {
         UndoSystem system = (UndoSystem)state!; // null-forgiving: Only called by the instance method Schedule, which passes its this.
-        system.scheduled = false;
-        bool visualOnly = system.undoBatchVisualOnly;
+        system.CommitUndoBatch();
+    }
 
-        for (int i = 0; i < system.changedList.Count; i++) {
-            system.changedList[i].ThisChanged(visualOnly);
+    private void CommitUndoBatch() {
+        scheduled = false;
+        bool visualOnly = undoBatchVisualOnly;
+
+        for (int i = 0; i < changedList.Count; i++) {
+            changedList[i].ThisChanged(visualOnly);
         }
 
-        system.changedList.Clear();
+        changedList.Clear();
 
-        if (system.currentUndoBatch.Count == 0) {
+        if (currentUndoBatch.Count == 0) {
             return;
         }
 
-        UndoBatch batch = new UndoBatch([.. system.currentUndoBatch], visualOnly);
-        system.undo.Push(batch);
-        system.undoBatchVisualOnly = true;
-        system.redo.Clear();
-        system.currentUndoBatch.Clear();
+        UndoBatch batch = new UndoBatch([.. currentUndoBatch], visualOnly);
+        undo.Push(batch);
+        undoBatchVisualOnly = true;
+        redo.Clear();
+        currentUndoBatch.Clear();
     }
 
     private void Schedule() {
-        _scheduler.ScheduleOnGestureFinish(MakeUndoBatch, this);
         scheduled = true;
+        _scheduler.ScheduleOnGestureFinish(MakeUndoBatch, this);
+    }
+
+    /// <summary>Commits the current pending undo batch immediately, if one exists.</summary>
+    public void FlushPendingChanges() {
+        if (changedList.Count == 0) {
+            return;
+        }
+
+        if (_scheduler is ImmediateUndoBatchScheduler immediateScheduler) {
+            immediateScheduler.RunPendingCallbacks();
+
+            if (changedList.Count == 0) {
+                return;
+            }
+        }
+
+        CommitUndoBatch();
+    }
+
+    internal void FlushPendingChangesIfImmediateScheduler() {
+        if (!suspended && _scheduler is ImmediateUndoBatchScheduler immediateScheduler) {
+            immediateScheduler.RunPendingCallbacks();
+
+            if (changedList.Count > 0) {
+                CommitUndoBatch();
+            }
+        }
     }
 
     public void Suspend() => suspended = true;
@@ -106,6 +144,7 @@ public class UndoSystem {
 
         if (!scheduled && changedList.Count > 0) {
             Schedule();
+            FlushPendingChangesIfImmediateScheduler();
         }
     }
 
@@ -115,9 +154,16 @@ public class UndoSystem {
         }
     }
 
-    public bool CanUndo => !(undo.Count == 0 || changedList.Count > 0);
+    public bool CanUndo {
+        get {
+            FlushPendingChangesIfImmediateScheduler();
+            return !(undo.Count == 0 || changedList.Count > 0);
+        }
+    }
 
     public void PerformRedo() {
+        FlushPendingChangesIfImmediateScheduler();
+
         if (redo.Count == 0 || changedList.Count > 0) {
             return;
         }
@@ -127,7 +173,10 @@ public class UndoSystem {
 
     public void RecordChange() => version++;
 
-    public bool HasChangesPending(ModelObject obj) => changedList.Contains(obj);
+    public bool HasChangesPending(ModelObject obj) {
+        FlushPendingChangesIfImmediateScheduler();
+        return changedList.Contains(obj);
+    }
 }
 internal readonly struct UndoSnapshot(ModelObject target, object?[]? managed, byte[]? unmanaged) {
     internal readonly ModelObject target = target;
