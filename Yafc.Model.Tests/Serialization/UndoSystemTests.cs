@@ -48,6 +48,33 @@ public class UndoSystemTests {
         Assert.Null(project.yafcVersion);
     }
 
+    [Fact]
+    public void FlushPendingChanges_InvalidatesPreviouslyScheduledCommit() {
+        var scheduler = new DeferredUndoBatchScheduler();
+        var project = new Project(scheduler);
+
+        project.RecordUndo().yafcVersion = "flushed";
+        project.undo.FlushPendingChanges();
+        project.RecordUndo().yafcVersion = "scheduled";
+
+        Assert.Equal(2, scheduler.PendingCount);
+        Assert.False(project.undo.CanUndo);
+        Assert.True(project.undo.HasChangesPending(project));
+
+        scheduler.RunNext();
+
+        Assert.False(project.undo.CanUndo);
+        Assert.True(project.undo.HasChangesPending(project));
+
+        scheduler.RunNext();
+
+        Assert.True(project.undo.CanUndo);
+        Assert.False(project.undo.HasChangesPending(project));
+
+        project.undo.PerformUndo();
+        Assert.Equal("flushed", project.yafcVersion);
+    }
+
     private sealed class DeferredUndoBatchScheduler : IUndoBatchScheduler {
         private readonly Queue<Action> callbacks = [];
 

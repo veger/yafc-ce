@@ -40,6 +40,7 @@ public class UndoSystem {
     private readonly Stack<UndoBatch> redo = new Stack<UndoBatch>();
     private bool suspended;
     private bool scheduled;
+    private uint scheduleGeneration;
     private uint _version = 2;
 
     internal void CreateUndoSnapshot(ModelObject target, bool visualOnly) {
@@ -80,7 +81,13 @@ public class UndoSystem {
     }
 
     private static void MakeUndoBatch(object? state) {
-        UndoSystem system = (UndoSystem)state!; // null-forgiving: Only called by the instance method Schedule, which passes its this.
+        ScheduledUndoBatch scheduledBatch = (ScheduledUndoBatch)state!; // null-forgiving: Only called by Schedule, which passes a state instance.
+        UndoSystem system = scheduledBatch.system;
+
+        if (scheduledBatch.generation != system.scheduleGeneration) {
+            return;
+        }
+
         system.CommitUndoBatch();
     }
 
@@ -107,7 +114,7 @@ public class UndoSystem {
 
     private void Schedule() {
         scheduled = true;
-        _scheduler.ScheduleOnGestureFinish(MakeUndoBatch, this);
+        _scheduler.ScheduleOnGestureFinish(MakeUndoBatch, new ScheduledUndoBatch(this, ++scheduleGeneration));
     }
 
     /// <summary>Commits the current pending undo batch immediately, if one exists.</summary>
@@ -124,6 +131,7 @@ public class UndoSystem {
             }
         }
 
+        scheduleGeneration++;
         CommitUndoBatch();
     }
 
@@ -132,9 +140,15 @@ public class UndoSystem {
             immediateScheduler.RunPendingCallbacks();
 
             if (changedList.Count > 0) {
+                scheduleGeneration++;
                 CommitUndoBatch();
             }
         }
+    }
+
+    private sealed class ScheduledUndoBatch(UndoSystem system, uint generation) {
+        public readonly UndoSystem system = system;
+        public readonly uint generation = generation;
     }
 
     public void Suspend() => suspended = true;
