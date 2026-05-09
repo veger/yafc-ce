@@ -16,12 +16,15 @@ public class UndoSystem {
     private readonly IUndoBatchScheduler _scheduler;
 
     /// <summary>Initialises a new <see cref="UndoSystem"/> using <see cref="DefaultScheduler"/>.</summary>
-    public UndoSystem() : this(DefaultScheduler) { }
+    public UndoSystem() : this(CreateDefaultScheduler()) { }
 
     /// <summary>Initialises a new <see cref="UndoSystem"/> with an explicit <paramref name="scheduler"/>.</summary>
     public UndoSystem(IUndoBatchScheduler scheduler) {
         _scheduler = scheduler ?? throw new ArgumentNullException(nameof(scheduler));
     }
+
+    private static IUndoBatchScheduler CreateDefaultScheduler()
+        => DefaultScheduler is ImmediateUndoBatchScheduler ? new ImmediateUndoBatchScheduler() : DefaultScheduler;
 
     public uint version {
         get => _version;

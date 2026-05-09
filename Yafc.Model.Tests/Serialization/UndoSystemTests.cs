@@ -7,6 +7,37 @@ namespace Yafc.Model.Tests;
 
 public class UndoSystemTests {
     [Fact]
+    public void DefaultImmediateSchedulers_DoNotSharePendingCallbacks() {
+        IUndoBatchScheduler previousDefaultScheduler = UndoSystem.DefaultScheduler;
+        UndoSystem.DefaultScheduler = new ImmediateUndoBatchScheduler();
+
+        try {
+            var first = new Project();
+            var second = new Project();
+            int firstChanges = 0;
+            int secondChanges = 0;
+            first.settings.changed += _ => firstChanges++;
+            second.settings.changed += _ => secondChanges++;
+
+            first.settings.RecordUndo().miningProductivity = 1f;
+            second.settings.RecordUndo().miningProductivity = 2f;
+
+            Assert.True(second.undo.CanUndo);
+
+            Assert.Equal(0, firstChanges);
+            Assert.Equal(1, secondChanges);
+
+            first.undo.FlushPendingChanges();
+
+            Assert.Equal(1, firstChanges);
+            Assert.True(first.undo.CanUndo);
+        }
+        finally {
+            UndoSystem.DefaultScheduler = previousDefaultScheduler;
+        }
+    }
+
+    [Fact]
     public void ImmediateScheduler_FlushCommitsAfterMutation() {
         var project = new Project(new ImmediateUndoBatchScheduler());
         float changedValue = -1f;
