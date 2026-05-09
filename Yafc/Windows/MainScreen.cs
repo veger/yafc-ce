@@ -83,6 +83,8 @@ public partial class MainScreen : WindowMain, IKeyboardFocus, IProgress<(string,
             project.AssureFirstPage();
         }
 
+        summaryView.SetProject(project);
+
         // Activate all page solvers for the summary view
         foreach (var page in project.pages) {
             _ = page.SolvePage();
