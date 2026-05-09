@@ -833,7 +833,9 @@ match:
             return false;
         }
 
-        this.RecordUndo().links.Add(new(this, goods.target.With(goods.quality)));
+        ProductionLink link = new(this, goods.target.With(goods.quality));
+        this.RecordUndo().links.Add(link);
+        linkMap[link.goods] = link;
         return true;
     }
 }
