@@ -112,26 +112,3 @@ internal static class DataParserUtils {
         }
     }
 }
-
-public static class SpecialNames {
-    public const string BurnableFluid = "burnable-fluid.";
-    public const string Heat = "heat";
-    public const string Void = "void";
-    public const string Electricity = "electricity";
-    public const string HotFluid = "hot-fluid";
-    public const string SpecificFluid = "fluid.";
-    public const string MiningRecipe = "mining.";
-    public const string BoilerRecipe = "boiler.";
-    public const string FakeRecipe = "fake-recipe";
-    public const string FixedRecipe = "fixed-recipe.";
-    public const string GeneratorRecipe = "generator";
-    public const string PumpingRecipe = "pump.";
-    public const string Labs = "labs.";
-    public const string TechnologyTrigger = "technology-trigger";
-    public const string RocketLaunch = "launch";
-    public const string RocketCraft = "rocket.";
-    public const string ReactorRecipe = "reactor";
-    public const string SpoilRecipe = "spoil";
-    public const string PlantRecipe = "plant";
-    public const string AsteroidCapture = "asteroid-capture";
-}

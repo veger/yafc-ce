@@ -328,14 +328,13 @@ internal partial class FactorioDataDeserializer {
 
                 character.energy = laborEntityEnergy;
                 if (character.name == "character") {
-                    this.character = character;
                     character.mapGenerated = true;
                     rootAccessible.Insert(0, character);
                 }
                 break;
             case "constant-combinator":
                 if (name == "constant-combinator") {
-                    Database.constantCombinatorCapacity = table.Get("item_slot_count", 18);
+                    constantCombinatorCapacity = table.Get("item_slot_count", 18);
                 }
                 break;
             case "container":
@@ -435,7 +434,6 @@ internal partial class FactorioDataDeserializer {
                 recipeCrafters.Add(lab, SpecialNames.Labs);
                 _ = table.Get("inputs", out LuaTable? inputs);
                 lab.inputs = [.. inputs.ArrayElements<string>().Select(GetObject<Item>)];
-                sciencePacks.UnionWith(lab.inputs.Select(x => (Item)x));
                 lab.itemInputs = lab.inputs.Length;
                 break;
             case "logistic-container":

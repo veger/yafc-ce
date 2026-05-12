@@ -8,40 +8,39 @@ namespace Yafc.Model;
 
 public static class Database {
     // null-forgiveness for all static properties here:
-    public static FactorioObject[] rootAccessible { get; internal set; } = null!;
-    public static Item[] allSciencePacks { get; internal set; } = null!;
-    public static Dictionary<string, FactorioObject> objectsByTypeName { get; internal set; } = null!;
-    public static Dictionary<string, List<Fluid>> fluidVariants { get; internal set; } = null!;
-    public static List<Special>? heatVariants { get; internal set; }
-    public static IObjectWithQuality<Goods> voidEnergy { get; internal set; } = null!;
-    public static IObjectWithQuality<Item> science { get; internal set; } = null!;
-    public static IObjectWithQuality<Item> itemInput { get; internal set; } = null!;
-    public static IObjectWithQuality<Item> itemOutput { get; internal set; } = null!;
-    public static IObjectWithQuality<Special> electricity { get; internal set; } = null!;
-    public static IObjectWithQuality<Recipe> electricityGeneration { get; internal set; } = null!;
-    public static IObjectWithQuality<Special> heat { get; internal set; } = null!;
-    public static Entity? character { get; internal set; }
-    public static EntityCrafter[] allCrafters { get; internal set; } = null!;
-    public static Module[] allModules { get; internal set; } = null!;
-    public static EntityBeacon[] allBeacons { get; internal set; } = null!;
-    public static EntityBelt[] allBelts { get; internal set; } = null!;
-    public static EntityInserter[] allInserters { get; internal set; } = null!;
-    public static EntityAccumulator[] allAccumulators { get; internal set; } = null!;
-    public static EntityContainer[] allContainers { get; internal set; } = null!;
-    public static FactorioIdRange<FactorioObject> objects { get; internal set; } = null!;
-    public static FactorioIdRange<Goods> goods { get; internal set; } = null!;
-    public static FactorioIdRange<Special> specials { get; internal set; } = null!;
-    public static FactorioIdRange<Item> items { get; internal set; } = null!;
-    public static FactorioIdRange<Fluid> fluids { get; internal set; } = null!;
-    public static FactorioIdRange<Recipe> recipes { get; internal set; } = null!;
-    public static FactorioIdRange<Mechanics> mechanics { get; internal set; } = null!;
-    public static FactorioIdRange<RecipeOrTechnology> recipesAndTechnologies { get; internal set; } = null!;
-    public static FactorioIdRange<Technology> technologies { get; internal set; } = null!;
-    public static FactorioIdRange<Entity> entities { get; internal set; } = null!;
-    public static FactorioIdRange<Quality> qualities { get; internal set; } = null!;
-    public static FactorioIdRange<Location> locations { get; internal set; } = null!;
-    public static int constantCombinatorCapacity { get; internal set; } = 18;
-    public static int rocketCapacity { get; internal set; }
+    public static FactorioObject[] rootAccessible { get; private set; } = null!;
+    public static Item[] allSciencePacks { get; private set; } = null!;
+    public static Dictionary<string, FactorioObject> objectsByTypeName { get; private set; } = null!;
+    public static Dictionary<string, List<Fluid>> fluidVariants { get; private set; } = null!;
+    public static List<Special>? heatVariants { get; private set; }
+    public static IObjectWithQuality<Goods> voidEnergy { get; private set; } = null!;
+    public static IObjectWithQuality<Item> science { get; private set; } = null!;
+    public static IObjectWithQuality<Item> itemInput { get; private set; } = null!;
+    public static IObjectWithQuality<Item> itemOutput { get; private set; } = null!;
+    public static IObjectWithQuality<Special> electricity { get; private set; } = null!;
+    public static IObjectWithQuality<Recipe> electricityGeneration { get; private set; } = null!;
+    public static IObjectWithQuality<Special> heat { get; private set; } = null!;
+    public static Entity? character { get; private set; }
+    public static EntityCrafter[] allCrafters { get; private set; } = null!;
+    public static Module[] allModules { get; private set; } = null!;
+    public static EntityBeacon[] allBeacons { get; private set; } = null!;
+    public static EntityBelt[] allBelts { get; private set; } = null!;
+    public static EntityInserter[] allInserters { get; private set; } = null!;
+    public static EntityAccumulator[] allAccumulators { get; private set; } = null!;
+    public static EntityContainer[] allContainers { get; private set; } = null!;
+    public static FactorioIdRange<FactorioObject> objects { get; private set; } = null!;
+    public static FactorioIdRange<Goods> goods { get; private set; } = null!;
+    public static FactorioIdRange<Special> specials { get; private set; } = null!;
+    public static FactorioIdRange<Item> items { get; private set; } = null!;
+    public static FactorioIdRange<Fluid> fluids { get; private set; } = null!;
+    public static FactorioIdRange<Recipe> recipes { get; private set; } = null!;
+    public static FactorioIdRange<Mechanics> mechanics { get; private set; } = null!;
+    public static FactorioIdRange<RecipeOrTechnology> recipesAndTechnologies { get; private set; } = null!;
+    public static FactorioIdRange<Technology> technologies { get; private set; } = null!;
+    public static FactorioIdRange<Entity> entities { get; private set; } = null!;
+    public static FactorioIdRange<Quality> qualities { get; private set; } = null!;
+    public static FactorioIdRange<Location> locations { get; private set; } = null!;
+    public static int constantCombinatorCapacity { get; private set; }
 
     /// <summary>
     /// Returns the set of beacons filtered to only those that can accept at least one module.
@@ -104,6 +103,89 @@ public static class Database {
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Initializes the <see cref="Database"/> class from the supplied parameters.
+    /// </summary>
+    /// <param name="constantCombinatorCapacity">The number of values that can be set in a single constant combinator.</param>
+    /// <param name="rootAccessible">The objects that are inherently accessible (character, nauvis, void, etc.).</param>
+    /// <param name="allObjects">The list of all objects.</param>
+    /// <param name="formerAliases">The old names of objects that were renamed by Yafc in the process of development.</param>
+    /// <param name="heat">The original heat object, which has probably been renamed heat@&lt;temperature>.</param>
+    /// <param name="fluidVariants">The collection of all fluid variants from their original name.</param>
+    // This method's parameters must be cachable objects. Notably, IObjectWithQuality is not currently cachable.
+    internal static void LoadBuiltData(int constantCombinatorCapacity, FactorioObject[] rootAccessible, List<FactorioObject> allObjects,
+        Dictionary<string, FactorioObject> formerAliases, Special heat, Dictionary<string, List<Fluid>> fluidVariants) {
+
+        Database.constantCombinatorCapacity = constantCombinatorCapacity;
+        Database.rootAccessible = rootAccessible;
+        objectsByTypeName = allObjects.ToDictionary(x => x.typeDotName);
+        foreach (var alias in formerAliases) {
+            _ = objectsByTypeName.TryAdd(alias.Key, alias.Value);
+        }
+
+        // null-forgiving: inputs is always initialized for labs
+        allSciencePacks = [.. allObjects.OfType<EntityCrafter>().Where(c => c.factorioType == "lab").SelectMany(l => l.inputs!).Distinct()];
+        voidEnergy = ((Goods)objectsByTypeName["Power." + SpecialNames.Void]).With(Quality.Normal);
+        science = ((Item)objectsByTypeName["Item.science"]).With(Quality.Normal);
+        itemInput = ((Item)objectsByTypeName["Item.item-total-input"]).With(Quality.Normal);
+        itemOutput = ((Item)objectsByTypeName["Item.item-total-output"]).With(Quality.Normal);
+        electricity = ((Special)objectsByTypeName["Power." + SpecialNames.Electricity]).With(Quality.Normal);
+        electricityGeneration = ((Recipe)objectsByTypeName[$"Mechanics.{SpecialNames.GeneratorRecipe}.{SpecialNames.Electricity}"]).With(Quality.Normal);
+        Database.heat = heat.With(Quality.Normal);
+        if (objectsByTypeName.TryGetValue("Entity.character", out var ch)) {
+            character = (Entity)ch;
+        }
+
+        int firstSpecial = 0;
+        int firstItem = skip(firstSpecial, FactorioObjectSortOrder.SpecialGoods);
+        int firstFluid = skip(firstItem, FactorioObjectSortOrder.Items);
+        int firstRecipe = skip(firstFluid, FactorioObjectSortOrder.Fluids);
+        int firstMechanics = skip(firstRecipe, FactorioObjectSortOrder.Recipes);
+        int firstTechnology = skip(firstMechanics, FactorioObjectSortOrder.Mechanics);
+        int firstEntity = skip(firstTechnology, FactorioObjectSortOrder.Technologies);
+        int firstTile = skip(firstEntity, FactorioObjectSortOrder.Entities);
+        int firstQuality = skip(firstTile, FactorioObjectSortOrder.Tiles);
+        int firstLocation = skip(firstQuality, FactorioObjectSortOrder.Qualities);
+        int firstTrigger = skip(firstLocation, FactorioObjectSortOrder.Locations);
+        int last = skip(firstTrigger, FactorioObjectSortOrder.Triggers);
+        if (last != allObjects.Count) {
+            throw new Exception("Something is not right");
+        }
+
+        objects = new FactorioIdRange<FactorioObject>(0, last, allObjects);
+        specials = new FactorioIdRange<Special>(firstSpecial, firstItem, allObjects);
+        items = new FactorioIdRange<Item>(firstItem, firstFluid, allObjects);
+        fluids = new FactorioIdRange<Fluid>(firstFluid, firstRecipe, allObjects);
+        goods = new FactorioIdRange<Goods>(firstSpecial, firstRecipe, allObjects);
+        recipes = new FactorioIdRange<Recipe>(firstRecipe, firstTechnology, allObjects);
+        mechanics = new FactorioIdRange<Mechanics>(firstMechanics, firstTechnology, allObjects);
+        recipesAndTechnologies = new FactorioIdRange<RecipeOrTechnology>(firstRecipe, firstEntity, allObjects);
+        technologies = new FactorioIdRange<Technology>(firstTechnology, firstEntity, allObjects);
+        entities = new FactorioIdRange<Entity>(firstEntity, firstTile, allObjects);
+        qualities = new FactorioIdRange<Quality>(firstQuality, firstLocation, allObjects);
+        locations = new FactorioIdRange<Location>(firstLocation, firstTrigger, allObjects);
+        Database.fluidVariants = fluidVariants;
+        heatVariants = heat.variants;
+
+        allModules = [.. items.all.OfType<Module>()];
+        allBeacons = [.. entities.all.OfType<EntityBeacon>()];
+        allCrafters = [.. entities.all.OfType<EntityCrafter>()];
+        allBelts = [.. entities.all.OfType<EntityBelt>()];
+        allInserters = [.. entities.all.OfType<EntityInserter>()];
+        allAccumulators = [.. entities.all.OfType<EntityAccumulator>()];
+        allContainers = [.. entities.all.OfType<EntityContainer>()];
+
+        int skip(int from, FactorioObjectSortOrder sortOrder) {
+            for (; from < allObjects.Count; from++) {
+                if (allObjects[from].sortingOrder != sortOrder) {
+                    break;
+                }
+            }
+
+            return from;
+        }
     }
 }
 
@@ -245,4 +327,27 @@ public readonly struct Mapping<TKey1, TKey2, TValue> where TKey1 : FactorioObjec
     public ArraySegment<TValue> GetSlice(TKey1 row) => new ArraySegment<TValue>(data, ((int)row.id - offset1) * count1, count1);
 
     public FactorioId IndexToId(int index) => (FactorioId)(index + offset2);
+}
+
+public static class SpecialNames {
+    public const string BurnableFluid = "burnable-fluid.";
+    public const string Heat = "heat";
+    public const string Void = "void";
+    public const string Electricity = "electricity";
+    public const string HotFluid = "hot-fluid";
+    public const string SpecificFluid = "fluid.";
+    public const string MiningRecipe = "mining.";
+    public const string BoilerRecipe = "boiler.";
+    public const string FakeRecipe = "fake-recipe";
+    public const string FixedRecipe = "fixed-recipe.";
+    public const string GeneratorRecipe = "generator";
+    public const string PumpingRecipe = "pump.";
+    public const string Labs = "labs.";
+    public const string TechnologyTrigger = "technology-trigger";
+    public const string RocketLaunch = "launch";
+    public const string RocketCraft = "rocket.";
+    public const string ReactorRecipe = "reactor";
+    public const string SpoilRecipe = "spoil";
+    public const string PlantRecipe = "plant";
+    public const string AsteroidCapture = "asteroid-capture";
 }

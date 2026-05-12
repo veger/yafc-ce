@@ -193,9 +193,8 @@ internal partial class FactorioDataDeserializer {
     }
 
     /// <summary>
-    /// Process the data loaded from Factorio and the mods, and load the project specified by <paramref name="projectPath"/>.
+    /// Process the data loaded from Factorio and the mods.
     /// </summary>
-    /// <param name="projectPath">The path to the project file to create or load. May be <see langword="null"/> or empty.</param>
     /// <param name="data">The Lua table data (containing data.raw) that was populated by the lua scripts.</param>
     /// <param name="prototypes">The Lua table defines.prototypes that was populated by the lua scripts.</param>
     /// <param name="netProduction">If <see langword="true"/>, recipe selection windows will only display recipes that provide net production or consumption 
@@ -205,12 +204,10 @@ internal partial class FactorioDataDeserializer {
     /// but will appear as only producing U-235 and consuming U-238 when <see langword="true"/>.</param>
     /// <param name="progress">An <see cref="IProgress{T}"/> that receives two strings describing the current loading state.</param>
     /// <param name="errorCollector">An <see cref="ErrorCollector"/> that will collect the errors and warnings encountered while loading and processing the file and data.</param>
-    /// <param name="renderIcons">If <see langword="true"/>, Yafc will render the icons necessary for UI display.</param>
-    /// <param name="useLatestSave">If <see langword="true"/>, Yafc will try to find the most recent autosave.</param>
-    /// <returns>A <see cref="Project"/> containing the information loaded from <paramref name="projectPath"/>. Also sets the <see langword="static"/> properties
-    /// in <see cref="Database"/>.</returns>
-    public Project LoadData(string projectPath, LuaTable data, LuaTable prototypes, bool netProduction,
-        IProgress<(string, string)> progress, ErrorCollector errorCollector, bool renderIcons, bool useLatestSave) {
+    /// <param name="renderIcons">If <see langword="true"/>, Yafc will start rendering the icons necessary for UI display. To wait for the rendering
+    /// to complete, call <see cref="WaitForRendering"/>.</param>
+    public void LoadLuaData(LuaTable data, LuaTable prototypes, bool netProduction, IProgress<(string, string)> progress,
+        ErrorCollector errorCollector, bool renderIcons) {
 
         progress.Report((LSs.ProgressLoading, LSs.ProgressLoadingItems));
         raw = (LuaTable?)data["raw"] ?? throw new ArgumentException("Could not load data.raw from data argument", nameof(data));
@@ -222,7 +219,6 @@ internal partial class FactorioDataDeserializer {
             DeserializePrototypes(raw, (string)prototypeName, DeserializeItem, progress, errorCollector);
         }
 
-        allModules.AddRange(allObjects.OfType<Module>());
         progress.Report((LSs.ProgressLoading, LSs.ProgressLoadingFluids));
         DeserializePrototypes(raw, "fluid", DeserializeFluid, progress, errorCollector);
         progress.Report((LSs.ProgressLoading, LSs.ProgressLoadingTiles));
@@ -266,30 +262,54 @@ internal partial class FactorioDataDeserializer {
         UpdateSplitHeats();
         UpdateRecipeIngredientFluids(errorCollector);
         CalculateMaps(netProduction);
-        var iconRenderTask = renderIcons ? Task.Run(RenderIcons) : Task.CompletedTask;
+        StartRendering(renderIcons, allObjects);
         UpdateRecipeCatalysts();
         CalculateItemWeights();
         ObjectWithQuality.LoadCache(allObjects);
-        ExportBuiltData();
+        Database.LoadBuiltData(constantCombinatorCapacity, [.. rootAccessible], allObjects, formerAliases, heat, fluidVariants);
+
         progress.Report((LSs.ProgressPostprocessing, LSs.ProgressCalculatingDependencies));
         Dependencies.Calculate();
         TechnologyLoopsFinder.FindTechnologyLoops();
+    }
+
+    public void StartRendering(bool renderIcons, ICollection<FactorioObject> objects) => iconRenderTask = renderIcons ? Task.Run(() => RenderIcons(objects)) : Task.CompletedTask;
+
+    /// <summary>
+    /// Load the project specified by <paramref name="projectPath"/>.
+    /// </summary>
+    /// <param name="projectPath">The path to the project file to create or load. May be <see langword="null"/> or empty.</param>
+    /// <param name="progress">An <see cref="IProgress{T}"/> that receives two strings describing the current loading state.</param>
+    /// <param name="errorCollector">An <see cref="ErrorCollector"/> that will collect the errors and warnings encountered while loading and processing the file and data.</param>
+    /// <param name="useLatestSave">If <see langword="true"/>, Yafc will try to find the most recent autosave.</param>
+    /// <returns>A <see cref="Project"/> containing the information loaded from <paramref name="projectPath"/>. Also sets the <see langword="static"/> properties
+    /// in <see cref="Database"/>.</returns>
+    public static Project LoadProject(string projectPath, IProgress<(string, string)> progress, ErrorCollector errorCollector, bool useLatestSave) {
         progress.Report((LSs.ProgressPostprocessing, LSs.ProgressCreatingProject));
         Project project = Project.ReadFromFile(projectPath, errorCollector, useLatestSave);
         Analysis.ProcessAnalyses(progress, project, errorCollector);
-        progress.Report((LSs.ProgressRenderingIcons, ""));
-        iconRenderedProgress = progress;
-        iconRenderTask.Wait();
-
         return project;
     }
 
-    private IProgress<(string, string)>? iconRenderedProgress;
+    /// <summary>
+    /// Block until the current rendering task is complete.
+    /// </summary>
+    /// <param name="progress">An <see cref="IProgress{T}"/> that receives two strings describing the current icon rendering state.</param>
+    public void WaitForRendering(IProgress<(string, string)> progress) {
+        if (iconRenderTask.IsCompleted) { return; }
 
-    private Icon CreateSimpleIcon(Dictionary<(string mod, string path), IntPtr> cache, string graphicsPath)
+        progress.Report((LSs.ProgressRenderingIcons, ""));
+        iconRenderedProgress = progress;
+        iconRenderTask.Wait();
+    }
+
+    private IProgress<(string, string)>? iconRenderedProgress;
+    private Task iconRenderTask = Task.CompletedTask;
+
+    private static Icon CreateSimpleIcon(Dictionary<(string mod, string path), IntPtr> cache, string graphicsPath)
         => CreateIconFromSpec(cache, new FactorioIconPart("__core__/graphics/" + graphicsPath + ".png"));
 
-    private void RenderIcons() {
+    private void RenderIcons(ICollection<FactorioObject> allObjects) {
         Dictionary<(string mod, string path), IntPtr> cache = [];
         try {
             foreach (char digit in "0123456789d") {
@@ -342,7 +362,7 @@ internal partial class FactorioDataDeserializer {
         }
     }
 
-    private unsafe Icon CreateIconFromSpec(Dictionary<(string mod, string path), IntPtr> cache, params FactorioIconPart[] spec) {
+    private static unsafe Icon CreateIconFromSpec(Dictionary<(string mod, string path), IntPtr> cache, params FactorioIconPart[] spec) {
         const int cachedIconSize = IconCollection.IconSize;
         int renderSize = MathUtils.Round(spec[0].size * spec[0].scale);
         nint targetSurface = SDL.SDL_CreateRGBSurfaceWithFormat(0, renderSize, renderSize, 0, SDL.SDL_PIXELFORMAT_RGBA8888);
