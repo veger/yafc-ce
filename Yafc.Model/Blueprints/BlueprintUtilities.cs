@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using Yafc.Core;
 using Yafc.Model;
 
 namespace Yafc.Blueprints;
@@ -11,11 +12,7 @@ public static class BlueprintUtilities {
         string name,
         IReadOnlyList<(IObjectWithQuality<Goods> item, int amount)> goods,
         BlueprintFormat format = BlueprintFormat.CompressedBase64) {
-        if (goods.Count == 0) {
-            return ExportEmptyBlueprint(name, format);
-        }
-
-        int combinatorCount = ((goods.Count - 1) / Database.constantCombinatorCapacity) + 1;
+        int combinatorCount = IntegerMath.CeilingDivide(goods.Count, Database.constantCombinatorCapacity);
         int offset = -combinatorCount / 2;
         BlueprintString blueprint = new BlueprintString(name);
         int index = 0;
@@ -56,11 +53,7 @@ public static class BlueprintUtilities {
             throw new ArgumentException("Chest does not have logistic slots");
         }
 
-        if (goods.Count == 0) {
-            return ExportEmptyBlueprint(name, format);
-        }
-
-        int combinatorCount = ((goods.Count - 1) / chest.logisticSlotsCount) + 1;
+        int combinatorCount = IntegerMath.CeilingDivide(goods.Count, chest.logisticSlotsCount);
         int offset = -chest.size * combinatorCount / 2;
         BlueprintString blueprint = new BlueprintString(name);
         int index = 0;
@@ -90,9 +83,6 @@ public static class BlueprintUtilities {
 
         return blueprint.ToBpString(format);
     }
-
-    private static string ExportEmptyBlueprint(string name, BlueprintFormat format)
-        => new BlueprintString(name).ToBpString(format);
 
     private class PlacedEntity {
         public RecipeRow Recipe { get; }

@@ -32,9 +32,38 @@ public class BlueprintUtilitiesTests {
         AssertEmptyBlueprint(blueprintString, "empty");
     }
 
+    [Fact]
+    public void ExportConstantCombinators_WithEmptyGoodsAndRawJson_ReturnsEmptyBlueprint() {
+        string blueprintString = BlueprintUtilities.ExportConstantCombinators(
+            "empty",
+            Array.Empty<(IObjectWithQuality<Goods> item, int amount)>(),
+            BlueprintFormat.RawJson);
+
+        AssertEmptyBlueprintJson(blueprintString, "empty");
+    }
+
+    [Fact]
+    public void ExportRequesterChests_WithEmptyGoodsAndRawJson_ReturnsEmptyBlueprint() {
+        EntityContainer chest = new() {
+            logisticSlotsCount = 10,
+        };
+
+        string blueprintString = BlueprintUtilities.ExportRequesterChests(
+            "empty",
+            Array.Empty<(IObjectWithQuality<Item> item, int amount)>(),
+            chest,
+            BlueprintFormat.RawJson);
+
+        AssertEmptyBlueprintJson(blueprintString, "empty");
+    }
+
     private static void AssertEmptyBlueprint(string blueprintString, string name) {
         Assert.StartsWith("0", blueprintString);
-        using JsonDocument document = JsonDocument.Parse(DecodeBlueprintString(blueprintString));
+        AssertEmptyBlueprintJson(DecodeBlueprintString(blueprintString), name);
+    }
+
+    private static void AssertEmptyBlueprintJson(string blueprintJson, string name) {
+        using JsonDocument document = JsonDocument.Parse(blueprintJson);
         JsonElement blueprint = document.RootElement.GetProperty("blueprint");
 
         Assert.Equal("blueprint", blueprint.GetProperty("item").GetString());
