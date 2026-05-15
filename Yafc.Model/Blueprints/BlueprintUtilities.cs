@@ -7,9 +7,12 @@ using Yafc.Model;
 namespace Yafc.Blueprints;
 
 public static class BlueprintUtilities {
-    public static string ExportConstantCombinators(string name, IReadOnlyList<(IObjectWithQuality<Goods> item, int amount)> goods) {
+    public static string ExportConstantCombinators(
+        string name,
+        IReadOnlyList<(IObjectWithQuality<Goods> item, int amount)> goods,
+        BlueprintFormat format = BlueprintFormat.CompressedBase64) {
         if (goods.Count == 0) {
-            return ExportEmptyBlueprint(name);
+            return ExportEmptyBlueprint(name, format);
         }
 
         int combinatorCount = ((goods.Count - 1) / Database.constantCombinatorCapacity) + 1;
@@ -41,16 +44,20 @@ public static class BlueprintUtilities {
             last = entity;
         }
 
-        return blueprint.ToBpString();
+        return blueprint.ToBpString(format);
     }
 
-    public static string ExportRequesterChests(string name, IReadOnlyList<(IObjectWithQuality<Item> item, int amount)> goods, EntityContainer chest) {
+    public static string ExportRequesterChests(
+        string name,
+        IReadOnlyList<(IObjectWithQuality<Item> item, int amount)> goods,
+        EntityContainer chest,
+        BlueprintFormat format = BlueprintFormat.CompressedBase64) {
         if (chest.logisticSlotsCount <= 0) {
             throw new ArgumentException("Chest does not have logistic slots");
         }
 
         if (goods.Count == 0) {
-            return ExportEmptyBlueprint(name);
+            return ExportEmptyBlueprint(name, format);
         }
 
         int combinatorCount = ((goods.Count - 1) / chest.logisticSlotsCount) + 1;
@@ -81,11 +88,11 @@ public static class BlueprintUtilities {
             }
         }
 
-        return blueprint.ToBpString();
+        return blueprint.ToBpString(format);
     }
 
-    private static string ExportEmptyBlueprint(string name)
-        => new BlueprintString(name).ToBpString();
+    private static string ExportEmptyBlueprint(string name, BlueprintFormat format)
+        => new BlueprintString(name).ToBpString(format);
 
     private class PlacedEntity {
         public RecipeRow Recipe { get; }
@@ -105,7 +112,11 @@ public static class BlueprintUtilities {
         public List<PlacedEntity> Placements { get; set; } = new();
     }
 
-    public static string ExportRecipiesAsBlueprint(string name, IEnumerable<RecipeRow> recipies, bool includeFuel) {
+    public static string ExportRecipiesAsBlueprint(
+        string name,
+        IEnumerable<RecipeRow> recipies,
+        bool includeFuel,
+        BlueprintFormat format = BlueprintFormat.CompressedBase64) {
         // Sort buildings largest to smallest (by height then width) for better packing
         var entities = recipies
             .Where(r => r.entity is not null && r.recipe is not null)
@@ -196,6 +207,6 @@ public static class BlueprintUtilities {
             buildingIndex += 1;
         }
 
-        return blueprint.ToBpString();
+        return blueprint.ToBpString(format);
     }
 }
