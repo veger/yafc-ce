@@ -362,7 +362,9 @@ public partial class MainScreen : WindowMain, IKeyboardFocus, IProgress<(string,
             SetSearch(default);
             return;
         }
-        if (gui.BuildSearchBox(pageSearch, out pageSearch)) {
+        string pageSearchText = pageSearch.query;
+        if (gui.BuildSearchBox(pageSearchText, out string newPageSearchText)) {
+            pageSearch = new SearchQuery(newPageSearchText);
             SetSearch(pageSearch);
         }
 
