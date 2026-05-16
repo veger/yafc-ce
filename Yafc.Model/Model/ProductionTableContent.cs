@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
+using Yafc.Core;
 using Yafc.I18n;
 using Yafc.UI;
 
@@ -167,12 +168,7 @@ public class ModuleTemplate : ModelObject<ModelObject> {
             moduleCount += element.fixedCount;
         }
 
-        if (moduleCount == 0) {
-            // C# division rounds to zero, causing the round-up math below to return 1 in most cases, instead of 0.
-            return 0;
-        }
-
-        return ((moduleCount - 1) / beacon.target.moduleSlots) + 1;
+        return IntegerMath.CeilingDivide(moduleCount, beacon.target.moduleSlots);
     }
 
     /// <summary>
