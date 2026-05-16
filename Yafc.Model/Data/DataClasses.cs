@@ -44,6 +44,7 @@ public abstract class FactorioObject : IFactorioObjectWrapper, IComparable<Facto
     /// This value matches the numeric value of <c>Yafc.UI.Icon</c>
     /// and should only be interpreted in the UI layer via <c>GetIcon()</c>.
     /// </summary>
+    // Renaming iconId or id, or changing them to manual properties, requires matching changes to the Cache.fields initializer.
     public int iconId { get; internal set; }
     public FactorioId id { get; internal set; }
     internal abstract FactorioObjectSortOrder sortingOrder { get; }

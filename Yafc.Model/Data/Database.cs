@@ -7,11 +7,17 @@ using System.Linq;
 namespace Yafc.Model;
 
 public static class Database {
-    // null-forgiveness for all static properties here:
+    // null-forgiveness for all not-null properties; they're initialized by LoadBuiltData.
+    // ----------------------------------------------------------------
+    // For caching, the properties in this section must match (by name and cache storage type) the corresponding parameter to LoadBuiltData.
+    public static int constantCombinatorCapacity { get; private set; }
     public static FactorioObject[] rootAccessible { get; private set; } = null!;
-    public static Item[] allSciencePacks { get; private set; } = null!;
-    public static Dictionary<string, FactorioObject> objectsByTypeName { get; private set; } = null!;
+    public static IObjectWithQuality<Special> heat { get; private set; } = null!; // Only the Special is stored in the cache.
     public static Dictionary<string, List<Fluid>> fluidVariants { get; private set; } = null!;
+    // End of the cache-dependent section. The remaining static properties are calculated based on the method parameters and known names.
+    // ----------------------------------------------------------------
+    public static Dictionary<string, FactorioObject> objectsByTypeName { get; private set; } = null!;
+    public static Item[] allSciencePacks { get; private set; } = null!;
     public static List<Special>? heatVariants { get; private set; }
     public static IObjectWithQuality<Goods> voidEnergy { get; private set; } = null!;
     public static IObjectWithQuality<Item> science { get; private set; } = null!;
@@ -19,7 +25,6 @@ public static class Database {
     public static IObjectWithQuality<Item> itemOutput { get; private set; } = null!;
     public static IObjectWithQuality<Special> electricity { get; private set; } = null!;
     public static IObjectWithQuality<Recipe> electricityGeneration { get; private set; } = null!;
-    public static IObjectWithQuality<Special> heat { get; private set; } = null!;
     public static Entity? character { get; private set; }
     public static EntityCrafter[] allCrafters { get; private set; } = null!;
     public static Module[] allModules { get; private set; } = null!;
@@ -40,7 +45,6 @@ public static class Database {
     public static FactorioIdRange<Entity> entities { get; private set; } = null!;
     public static FactorioIdRange<Quality> qualities { get; private set; } = null!;
     public static FactorioIdRange<Location> locations { get; private set; } = null!;
-    public static int constantCombinatorCapacity { get; private set; }
 
     /// <summary>
     /// Returns the set of beacons filtered to only those that can accept at least one module.
@@ -106,15 +110,20 @@ public static class Database {
     }
 
     /// <summary>
-    /// Initializes the <see cref="Database"/> class from the supplied parameters.
+    /// Initializes the <see cref="Database"/> class from the supplied parameters. For caching to work, most parameters must be stored in a readable
+    /// property with the same name and cache storage type.
     /// </summary>
     /// <param name="constantCombinatorCapacity">The number of values that can be set in a single constant combinator.</param>
     /// <param name="rootAccessible">The objects that are inherently accessible (character, nauvis, void, etc.).</param>
-    /// <param name="allObjects">The list of all objects.</param>
-    /// <param name="formerAliases">The old names of objects that were renamed by Yafc in the process of development.</param>
+    /// <param name="allObjects">The list of all objects. This does not have a matching property, and must accept a List&lt;FactorioObject>. Renaming
+    /// this parameter requires matching changes in the cache reader and writer.</param>
+    /// <param name="formerAliases">The old names of objects that were renamed by Yafc in the process of development.
+    /// This does not have a matching property, and must have the same cache storage type as a Dictionary&lt;string, FactorioObject>. Renaming this
+    /// parameter requires matching changes in the cache writer.</param>
     /// <param name="heat">The original heat object, which has probably been renamed heat@&lt;temperature>.</param>
     /// <param name="fluidVariants">The collection of all fluid variants from their original name.</param>
     // This method's parameters must be cachable objects. Notably, IObjectWithQuality is not currently cachable.
+    // Changing this method signature will invalidate existing caches. Except as noted above, the reader and writer will automatically adapt.
     internal static void LoadBuiltData(int constantCombinatorCapacity, FactorioObject[] rootAccessible, List<FactorioObject> allObjects,
         Dictionary<string, FactorioObject> formerAliases, Special heat, Dictionary<string, List<Fluid>> fluidVariants) {
 
