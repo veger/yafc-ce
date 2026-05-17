@@ -309,6 +309,50 @@ public class ScrollArea(float height, GuiBuilder builder, Padding padding = defa
     public void Rebuild() => RebuildContents();
 }
 
+/// <summary>A vertical-scrolling area whose vertical scroll position is mirrored to a linked partner, so two
+/// side-by-side scroll areas stay aligned. Call <see cref="Link"/> on either side to pair them.</summary>
+/// <param name="height">See <see cref="ScrollAreaBase"/>.</param>
+/// <param name="builder">See <see cref="ScrollArea"/>.</param>
+/// <param name="horizontal">See <see cref="Scrollable"/>.</param>
+/// <param name="drawVerticalScrollbar">See <see cref="Scrollable"/>.</param>
+public class LinkedScrollArea(float height, GuiBuilder builder, bool horizontal, bool drawVerticalScrollbar)
+    : ScrollArea(height, builder, default, collapsible: false, vertical: true, horizontal: horizontal, drawVerticalScrollbar: drawVerticalScrollbar) {
+
+    private LinkedScrollArea? partner;
+    private bool syncing;
+
+    /// <summary>Pair this scroll area with <paramref name="other"/> so their vertical scroll positions stay in sync.
+    /// Mouse-wheel, keyboard, or programmatic scrolling on either side updates both.</summary>
+    public void Link(LinkedScrollArea other) {
+        partner = other;
+        other.partner = this;
+    }
+
+    public override Vector2 scroll {
+        get => base.scroll;
+        set {
+            base.scroll = value;
+            if (partner != null && !syncing) {
+                partner.MirrorScrollY(base.scroll.Y);
+            }
+        }
+    }
+
+    private void MirrorScrollY(float y) {
+        // The flag breaks the otherwise-infinite mirror cycle (A → B → A → …); try/finally guarantees it's cleared
+        // even if the assignment ever throws, so a failure can't permanently desync the pair.
+        syncing = true;
+        try {
+            scrollY = y;
+        }
+        finally {
+            syncing = false;
+        }
+    }
+
+    public void Build(ImGui gui, float availableHeight) => Build(gui, availableHeight, useBottomPadding: false);
+}
+
 public class VirtualScrollList<TData>(float height, Vector2 elementSize, VirtualScrollList<TData>.Drawer drawer, Padding padding = default,
     Action<int, int>? reorder = null, bool collapsible = false) : ScrollAreaBase(height, padding, collapsible) {
 
