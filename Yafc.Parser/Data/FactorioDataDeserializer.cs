@@ -301,7 +301,7 @@ internal partial class FactorioDataDeserializer {
                 warningIcon: CreateSimpleIcon(cache, "warning-icon"),
                 handIcon: CreateSimpleIcon(cache, "hand"));
 
-            Dictionary<string, Icon> simpleSpritesCache = [];
+            Dictionary<string, int> simpleSpritesCache = [];
             int rendered = 0;
 
             foreach (var o in allObjects) {
@@ -312,8 +312,8 @@ internal partial class FactorioDataDeserializer {
                 if (o.iconSpec != null && o.iconSpec.Length > 0) {
                     bool simpleSprite = o.iconSpec.Length == 1 && o.iconSpec[0].IsSimple();
 
-                    if (simpleSprite && simpleSpritesCache.TryGetValue(o.iconSpec[0].path, out var icon)) {
-                        o.iconId = (int)icon;
+                    if (simpleSprite && simpleSpritesCache.TryGetValue(o.iconSpec[0].path, out int iconId)) {
+                        o.iconId = iconId;
                         continue;
                     }
 
@@ -321,7 +321,7 @@ internal partial class FactorioDataDeserializer {
                         o.iconId = (int)CreateIconFromSpec(cache, o.iconSpec);
 
                         if (simpleSprite) {
-                            simpleSpritesCache[o.iconSpec[0].path] = (Icon)o.iconId;
+                            simpleSpritesCache[o.iconSpec[0].path] = o.iconId;
                         }
                     }
                     catch (Exception ex) {
