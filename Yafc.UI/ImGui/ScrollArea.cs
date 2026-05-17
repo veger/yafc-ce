@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Numerics;
 using SDL2;
+using Yafc.Core;
 
 namespace Yafc.UI;
 
@@ -337,7 +338,7 @@ public class VirtualScrollList<TData>(float height, Vector2 elementSize, Virtual
             elementsPerRow = 1;
         }
 
-        int rowCount = ((_data.Count - 1) / elementsPerRow) + 1;
+        int rowCount = IntegerMath.CeilingDivide(_data.Count, elementsPerRow);
         firstVisibleBlock = CalculateFirstBlock();
         // Scroll up until there are maxRowsVisible, or to the top.
         int firstRow = Math.Max(0, Math.Min(firstVisibleBlock * BufferRows, rowCount - maxRowsVisible));

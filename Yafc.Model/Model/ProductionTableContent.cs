@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
+using Yafc.Core;
 using Yafc.I18n;
 using Yafc.UI;
 
@@ -167,12 +168,7 @@ public class ModuleTemplate : ModelObject<ModelObject> {
             moduleCount += element.fixedCount;
         }
 
-        if (moduleCount == 0) {
-            // C# division rounds to zero, causing the round-up math below to return 1 in most cases, instead of 0.
-            return 0;
-        }
-
-        return ((moduleCount - 1) / beacon.target.moduleSlots) + 1;
+        return IntegerMath.CeilingDivide(moduleCount, beacon.target.moduleSlots);
     }
 
     /// <summary>
@@ -227,12 +223,12 @@ internal class RecipeLinks {
     public required ProductionLink?[] ingredients;
     public ProductionQualityLink products = new();
     public ProductionLink? fuel;
-    public ProductionLink? spentFuel;
 }
 
 /// <summary>
 /// Stores the production links for each pair of (a) index into <see cref="RecipeOrTechnology.products"/> and (b) quality level.
 /// The index is the same value as the index into the old <c><see cref="ProductionLink"/>?[]</c> field.
+/// If the recipe row has a linked spent fuel, that link is after all recipe-declared products.
 /// </summary>
 internal sealed class ProductionQualityLink {
     private readonly Dictionary<(int, Quality), IProductionLink?> _links = [];
@@ -357,13 +353,15 @@ public sealed class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Pr
             if (SerializationMap.IsDeserializing || fixedBuildings == 0 || _fuel == value) {
                 _fuel = value;
             }
-            else if (fixedProduct != null && (fuel.FuelResult() == fixedProduct || value.FuelResult() == fixedProduct)) {
+            else if (fixedProduct != null) {
+                // We're changing the fuel and there's a fixed product. Make sure the amount doesn't change.
+                // (This usually has no effect, but the test for "will it have an effect?" isn't worth the extra effort.)
+
                 if (Products.SingleOrDefault(p => p.Goods == fixedProduct, false) is not RecipeRowProduct product) {
                     fixedBuildings = 0; // We couldn't find the Product corresponding to fixedProduct. Just clear the fixed amount.
                     _fuel = value;
                 }
                 else {
-                    // We're changing the fuel and at least one of the current or new fuel burns to the fixed product
                     float oldAmount = product.Amount;
 
                     _fuel = value;
@@ -494,7 +492,11 @@ public sealed class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Pr
                 return [];
             }
             else if (hierarchyEnabled) {
-                return BuildIngredients(false).Select(RecipeRowIngredient.FromSolver);
+                var result = BuildIngredients(false).Select(RecipeRowIngredient.FromSolver);
+                if (fixedIngredient == Database.itemInput || showTotalIO) {
+                    result = result.Append(new(Database.itemInput, result.Where(i => i.Goods.Is<Item>()).Sum(i => i.Amount), null, null));
+                }
+                return result;
             }
             else {
                 return Enumerable.Repeat(new RecipeRowIngredient(null, 0, null, null), recipe.target.ingredients.Length);
@@ -523,7 +525,11 @@ public sealed class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Pr
                 return [];
             }
             else if (hierarchyEnabled) {
-                return BuildProducts(false).Select(RecipeRowProduct.FromSolver);
+                var result = BuildProducts(false).Select(RecipeRowProduct.FromSolver);
+                if (fixedProduct == Database.itemOutput || showTotalIO) {
+                    result = result.Append(new(Database.itemOutput, result.Where(p => p.Goods.Is<Item>()).Sum(p => p.Amount), null, null));
+                }
+                return result;
             }
             else {
                 return Enumerable.Repeat(new RecipeRowProduct(null, 0, null, null), recipe.target.products.Length);
@@ -539,8 +545,11 @@ public sealed class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Pr
         }
 
         float factor = forSolver ? 1 : (float)recipesPerSecond; // The solver needs the products for one recipe, to produce recipesPerSecond.
-        IObjectWithQuality<Item>? spentFuel = fuel.FuelResult();
-        bool handledFuel = spentFuel == null || forSolver; // If we're running the solver or there's no spent fuel, it's already handled.
+        IObjectWithQuality<Item>? spentFuel = null;
+        if (entity?.target.hasBurntInventory ?? true) {
+            // Only generate spent fuels if there's an inventory slot to put them in. If the entity is not set, assume there's a slot.
+            spentFuel = fuel.FuelResult();
+        }
 
         List<float> upgradeProbabilities = [1];
         if (parameters.activeEffects.qualityMod > 0) {
@@ -558,7 +567,8 @@ public sealed class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Pr
             }
         }
 
-        for (int i = 0; i < recipe.target.products.Length; i++) {
+        int i = 0;
+        for (; i < recipe.target.products.Length; i++) {
             Product product = recipe.target.products[i];
 
             Quality quality = recipe.quality;
@@ -571,10 +581,10 @@ public sealed class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Pr
                 for (int j = 0; j < upgradeProbabilities.Count; j++) {
                     // The result amount for this quality is the normal output amount times the probability of this quality,
                     float amount = baseAmount * upgradeProbabilities[j];
-                    if (!handledFuel && product.goods.With(quality) == spentFuel) {
+                    if (product.goods.With(quality) == spentFuel) {
                         // ... plus the spent fuel, if applicable.
                         amount += parameters.fuelUsagePerSecondPerRecipe;
-                        handledFuel = true;
+                        spentFuel = null; // Done thinking about spent fuel
                     }
 
                     if (amount > 0) {
@@ -585,41 +595,11 @@ public sealed class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Pr
             }
         }
 
-        if (!handledFuel) {
-            // null-forgiving (both): handledFuel is always false when running the solver.
-            // equivalently: We do not enter this block when a non-null Goods is required.
-            yield return (spentFuel!, parameters.fuelUsagePerSecondPerRecipe * factor, links.spentFuel, 0, null);
+        if (spentFuel != null) {
+            var link = links.products[i, spentFuel.quality];
+            yield return (spentFuel, parameters.fuelUsagePerSecondPerRecipe * factor, link, i, null);
         }
     }
-
-    private SetKeyboardFocus _focusBuiltCount, _focusFixedCount;
-
-    /// <summary>
-    /// Returns <see cref="SetKeyboardFocus.Always"/> exactly once after each call to <see cref="FocusBuiltCountOnNextDraw"/>, to focus the newly created edit box on that draw cycle.
-    /// </summary>
-    public SetKeyboardFocus ShouldFocusBuiltCountThisTime() {
-        SetKeyboardFocus result = _focusBuiltCount;
-        _focusBuiltCount = SetKeyboardFocus.No;
-        return result;
-    }
-    /// <summary>
-    /// Call when preparing to add a built building count edit box, so the new box will be focused as part of the next draw loop.
-    /// </summary>
-    public void FocusBuiltCountOnNextDraw() => _focusBuiltCount = SetKeyboardFocus.Always;
-
-    /// <summary>
-    /// Returns <see cref="SetKeyboardFocus.Always"/> exactly once after each call to <see cref="FocusFixedCountOnNextDraw"/>, to focus the newly created edit box on that draw cycle.
-    /// </summary>
-    public SetKeyboardFocus ShouldFocusFixedCountThisTime() {
-        SetKeyboardFocus result = _focusFixedCount;
-        _focusFixedCount = SetKeyboardFocus.No;
-        return result;
-    }
-    /// <summary>
-    /// Call when preparing to add or move a fixed count edit box (building, fuel, ingredient, or product), so the new box will be focused as part of the next draw loop.
-    /// </summary>
-    public void FocusFixedCountOnNextDraw() => _focusFixedCount = SetKeyboardFocus.Always;
-
 
     // Computed variables
     internal RecipeParameters parameters { get; set; } = RecipeParameters.Empty;
@@ -740,7 +720,7 @@ public sealed class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Pr
             // Step 4 is only performed after step 1 and when the possibly-changed entity accepts the old fuel.
             //      If the entity does not accept the old fuel, a caller must set an appropriate fuel.
 
-            if (row.fixedProduct != null && row.fixedProduct == row.fuel.FuelResult()) {
+            if (row.fixedProduct != null && (row.fixedProduct == row.fuel.FuelResult() || row.fixedProduct == Database.itemOutput)) {
                 oldFuel = row.fuel;
                 row.fuel = Database.voidEnergy; // step 1
             }
@@ -792,6 +772,65 @@ public sealed class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Pr
                     return;
                 }
             }
+        }
+    }
+
+    /// <summary>
+    /// Apply a default module when this row uses a single-category module building and no template was selected.
+    /// The chosen module is based upon the unlock order and what milestones are currently unlocked. No secondary sort on prod/speed to keep the code simpler
+    /// </summary>
+    public void AutoApplySingleCategoryModule() {
+        //Don't change anything if existing modules are set
+        if (modules != null) {
+            return;
+        }
+
+        //Basic safety checks
+        if (recipe is null || entity is null || entity.target.moduleSlots <= 0) {
+            return;
+        }
+
+        if (recipe.target is not Recipe targetRecipe) {
+            return;
+        }
+
+        if (entity.target.allowedModuleCategories is not [string moduleCategory]) {
+            return;
+        }
+
+        IObjectWithQuality<Module>? bestModule = null;
+        Bits bestUnlockOrder = default;
+
+        //Loop over all modules finding the one that is usable, unlocked, and unlocks latest according to milestones
+        foreach (Module module in Database.allModules) {
+            //Check module is in the building's allowed category
+            if (module.moduleSpecification.category != moduleCategory) {
+                continue;
+            }
+
+            //Check the recipe allows this module
+            if (!entity.target.CanAcceptModule(module.moduleSpecification) || !recipe.target.CanAcceptModule(module)) {
+                continue;
+            }
+
+            //Check if this module is currently available with the active milestones
+            if (!module.IsAccessibleWithCurrentMilestones()) {
+                continue;
+            }
+
+            //Update if this module is better (milestone order)
+            Bits moduleMilestoneOrder = Milestones.Instance.GetMilestoneResult(module.id);
+            if (bestModule == null || moduleMilestoneOrder > bestUnlockOrder) {
+                bestModule = module.With(Quality.MaxAccessible);
+                bestUnlockOrder = moduleMilestoneOrder;
+            }
+        }
+
+        //We have a working module, fill all the module slots
+        if (bestModule != null) {
+            modules = new ModuleTemplateBuilder {
+                list = [(bestModule, 0)]
+            }.Build(this);
         }
     }
 

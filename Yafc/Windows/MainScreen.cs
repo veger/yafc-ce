@@ -72,6 +72,7 @@ public partial class MainScreen : WindowMain, IKeyboardFocus, IProgress<(string,
     private void SetProject(Project project) {
         if (this.project != null) {
             this.project.metaInfoChanged -= ProjectOnMetaInfoChanged;
+            this.project.saveStateChanged -= ProjectSaveStateChanged;
             this.project.settings.changed -= ProjectSettingsChanged;
         }
         Project.current = project;
@@ -90,7 +91,10 @@ public partial class MainScreen : WindowMain, IKeyboardFocus, IProgress<(string,
         SetActivePage(project.FindPage(project.displayPages[0]));
         project.metaInfoChanged += ProjectOnMetaInfoChanged;
         project.settings.changed += ProjectSettingsChanged;
+        project.saveStateChanged += ProjectSaveStateChanged;
+
         _ = InputSystem.Instance.SetDefaultKeyboardFocus(this);
+        UpdateWindowTitle(project.unsavedChangesCount > 0);
     }
 
     private void ProjectSettingsChanged(bool visualOnly) {
@@ -143,6 +147,10 @@ public partial class MainScreen : WindowMain, IKeyboardFocus, IProgress<(string,
         if (_activePage != null && project.FindPage(_activePage.guid) != _activePage) {
             SetActivePage(null);
         }
+    }
+
+    private void ProjectSaveStateChanged(bool unsavedChanges) {
+        UpdateWindowTitle(unsavedChanges);
     }
 
     private void ChangePage(ref ProjectPage? activePage, ProjectPage? newPage, ref ProjectPageView? activePageView, ProjectPageView? newPageView) {
@@ -247,7 +255,7 @@ public partial class MainScreen : WindowMain, IKeyboardFocus, IProgress<(string,
         using (gui.EnterRow()) {
             gui.spacing = 0f;
             if (gui.BuildButton(Icon.Menu)) {
-                gui.ShowDropDown(gui.lastRect, SettingsDropdown, new Padding(0f, 0f, 0f, 0.5f));
+                gui.ShowDropDown(gui.lastRect, MainDropdown, new Padding(0f, 0f, 0f, 0.5f));
             }
 
             if (gui.BuildButton(Icon.Plus).WithTooltip(gui, LSs.CreateProductionSheet.L(ImGuiUtils.ScanToString(SDL.SDL_Scancode.SDL_SCANCODE_T)))) {
@@ -354,7 +362,9 @@ public partial class MainScreen : WindowMain, IKeyboardFocus, IProgress<(string,
             SetSearch(default);
             return;
         }
-        if (gui.BuildSearchBox(pageSearch, out pageSearch)) {
+        string pageSearchText = pageSearch.query;
+        if (gui.BuildSearchBox(pageSearchText, out string newPageSearchText)) {
+            pageSearch = new SearchQuery(newPageSearchText);
             SetSearch(pageSearch);
         }
 
@@ -365,13 +375,13 @@ public partial class MainScreen : WindowMain, IKeyboardFocus, IProgress<(string,
         searchBoxRect = gui.lastRect;
     }
 
-    private void SettingsDropdown(ImGui gui) {
+    private void MainDropdown(ImGui gui) {
         gui.boxColor = SchemeColor.Background;
-        if (gui.BuildContextMenuButton(LSs.Undo, LSs.ShortcutCtrlX.L(ImGuiUtils.ScanToString(SDL.SDL_Scancode.SDL_SCANCODE_Z))) && gui.CloseDropdown()) {
+        if (gui.BuildContextMenuButton(LSs.Undo, LSs.ShortcutCtrlX.L(ImGuiUtils.ScanToString(SDL.SDL_Scancode.SDL_SCANCODE_Z)), disabled: !project.undo.CanUndo) && gui.CloseDropdown()) {
             project.undo.PerformUndo();
         }
 
-        if (gui.BuildContextMenuButton(LSs.Save, LSs.ShortcutCtrlX.L(ImGuiUtils.ScanToString(SDL.SDL_Scancode.SDL_SCANCODE_S))) && gui.CloseDropdown()) {
+        if (gui.BuildContextMenuButton(LSs.Save, LSs.ShortcutCtrlX.L(ImGuiUtils.ScanToString(SDL.SDL_Scancode.SDL_SCANCODE_S)), disabled: project.unsavedChangesCount == 0) && gui.CloseDropdown()) {
             SaveProject().CaptureException();
         }
 
@@ -388,7 +398,7 @@ public partial class MainScreen : WindowMain, IKeyboardFocus, IProgress<(string,
         }
 
         if (gui.BuildContextMenuButton(LSs.ReturnToWelcomeScreen) && gui.CloseDropdown()) {
-            LoadProjectHeavy();
+            ReturnToWelcomeScreen();
         }
 
         BuildSubHeader(gui, LSs.MenuHeaderTools);
@@ -479,6 +489,13 @@ public partial class MainScreen : WindowMain, IKeyboardFocus, IProgress<(string,
         base.Close();
     }
 
+    private void UpdateWindowTitle(bool unsavedChanges) {
+        var projectName = string.IsNullOrEmpty(project.attachedFileName)
+            ? LSs.UntitledProject
+            : (unsavedChanges ? "*" : string.Empty) + Path.GetFileNameWithoutExtension(project.attachedFileName);
+        SetWindowTitle($"{projectName} - {LSs.FullNameWithVersion.L(YafcLib.version.ToString(3))}");
+    }
+
     private async Task<bool> ConfirmUnsavedChanges() {
         string unsavedCount;
         if (string.IsNullOrEmpty(project.attachedFileName)) {
@@ -513,7 +530,7 @@ public partial class MainScreen : WindowMain, IKeyboardFocus, IProgress<(string,
         try {
             HttpClient client = new HttpClient();
             client.DefaultRequestHeaders.Add("User-Agent", "YAFC-CE (check for updates)");
-            string result = await client.GetStringAsync(new Uri("https://api.github.com/repos/have-fun-was-taken/yafc-ce/releases/latest"));
+            string result = await client.GetStringAsync(new Uri("https://api.github.com/repos/Yafc-CE/yafc-ce/releases/latest"));
             var release = JsonSerializer.Deserialize<GithubReleaseInfo>(result)!;
             string version = release.tag_name.StartsWith('v') ? release.tag_name[1..] : release.tag_name;
             if (new Version(version) > YafcLib.version) {
@@ -648,6 +665,7 @@ public partial class MainScreen : WindowMain, IKeyboardFocus, IProgress<(string,
             FilesystemScreen.Mode.SelectOrCreateFile, LSs.DefaultFileName, this, null, "yafc", "Enter Project Name");
         if (projectPath != null) {
             project.Save(projectPath);
+            UpdateWindowTitle(false);
             Preferences.Instance.AddProject(DataUtils.dataPath, DataUtils.modsPath, projectPath, DataUtils.expensiveRecipes, DataUtils.netProduction);
             return true;
         }
@@ -694,7 +712,7 @@ public partial class MainScreen : WindowMain, IKeyboardFocus, IProgress<(string,
         }
     }
 
-    private async void LoadProjectHeavy() {
+    private async void ReturnToWelcomeScreen() {
         if (project.unsavedChangesCount > 0 && !await ConfirmUnsavedChanges()) {
             return;
         }

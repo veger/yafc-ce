@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -394,6 +395,7 @@ public class Item : Goods {
     }
 
     public Item? fuelResult { get; internal set; }
+    public Item[] fuelResultOf { get; internal set; } = [];
     public int stackSize { get; internal set; }
     public Entity? placeResult { get; internal set; }
     public Entity? plantResult { get; internal set; }
@@ -489,6 +491,9 @@ public class Special : Goods {
     internal string? virtualSignal { get; set; }
     internal bool power;
     internal bool isVoid;
+    public int temperature { get; internal set; }
+    internal List<Special>? variants { get; set; }
+    internal Special Clone() => (Special)MemberwiseClone();
     public override bool isPower => power;
     public override string type => isPower ? "Power" : "Special";
     public override UnitOfMeasure flowUnitOfMeasure => isVoid ? UnitOfMeasure.None : isPower ? UnitOfMeasure.Megawatt : UnitOfMeasure.PerSecond;
@@ -545,6 +550,12 @@ public class Entity : FactorioObject {
     internal List<Entity> sourceEntities { get; set; } = null!;
     internal string? autoplaceControl { get; set; }
     public float heatingPower { get; internal set; }
+    /// <summary>
+    /// If <see langword="false"/>, this entity does not produce burnt results when burning item fuels.<br/>
+    /// This is initialized to <see langword="true"/> if <c>entity.burner.burnt_result_inventory</c> (burner generators) or
+    /// <c>entity.energy_source.burnt_result_inventory</c> (everything else) is present and non-zero.
+    /// </summary>
+    public bool hasBurntInventory { get; internal set; }
     public int width { get; internal set; }
     public int height { get; internal set; }
     public int size { get; internal set; }
@@ -910,6 +921,7 @@ public static class ObjectWithQuality {
     /// Represents a <see cref="FactorioObject"/> with an attached <see cref="Quality"/> modifier.
     /// </summary>
     /// <typeparam name="T">The concrete type of the quality-modified object.</typeparam>
+    [DebuggerDisplay("{DebuggerDisplay,nq}", Type = "{DebuggerType,nq}")]
     private sealed class ConcreteObjectWithQuality<T>(T target, Quality quality) : IObjectWithQuality<T> where T : FactorioObject {
         /// <inheritdoc/>
         public T target { get; } = target ?? throw new ArgumentNullException(nameof(target));
@@ -919,6 +931,12 @@ public static class ObjectWithQuality {
         string IFactorioObjectWrapper.text => ((IFactorioObjectWrapper)target).text;
         FactorioObject IFactorioObjectWrapper.target => target;
         float IFactorioObjectWrapper.amount => ((IFactorioObjectWrapper)target).amount;
+
+        // The debugger is already displaying these as the value and type; don't display them again.
+        [DebuggerBrowsable(DebuggerBrowsableState.Never)]
+        private string DebuggerDisplay => $"{{{target.typeDotName} ({quality})}}";
+        [DebuggerBrowsable(DebuggerBrowsableState.Never)]
+        private static string DebuggerType => $"{typeof(T).FullName} with quality";
     }
 }
 

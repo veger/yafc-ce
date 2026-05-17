@@ -9,7 +9,7 @@ using Yafc.I18n;
 
 namespace Yafc.Model;
 
-public class Project : ModelObject {
+public partial class Project : ModelObject {
     public static Project current { get; set; } = null!; // null-forgiving: MainScreen.SetProject will set this to a non-null value
     public static Version currentYafcVersion { get; set; } = new Version(0, 4, 0);
     public uint projectVersion => undo.version;
@@ -33,9 +33,16 @@ public class Project : ModelObject {
     private int autosaveIndex;
     private const int AutosaveRollingLimit = 5;
 
-    public Project() : base(new UndoSystem()) {
+    public event Action<bool>? saveStateChanged;
+
+    public Project() : this(new UndoSystem()) { }
+
+    internal Project(IUndoBatchScheduler scheduler) : this(new UndoSystem(scheduler)) { }
+
+    private Project(UndoSystem undo) : base(undo) {
         settings = new ProjectSettings(this);
         preferences = new ProjectPreferences(this);
+        base.undo.versionChanged += () => saveStateChanged?.Invoke(unsavedChangesCount > 0);
     }
 
     public event Action? metaInfoChanged;
@@ -135,8 +142,7 @@ public class Project : ModelObject {
             // If an Auto Save is used to open the project we want remove the 'autosave' part so when the user
             // manually saves the file next time it saves the 'main' save instead of the generated save file.
             if (path != null) {
-                var autosaveRegex = new Regex("-autosave-[0-9].yafc$");
-                path = autosaveRegex.Replace(path, ".yafc");
+                path = Path.Combine(Path.GetDirectoryName(path) ?? "", AutosaveRegex().Replace(Path.GetFileName(path), ".yafc"));
             }
 
             project.attachedFileName = path;
@@ -179,6 +185,8 @@ public class Project : ModelObject {
     }
 
     public void Save(string fileName) {
+        undo.FlushPendingChanges();
+
         if (lastSavedVersion == projectVersion && fileName == attachedFileName) {
             return;
         }
@@ -189,6 +197,8 @@ public class Project : ModelObject {
 
         attachedFileName = fileName;
         lastSavedVersion = projectVersion;
+
+        saveStateChanged?.Invoke(false);
     }
 
     public void Save(Stream stream) {
@@ -197,7 +207,13 @@ public class Project : ModelObject {
     }
 
     public void PerformAutoSave() {
-        if (!string.IsNullOrWhiteSpace(attachedFileName) && lastAutoSavedVersion != projectVersion) {
+        if (string.IsNullOrWhiteSpace(attachedFileName)) {
+            return;
+        }
+
+        undo.FlushPendingChanges();
+
+        if (lastAutoSavedVersion != projectVersion) {
             autosaveIndex = (autosaveIndex % AutosaveRollingLimit) + 1;
             var fileName = GenerateAutosavePath(attachedFileName, autosaveIndex);
 
@@ -209,7 +225,8 @@ public class Project : ModelObject {
         }
     }
 
-    private static string GenerateAutosavePath(string filename, int saveIndex) => filename.Replace(".yafc", $"-autosave-{saveIndex}.yafc");
+    internal static string GenerateAutosavePath(string filename, int saveIndex)
+        => $"{Path.Combine(Path.GetDirectoryName(filename) ?? "", Path.GetFileNameWithoutExtension(filename))}-autosave-{saveIndex}.yafc";
 
     public void RecalculateDisplayPages() {
         foreach (var page in displayPages) {
@@ -289,6 +306,9 @@ public class Project : ModelObject {
         displayPages[index1] = page2.guid;
         displayPages[index2] = page1.guid;
     }
+
+    [GeneratedRegex("-autosave-[0-9].yafc$")]
+    private static partial Regex AutosaveRegex();
 }
 
 public class ProjectSettings(Project project) : ModelObject<Project>(project) {

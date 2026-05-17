@@ -29,6 +29,22 @@ function log(s)
 	raw_log(s);
 end
 
+-- Test format strings include "%e", "%e%e", "%e%%e", "%%e%s", "%e%" (must not throw index-out-of-range)
+-- Also test when passing non-numbers to %e and friends
+local raw_format = string.format
+if string.format("%e", 1):match("e%+000$") then
+	-- The documentation states that %e/%E/%g/%G produce two-digit exponents when possible. Some mods rely on this behavior.
+    -- Our Lua build just produced a three-digit exponent instead. (The Windows build is known to have this bug.)
+    -- Patch in a shim that does a quick check and delegates to C# if necessary.
+	function string.format(pattern, ...)
+		if type(pattern) == "string" and pattern:match("%%[-+ #0-9.]*[eEgG]") then
+			return raw_format(yafc_format(raw_format, pattern, ...))
+		end
+
+		return raw_format(pattern, ...)
+	end
+end
+
 local raw_getinfo = debug.getinfo
 -- Tests:
 -- 1: Ensure all of the following have the same result both before and after this function declaration:
@@ -57,6 +73,13 @@ function debug.getinfo(thread_or_f, f_or_what, what)
 		result.name = name.name
 		result.namewhat = name.namewhat
 		return result
+	end
+
+	-- If the caller wants info about string.format, hide our shim.
+	if thread_or_f == string.format then
+		return raw_getinfo(raw_format, f_or_what)
+	elseif f_or_what == string.format then
+		return raw_getinfo(thread_or_f, raw_format, what)
 	end
 
 	-- Otherwise, add 1 to f if it's a number, to hide this method from the stack.

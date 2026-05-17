@@ -115,6 +115,8 @@ internal partial class FactorioDataDeserializer {
                     fuelUsers.Add(entity, energySource.Get("fuel_category", "chemical"));
                 }
 
+                entity.hasBurntInventory = energySource.Get("burnt_inventory_size", 0) != 0;
+
                 break;
             case "heat":
                 energy.type = EntityEnergyType.Heat;
@@ -323,7 +325,6 @@ internal partial class FactorioDataDeserializer {
                 }
 
                 recipeCrafters.Add(character, SpecialNames.TechnologyTrigger);
-                recipeCrafters.Add(character, SpecialNames.SpoilRecipe);
 
                 character.energy = laborEntityEnergy;
                 if (character.name == "character") {
@@ -476,7 +477,9 @@ internal partial class FactorioDataDeserializer {
                 pump.basePower = ParseEnergy(usesPower);
                 pump.baseCraftingSpeed = table.Get("pumping_speed", 20f) / 20f;
 
-                if (table.Get("fluid_box", out LuaTable? fluidBox) && fluidBox.Get("fluid", out string? fluidName)) {
+                if ((table.Get("fluid_box", out LuaTable? fluidBox) && fluidBox.Get("filter", out string? fluidName)) // 1.1 and 2.0
+                    || table.Get("fluid", out fluidName)) { // simpler structure for 1.1 only
+
                     var pumpingFluid = GetFluidFixedTemp(fluidName, 0);
                     string recipeCategory = SpecialNames.PumpingRecipe + pumpingFluid.name;
                     recipe = CreateSpecialRecipe(pumpingFluid, recipeCategory, LSs.SpecialRecipePumping);
@@ -523,7 +526,20 @@ internal partial class FactorioDataDeserializer {
                 _ = table.Get("consumption", out usesPower);
                 reactor.basePower = ParseEnergy(usesPower);
                 reactor.baseCraftingSpeed = reactor.basePower;
-                recipeCrafters.Add(reactor, SpecialNames.ReactorRecipe);
+
+                int maxTemp = table.Get<LuaTable>("heat_buffer").Get("max_temperature", 1000);
+                var heatVariant = GetHeatFixedTemp(maxTemp);
+
+                string reactorCategory = SpecialNames.ReactorRecipe + "@" + maxTemp;
+                var reactorRecipe = CreateSpecialRecipe(heatVariant, reactorCategory, LSs.SpecialRecipeGenerating);
+                if (reactorRecipe.products == null) {
+                    reactorRecipe.products = [new Product(heatVariant, 1f)];
+                    reactorRecipe.flags |= RecipeFlags.ScaleProductionWithPower;
+                    reactorRecipe.ingredients = [];
+                }
+                recipeCrafters.Add(reactor, reactorCategory);
+
+                formerAliases.TryAdd("Mechanics." + SpecialNames.ReactorRecipe + "." + SpecialNames.Heat, reactorRecipe);
                 break;
             case "rocket-silo":
                 goto case "furnace";

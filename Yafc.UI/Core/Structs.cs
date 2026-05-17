@@ -151,6 +151,7 @@ public enum Icon {
     OpenNew,
     StarEmpty,
     StarFull,
+    Secondary,
 
     FirstCustom,
 }
