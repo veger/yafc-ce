@@ -31,7 +31,7 @@ public class ProductionSummaryView : ProjectPageView<ProductionSummary> {
             gui.allocator = RectAllocator.Center;
             gui.spacing = 0f;
             if (row.IsSubgroup) {
-                var subgroup = row.subgroup!; // IsSubgroup guarantees subgroup != null
+                var subgroup = row.subgroup;
                 if (gui.BuildButton(subgroup.expanded ? Icon.ChevronDown : Icon.ChevronRight)) {
                     subgroup.RecordChange().expanded = !subgroup.expanded;
                     view.flatHierarchy.SetData(view.model.group);
@@ -79,7 +79,7 @@ public class ProductionSummaryView : ProjectPageView<ProductionSummary> {
             gui.allocator = RectAllocator.LeftAlign;
 
             if (entry.IsSubgroup) {
-                var subgroup = entry.subgroup!; // IsSubgroup guarantees subgroup != null
+                var subgroup = entry.subgroup;
                 if (subgroup.expanded) {
                     BuildButtons(gui, 1.5f, subgroup);
                 }

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks;
 using Yafc.I18n;
 using Yafc.UI;
@@ -55,6 +56,7 @@ public class ProductionSummaryEntry(ProductionSummaryGroup owner) : ModelObject<
     private bool needRefreshFlow = true;
 
     /// <summary>True when this entry represents a folder/subgroup rather than a project page.</summary>
+    [MemberNotNullWhen(true, nameof(subgroup))]
     public bool IsSubgroup => subgroup != null;
     /// <summary>True when this entry's referenced page has been removed or could not be found.</summary>
     public bool IsMissingPage => !IsSubgroup && page?.page == null;
