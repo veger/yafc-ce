@@ -7,8 +7,17 @@ using Yafc.Core;
 namespace Yafc.UI;
 
 /// <summary> Provide scrolling support for any component.</summary>
+/// <param name="vertical">Whether vertical scrolling is enabled (mouse wheel, keyboard, programmatic <see cref="scrollY"/>).</param>
+/// <param name="horizontal">Whether horizontal scrolling is enabled (Ctrl+wheel, keyboard, programmatic <see cref="scrollX"/>).</param>
+/// <param name="collapsible">If <see langword="true"/>, the rendered area shrinks to fit the content when the content is smaller
+/// than the available height. If <see langword="false"/>, the area always uses the full available height.</param>
+/// <param name="drawVerticalScrollbar">When <see langword="false"/> and <paramref name="vertical"/> is <see langword="true"/>,
+/// vertical scrolling still works (mouse wheel, keyboard, programmatic <see cref="scrollY"/>) but no scrollbar is drawn and no
+/// width is reserved for it. Useful for one half of a pair of side-by-side, vertically-synced scroll areas where only one
+/// visible scrollbar is desired.</param>
 /// <remarks> The component should use the <see cref="scroll"/> property to get the offset of rendering the contents. </remarks>
-public abstract class Scrollable(bool vertical, bool horizontal, bool collapsible) : IKeyboardFocus {
+public abstract class Scrollable(bool vertical, bool horizontal, bool collapsible, bool drawVerticalScrollbar = true) : IKeyboardFocus {
+    private readonly bool drawVerticalScrollbar = drawVerticalScrollbar;
     /// <summary>Required size to fit Scrollable (child) contents</summary>
     private Vector2 requiredContentSize;
     /// <summary>This rectangle contains the available size (and position) of the scrollable content</summary>
@@ -35,7 +44,7 @@ public abstract class Scrollable(bool vertical, bool horizontal, bool collapsibl
         var rect = gui.statePosition;
         float width = rect.Width;
 
-        if (vertical) {
+        if (vertical && drawVerticalScrollbar) {
             width -= ScrollbarSize;
         }
 
@@ -94,7 +103,7 @@ public abstract class Scrollable(bool vertical, bool horizontal, bool collapsibl
                 BuildScrollBar(gui, 0, in scrollbarRect, in scrollerRect);
             }
 
-            if (vertical && maxScroll.Y > 0f) {
+            if (vertical && drawVerticalScrollbar && maxScroll.Y > 0f) {
                 Rect scrollbarRect = new Rect(rect.Right - ScrollbarSize, rect.Y, ScrollbarSize, rect.Height);
                 Rect scrollerRect = new Rect(scrollbarRect.X, rect.Y + scrollerStart.Y, ScrollbarSize, scrollerSize.Y);
                 BuildScrollBar(gui, 1, in scrollbarRect, in scrollerRect);
@@ -254,7 +263,14 @@ public abstract class ScrollAreaBase : Scrollable {
     private ImGui.OverlappingAllocations? controller;
     public float height { get; }
 
-    public ScrollAreaBase(float height, Padding padding, bool collapsible = false, bool vertical = true, bool horizontal = false) : base(vertical, horizontal, collapsible) {
+    /// <param name="height">Default available height passed to <see cref="Scrollable.Build(ImGui, float, bool)"/> when no explicit
+    /// height is provided.</param>
+    /// <param name="padding">Padding applied to the inner contents <see cref="ImGui"/>.</param>
+    /// <param name="collapsible">See <see cref="Scrollable"/>.</param>
+    /// <param name="vertical">See <see cref="Scrollable"/>.</param>
+    /// <param name="horizontal">See <see cref="Scrollable"/>.</param>
+    /// <param name="drawVerticalScrollbar">See <see cref="Scrollable"/>.</param>
+    public ScrollAreaBase(float height, Padding padding, bool collapsible = false, bool vertical = true, bool horizontal = false, bool drawVerticalScrollbar = true) : base(vertical, horizontal, collapsible, drawVerticalScrollbar) {
         contents = new ImGui(BuildContents, padding, clip: true);
         this.height = height;
     }
@@ -280,7 +296,14 @@ public abstract class ScrollAreaBase : Scrollable {
 }
 
 ///<summary>Area with scrollbars, which will be visible if it does not fit in the parent area in order to let the user fully view the content of the area.</summary>
-public class ScrollArea(float height, GuiBuilder builder, Padding padding = default, bool collapsible = false, bool vertical = true, bool horizontal = false) : ScrollAreaBase(height, padding, collapsible, vertical, horizontal) {
+/// <param name="height">See <see cref="ScrollAreaBase"/>.</param>
+/// <param name="builder">Callback that draws the scroll area's contents into the inner <see cref="ImGui"/>.</param>
+/// <param name="padding">See <see cref="ScrollAreaBase"/>.</param>
+/// <param name="collapsible">See <see cref="Scrollable"/>.</param>
+/// <param name="vertical">See <see cref="Scrollable"/>.</param>
+/// <param name="horizontal">See <see cref="Scrollable"/>.</param>
+/// <param name="drawVerticalScrollbar">See <see cref="Scrollable"/>.</param>
+public class ScrollArea(float height, GuiBuilder builder, Padding padding = default, bool collapsible = false, bool vertical = true, bool horizontal = false, bool drawVerticalScrollbar = true) : ScrollAreaBase(height, padding, collapsible, vertical, horizontal, drawVerticalScrollbar) {
     protected override void BuildContents(ImGui gui) => builder(gui);
 
     public void Rebuild() => RebuildContents();
