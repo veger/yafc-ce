@@ -31,7 +31,7 @@ internal partial class FactorioDataDeserializer {
     /// <seealso cref="GetObject{TReturn}(string)"/>
     private bool GetRef<TReturn>(LuaTable table, string key, [NotNullWhen(true)] out TReturn? result) where TReturn : FactorioObject, new() {
         result = null;
-        if (!table.Get(key, out string? name)) {
+        if (!table.Get(key, out string? name) || string.IsNullOrEmpty(name)) {
             return false;
         }
 
