@@ -36,6 +36,7 @@ internal partial class FactorioDataDeserializer {
     internal static readonly Version v2_0 = new Version(2, 0);
 
     public FactorioDataDeserializer(Version factorioVersion) {
+        Analysis.ClearExclusions();
         this.factorioVersion = factorioVersion;
 
         Special createSpecialObject(bool isPower, string name, string locName, string locDescr, string icon, string signal) {

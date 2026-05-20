@@ -40,6 +40,12 @@ public abstract class Analysis {
             analysis.excludedObjects.Add(obj);
         }
     }
+
+    public static void ClearExclusions() {
+        foreach (Analysis analysis in analyses) {
+            analysis.excludedObjects.Clear();
+        }
+    }
 }
 
 public static class AnalysisExtensions {
