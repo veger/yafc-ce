@@ -819,7 +819,7 @@ nextWeightCalculation:;
 
     private Goods? LoadItemOrFluid(LuaTable table, bool useTemperature, bool isAlwaysItem) {
         string? type = null;
-        if (isAlwaysItem || table.Get("type", out type)) {
+        if ((factorioVersion >= v2_0 && isAlwaysItem) || table.Get("type", out type)) {
             if (table.Get("name", out string? name)) {
                 if (isAlwaysItem || type == "item") {
                     return GetObject<Item>(table);
