@@ -31,7 +31,7 @@ internal partial class FactorioDataDeserializer {
     /// <seealso cref="GetObject{TReturn}(string)"/>
     private bool GetRef<TReturn>(LuaTable table, string key, [NotNullWhen(true)] out TReturn? result) where TReturn : FactorioObject, new() {
         result = null;
-        if (!table.Get(key, out string? name)) {
+        if (!table.Get(key, out string? name) || string.IsNullOrEmpty(name)) {
             return false;
         }
 
@@ -819,7 +819,7 @@ nextWeightCalculation:;
 
     private Goods? LoadItemOrFluid(LuaTable table, bool useTemperature, bool isAlwaysItem) {
         string? type = null;
-        if (isAlwaysItem || table.Get("type", out type)) {
+        if ((factorioVersion >= v2_0 && isAlwaysItem) || table.Get("type", out type)) {
             if (table.Get("name", out string? name)) {
                 if (isAlwaysItem || type == "item") {
                     return GetObject<Item>(table);
