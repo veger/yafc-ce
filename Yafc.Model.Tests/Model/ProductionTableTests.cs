@@ -27,6 +27,26 @@ public class ProductionTableTests {
     }
 
     [Fact]
+    public void DestroyLink_WithSuspendedImmediateScheduler_UpdatesLinkMapAfterMutation() {
+        _ = LuaDependentTestHelper.GetProjectForLua("Yafc.Model.Tests.Model.ProductionTableContentTests.lua");
+        Project project = new();
+        ProjectPage page = new(project, typeof(ProductionTable));
+        ProductionTable table = (ProductionTable)page.content;
+        Goods goodsTarget = Database.items.all.First(g => g.isLinkable);
+        IObjectWithQuality<Goods> goods = goodsTarget.With(Quality.Normal);
+        project.undo.Suspend();
+        Assert.True(table.CreateLink(goods));
+        ProductionLink link = Assert.Single(table.links);
+
+        Assert.True(link.Destroy());
+
+        Assert.Empty(table.links);
+        Assert.False(table.linkMap.ContainsKey(goods));
+        Assert.True(table.CreateLink(goods));
+        Assert.Single(table.links);
+    }
+
+    [Fact]
     public void ProductionTableTest_CanSaveAndLoadWithRecipe() {
         Project project = LuaDependentTestHelper.GetProjectForLua("Yafc.Model.Tests.Model.ProductionTableContentTests.lua");
 

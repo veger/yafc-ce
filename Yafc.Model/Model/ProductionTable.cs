@@ -532,6 +532,7 @@ match:
             if (!link.flags.HasFlags(ProductionLink.Flags.HasProductionAndConsumption)) {
                 if (!link.flags.HasFlagAny(ProductionLink.Flags.HasProductionAndConsumption) && !link.owner.HasDisabledRecipeReferencing(link.goods)) {
                     _ = link.owner.RecordUndo(true).links.Remove((link as ProductionLink)!); // null-forgiving: removing null from a non-null collection is a no-op.
+                    link.owner.RebuildLinkMap();
                 }
 
                 link.flags |= ProductionLink.Flags.LinkNotMatched;
