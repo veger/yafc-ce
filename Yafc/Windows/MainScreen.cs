@@ -47,7 +47,7 @@ public partial class MainScreen : WindowMain, IKeyboardFocus, IProgress<(string,
     private readonly Dictionary<Type, ProjectPageView> secondaryPageViews = [];
 
     public MainScreen(int display, Project project) : base(default, Preferences.Instance.forceSoftwareRenderer) {
-        summaryView = new SummaryView(project);
+        summaryView = new SummaryView();
         RegisterPageView<ProductionTable>(new ProductionTableView());
         RegisterPageView<AutoPlanner>(new AutoPlannerView());
         RegisterPageView<ProductionSummary>(new ProductionSummaryView());
@@ -200,7 +200,7 @@ public partial class MainScreen : WindowMain, IKeyboardFocus, IProgress<(string,
     }
 
     public void SetSecondaryPage(ProjectPage? page) {
-        if (page == null || page == _activePage) {
+        if (page == null || page == _activePage || page.contentType == typeof(Summary)) {
             ChangePage(ref _secondaryPage, null, ref secondaryPageView, null);
         }
         else {

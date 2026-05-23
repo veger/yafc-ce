@@ -150,7 +150,7 @@ public class SummaryView : ProjectPageView<Summary> {
         public float sum;
     }
 
-    private Project project;
+    private Project project = null!;
     private SearchQuery searchQuery;
 
     private readonly LinkedScrollArea leftScrollArea;
@@ -195,7 +195,7 @@ public class SummaryView : ProjectPageView<Summary> {
         }
     }
 
-    public SummaryView(Project project) {
+    public SummaryView() {
         tabColumn = new SummaryTabColumn();
         goodsColumn = new SummaryDataColumn(this);
         leftGrid = new DataGrid<ProjectPage>(tabColumn);
@@ -205,8 +205,6 @@ public class SummaryView : ProjectPageView<Summary> {
         leftScrollArea = new LinkedScrollArea(DefaultScrollHeight, BuildLeftScrollArea, horizontal: false, drawVerticalScrollbar: false);
         rightScrollArea = new LinkedScrollArea(DefaultScrollHeight, BuildRightScrollArea, horizontal: true, drawVerticalScrollbar: true);
         leftScrollArea.Link(rightScrollArea);
-
-        SetProject(project);
     }
 
     [MemberNotNull(nameof(project))]
