@@ -325,6 +325,7 @@ public class SummaryView : ProjectPageView<Summary> {
         }
     }
 
+    // SetProject can recalculate before SetModel attaches the persisted showOnlyIssues value, which affects column width.
     protected override void ModelContentsChanged(bool visualOnly) => Recalculate(visualOnly);
 
     private async Task AutoBalance() {
