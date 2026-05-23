@@ -29,6 +29,7 @@ Date:
     Fixes:
         - Fix loading Tricky Old Nick and other mods that forget to declare that rocket launch products are items.
         - Fix loading mods that set some properties to "" (the 'default' value) instead of nil.
+        - Fix the main window going blank (and Preferences.Save throwing) after the display is queried in a transient state, e.g. after macOS sleep/wake.
     Internal changes:
         - Rename SettingsDropdown to MainDropdown.
         - Rename LoadProjectHeavy to ReturnToWelcomeScreen.

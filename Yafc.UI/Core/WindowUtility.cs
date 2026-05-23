@@ -19,7 +19,7 @@ public abstract class WindowUtility(Padding padding) : Window(padding) {
         }
         contentSize.X = width;
         int display = parent == null ? 0 : SDL.SDL_GetWindowDisplayIndex(parent.window);
-        pixelsPerUnit = CalculateUnitsToPixels(display);
+        pixelsPerUnit = CalculateUnitsToPixels(display) ?? DefaultPixelsPerUnit;
         contentSize = rootGui.CalculateState(width, pixelsPerUnit);
         windowWidth = rootGui.UnitsToPixels(contentSize.X);
         windowHeight = rootGui.UnitsToPixels(contentSize.Y);

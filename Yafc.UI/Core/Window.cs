@@ -8,6 +8,12 @@ namespace Yafc.UI;
 public abstract class Window : IDisposable {
     private static readonly ILogger logger = Logging.GetLogger<Window>();
 
+    /// <summary>
+    /// Fallback pixels-per-unit scale used when display info is unknown or unavailable.
+    /// Corresponds to ~100% scaling at a "low/unknown" DPI display.
+    /// </summary>
+    internal const int DefaultPixelsPerUnit = 13;
+
     public readonly ImGui rootGui;
     internal IntPtr window;
     /// <summary>Window icon, singleton so it is reused for all windows</summary>
@@ -70,14 +76,22 @@ public abstract class Window : IDisposable {
         return icon;
     }
 
-    internal static int CalculateUnitsToPixels(int display) {
+    /// <summary>
+    /// Compute the pixels-per-unit scale for the given display.
+    /// Returns <see langword="null"/> if the display can't be queried (e.g., the display is asleep
+    /// or has been disconnected, which can happen transiently on macOS during sleep/wake cycles).
+    /// Callers should fall back to a previous good value or a sensible default when this returns null.
+    /// </summary>
+    internal static int? CalculateUnitsToPixels(int display) {
+        if (SDL.SDL_GetDisplayBounds(display, out var rect) != 0 || rect.w <= 0 || rect.h <= 0) {
+            return null;
+        }
         _ = SDL.SDL_GetDisplayDPI(display, out float dpi, out _, out _);
-        _ = SDL.SDL_GetDisplayBounds(display, out var rect);
         // 82x60 is the minimum screen size in units, plus some for borders
         // DPI bellow 96 is more likely to be incorrectly reported value than desired,
         //     see discussion in https://github.com/Yafc-CE/yafc-ce/issues/255#issuecomment-2508884418
         //     => we treat is as "unknown" and revert to default 100% scaling
-        int desiredUnitsToPixels = dpi < 96 ? 13 : MathUtils.Round(dpi / 6.8f);
+        int desiredUnitsToPixels = dpi < 96 ? DefaultPixelsPerUnit : MathUtils.Round(dpi / 6.8f);
 
         if (desiredUnitsToPixels * 82f >= rect.w) {
             desiredUnitsToPixels = MathUtils.Floor(rect.w / 82f);
@@ -87,7 +101,7 @@ public abstract class Window : IDisposable {
             desiredUnitsToPixels = MathUtils.Floor(rect.h / 65f);
         }
 
-        return desiredUnitsToPixels;
+        return Math.Max(1, desiredUnitsToPixels);
     }
 
     protected internal void SetWindowTitle(string value) => SDL.SDL_SetWindowTitle(window, value);
@@ -101,9 +115,9 @@ public abstract class Window : IDisposable {
         if (surface is null) { throw new InvalidOperationException($"surface must be set by a derived class before calling {nameof(WindowMoved)}."); }
 
         int index = SDL.SDL_GetWindowDisplayIndex(window);
-        int u2p = CalculateUnitsToPixels(index);
-
-        if (u2p != pixelsPerUnit) {
+        // If the display can't be queried (e.g., asleep on macOS), keep the existing pixelsPerUnit
+        // rather than overwriting it with a fallback that would corrupt contentSize on the next resize.
+        if (CalculateUnitsToPixels(index) is int u2p && u2p != pixelsPerUnit) {
             pixelsPerUnit = u2p;
             surface.pixelsPerUnit = pixelsPerUnit;
             repaintRequired = true;

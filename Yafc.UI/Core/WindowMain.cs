@@ -14,7 +14,7 @@ public abstract class WindowMain(Padding padding, bool forceSoftwareRenderer) : 
             return;
         }
 
-        pixelsPerUnit = CalculateUnitsToPixels(display);
+        pixelsPerUnit = CalculateUnitsToPixels(display) ?? DefaultPixelsPerUnit;
         // Min width/height define the minimum size of the main window when it gets resized.
         // The minimal size prevents issues/unreachable spots within the UI (like dialogs that do not size with the window size).
         int minWidth = MathUtils.Round(85f * pixelsPerUnit);
