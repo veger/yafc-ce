@@ -147,6 +147,7 @@ public class ProductionLinkSummaryScreen : PseudoScreen, IComparer<(RecipeRow ro
 
     private void DestroyLink(ProductionLink link) {
         _ = link.owner.RecordUndo().links.Remove(link);
+        link.owner.RebuildLinkMap();
         Rebuild();
     }
 
