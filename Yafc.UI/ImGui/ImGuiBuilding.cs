@@ -253,6 +253,7 @@ public partial class ImGui {
         rebuildRequested = false;
         ClearDrawCommandList();
         _ = DoGui(ImGuiAction.Build);
+        TrimUnusedBuildGroups();
         contentSize = new Vector2(lastContentRect.Right, lastContentRect.Height);
 
         if (boxColor != SchemeColor.None) {
