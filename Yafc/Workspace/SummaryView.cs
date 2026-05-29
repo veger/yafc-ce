@@ -150,7 +150,7 @@ public class SummaryView : ProjectPageView<Summary> {
         public float sum;
     }
 
-    private Project project;
+    private Project project = null!;
     private SearchQuery searchQuery;
 
     private readonly LinkedScrollArea leftScrollArea;
@@ -159,6 +159,7 @@ public class SummaryView : ProjectPageView<Summary> {
     private readonly SummaryDataColumn goodsColumn;
     private readonly DataGrid<ProjectPage> leftGrid;
     private readonly DataGrid<ProjectPage> rightGrid;
+    private readonly HashSet<ProjectPage> subscribedPages = [];
 
     private Dictionary<string, GoodDetails> allGoods = [];
 
@@ -194,7 +195,7 @@ public class SummaryView : ProjectPageView<Summary> {
         }
     }
 
-    public SummaryView(Project project) {
+    public SummaryView() {
         tabColumn = new SummaryTabColumn();
         goodsColumn = new SummaryDataColumn(this);
         leftGrid = new DataGrid<ProjectPage>(tabColumn);
@@ -204,26 +205,52 @@ public class SummaryView : ProjectPageView<Summary> {
         leftScrollArea = new LinkedScrollArea(DefaultScrollHeight, BuildLeftScrollArea, horizontal: false, drawVerticalScrollbar: false);
         rightScrollArea = new LinkedScrollArea(DefaultScrollHeight, BuildRightScrollArea, horizontal: true, drawVerticalScrollbar: true);
         leftScrollArea.Link(rightScrollArea);
-
-        SetProject(project);
     }
 
     [MemberNotNull(nameof(project))]
     public void SetProject(Project project) {
-        if (this.project != null) {
-            this.project.metaInfoChanged -= Recalculate;
+        if (ReferenceEquals(this.project, project)) {
+            SyncPageSubscriptions();
+            Recalculate();
+            return;
+        }
 
-            foreach (ProjectPage page in this.project.pages) {
-                page.contentChanged -= Recalculate;
-            }
+        if (this.project != null) {
+            this.project.metaInfoChanged -= ProjectMetaInfoChanged;
+            UnsubscribeFromAllPages();
         }
 
         this.project = project;
-        project.metaInfoChanged += Recalculate;
+        project.metaInfoChanged += ProjectMetaInfoChanged;
+        SyncPageSubscriptions();
+
+        Recalculate();
+    }
+
+    private void ProjectMetaInfoChanged() {
+        SyncPageSubscriptions();
+        Recalculate();
+    }
+
+    private void SyncPageSubscriptions() {
+        foreach (ProjectPage page in subscribedPages.Where(page => !project.pages.Contains(page)).ToList()) {
+            page.contentChanged -= Recalculate;
+            _ = subscribedPages.Remove(page);
+        }
 
         foreach (ProjectPage page in project.pages) {
-            page.contentChanged += Recalculate;
+            if (subscribedPages.Add(page)) {
+                page.contentChanged += Recalculate;
+            }
         }
+    }
+
+    private void UnsubscribeFromAllPages() {
+        foreach (ProjectPage page in subscribedPages) {
+            page.contentChanged -= Recalculate;
+        }
+
+        subscribedPages.Clear();
     }
 
     protected override void BuildPageTooltip(ImGui gui, Summary contents) {
@@ -297,6 +324,9 @@ public class SummaryView : ProjectPageView<Summary> {
             }
         }
     }
+
+    // SetProject can recalculate before SetModel attaches the persisted showOnlyIssues value, which affects column width.
+    protected override void ModelContentsChanged(bool visualOnly) => Recalculate(visualOnly);
 
     private async Task AutoBalance() {
         try {
