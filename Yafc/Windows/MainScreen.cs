@@ -76,6 +76,7 @@ public partial class MainScreen : WindowMain, IKeyboardFocus, IProgress<(string,
             this.project.settings.changed -= ProjectSettingsChanged;
         }
         Project.current = project;
+        project.modelThreadSwitcher = UiModelThreadSwitcher.Instance;
         DataUtils.SetupForProject(project);
         this.project = project;
         if (project.justCreated) {
