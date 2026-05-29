@@ -29,6 +29,7 @@ Date:
     Fixes:
         - Fix loading Tricky Old Nick and other mods that forget to declare that rocket launch products are items.
         - Fix loading mods that set some properties to "" (the 'default' value) instead of nil.
+        - Restore price display when the shopping list includes item spoiling.
     Internal changes:
         - Rename SettingsDropdown to MainDropdown.
         - Rename LoadProjectHeavy to ReturnToWelcomeScreen.
