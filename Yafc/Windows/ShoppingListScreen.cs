@@ -92,7 +92,12 @@ public class ShoppingListScreen : PseudoScreen {
             else if (obj.target is Entity or Item) {
                 buildings += count;
             }
-            cost += obj.target.Cost() * count;
+
+            if (obj.target is not EntityCrafter { name: "spoilage" }) {
+                // The spoilage entity doesn't have a meaningful cost.
+                // TODO: Consider chests? If so, which ones? also, include heating cost for them?
+                cost += obj.target.Cost() * count;
+            }
         }
         shoppingCost = cost;
         totalBuildings = buildings;
