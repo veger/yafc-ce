@@ -95,11 +95,11 @@ public class ProjectPage : ModelObject<Project> {
         currentSolvingVersion = actualVersion;
         try {
             string? error = await content.Solve(this);
-            await owner.modelThreadSwitcher.SwitchToModelThread();
+            await owner.modelThreadSwitcher.SwitchToForeground();
             return error;
         }
         finally {
-            await owner.modelThreadSwitcher.SwitchToModelThread();
+            await owner.modelThreadSwitcher.SwitchToForeground();
             lastSolvedVersion = currentSolvingVersion;
             currentSolvingVersion = 0;
         }
