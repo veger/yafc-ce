@@ -10,7 +10,7 @@ public static class Database {
     // null-forgiveness for all not-null properties; they're initialized by LoadBuiltData.
     // ----------------------------------------------------------------
     // For caching, the properties in this section must match (by name and cache storage type) the corresponding parameter to LoadBuiltData.
-    public static int constantCombinatorCapacity { get; private set; }
+    public static int constantCombinatorCapacity { get; private set; } = 18; // Keep this initializer for the tests.
     public static FactorioObject[] rootAccessible { get; private set; } = null!;
     public static IObjectWithQuality<Special> heat { get; private set; } = null!; // Only the Special is stored in the cache.
     public static Dictionary<string, List<Fluid>> fluidVariants { get; private set; } = null!;
