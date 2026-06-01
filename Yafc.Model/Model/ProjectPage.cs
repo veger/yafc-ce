@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Threading.Tasks;
 using Yafc.I18n;
-using Yafc.UI;
 
 namespace Yafc.Model;
 
@@ -96,11 +95,11 @@ public class ProjectPage : ModelObject<Project> {
         currentSolvingVersion = actualVersion;
         try {
             string? error = await content.Solve(this);
-            await Ui.EnterMainThread();
+            await owner.modelThreadSwitcher.SwitchToForeground();
             return error;
         }
         finally {
-            await Ui.EnterMainThread();
+            await owner.modelThreadSwitcher.SwitchToForeground();
             lastSolvedVersion = currentSolvingVersion;
             currentSolvingVersion = 0;
         }

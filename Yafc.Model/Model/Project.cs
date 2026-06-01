@@ -17,6 +17,7 @@ public partial class Project : ModelObject {
     public bool justCreated { get; private set; } = true;
     public ProjectSettings settings { get; }
     public ProjectPreferences preferences { get; }
+    [SkipSerialization] public IModelThreadSwitcher modelThreadSwitcher { get; set; } = NoOpModelThreadSwitcher.Instance;
 
     public List<ProjectModuleTemplate> sharedModuleTemplates { get; } = [];
     public string? yafcVersion { get; set; }
