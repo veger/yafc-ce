@@ -9,7 +9,7 @@
 // x - it's backwards-incompatible
 //
 // Version: x.y.z
-// Date: Month Day Year of the release
+// Date: Day Month Year of the release
 //     Features:
 //         First go new features. They usually start with "Add". If they mostly add things, they go to this part.
 //         Then go the changes in the existing behavior. They usually start with "Update".
@@ -22,10 +22,16 @@
 Version:
 Date:
     Features:
+    Fixes:
+----------------------------------------------------------------------------------------------------------------------
+Version: 2.19.0
+Date: 01 June 2026
+    Features:
         - Improve early-startup error logging
-        - Automatically apply single use modules to recipes. e.g. Autoamtically fill PyAL buildings with appropriate module for the current milestone
+        - Automatically apply single use modules to recipes. e.g. Automatically fill PyAL buildings with appropriate module for the current milestone
         - Extended main window title - append current project name (with * indicator for unsaved changes).
         - Main dropdown - disable Save/Undo when there is nothing to do.
+        - Yafc will cache computed mod data to improve mod load times.
     Fixes:
         - Fix loading Tricky Old Nick and other mods that forget to declare that rocket launch products are items.
         - Fix loading mods that set some properties to "" (the 'default' value) instead of nil.
