@@ -44,6 +44,7 @@ public abstract class FactorioObject : IFactorioObjectWrapper, IComparable<Facto
     /// This value matches the numeric value of <c>Yafc.UI.Icon</c>
     /// and should only be interpreted in the UI layer via <c>GetIcon()</c>.
     /// </summary>
+    // Renaming iconId or id, or changing them to manual properties, requires matching changes to the Cache.fields initializer.
     public int iconId { get; internal set; }
     public FactorioId id { get; internal set; }
     internal abstract FactorioObjectSortOrder sortingOrder { get; }
@@ -710,7 +711,7 @@ public class EntityCrafter : EntityWithModules {
     public int itemInputs { get; internal set; }
     public int fluidInputs { get; internal set; } // fluid inputs for recipe, not including power
     public bool hasVectorToPlaceResult { get; internal set; }
-    public Goods[]? inputs { get; internal set; }
+    public Item[]? inputs { get; internal set; }
     public RecipeOrTechnology[] recipes { get; internal set; } = null!; // null-forgiving: Set in the first step of CalculateMaps
     private float _craftingSpeed = 1;
     // For rocket silos, the number of inventory slots. Launch recipes are limited by both weight and available slots.

@@ -14,35 +14,29 @@ internal partial class FactorioDataDeserializer {
     private readonly DataBucket<Entity, string> fuelUsers = new DataBucket<Entity, string>();
     private readonly DataBucket<string, RecipeOrTechnology> recipeCategories = new DataBucket<string, RecipeOrTechnology>();
     private readonly DataBucket<EntityCrafter, string> recipeCrafters = new DataBucket<EntityCrafter, string>();
-    private readonly DataBucket<Recipe, Module> recipeModules = new DataBucket<Recipe, Module>();
     private readonly Dictionary<Item, List<string>> placeResults = [];
     private readonly Dictionary<Item, string> plantResults = [];
     private readonly DataBucket<string, Entity> asteroids = new();
-    private readonly List<Module> allModules = [];
-    private readonly HashSet<Item> sciencePacks = [];
     private readonly Dictionary<string, List<Fluid>> fluidVariants = [];
     private readonly Dictionary<string, FactorioObject> formerAliases = [];
 
-    private readonly Recipe generatorProduction;
     private readonly Special voidEnergy;
     private readonly Special heat;
-    private readonly Special electricity;
     private readonly Special rocketLaunch;
     private readonly Item science;
-    // Note: These must be Items (or possibly a derived type) so belt capacity can be displayed and set.
-    private readonly Item totalItemOutput, totalItemInput;
-    private readonly EntityEnergy voidEntityEnergy;
-    private readonly EntityEnergy laborEntityEnergy;
-    private Entity? character;
+    private readonly EntityEnergy voidEntityEnergy = new EntityEnergy { type = EntityEnergyType.Void, effectivity = float.PositiveInfinity };
+    private readonly EntityEnergy laborEntityEnergy = new EntityEnergy { type = EntityEnergyType.Labor, effectivity = float.PositiveInfinity };
     private EntityCrafter? spoilageEntity;
     private readonly Version factorioVersion;
     private int rocketCapacity;
     private int defaultItemWeight;
+    private int constantCombinatorCapacity = 18;
 
     internal static readonly Version v0_18 = new Version(0, 18);
     internal static readonly Version v2_0 = new Version(2, 0);
 
     public FactorioDataDeserializer(Version factorioVersion) {
+        Analysis.ClearExclusions();
         this.factorioVersion = factorioVersion;
 
         Special createSpecialObject(bool isPower, string name, string locName, string locDescr, string icon, string signal) {
@@ -74,7 +68,7 @@ internal partial class FactorioDataDeserializer {
             return obj;
         }
 
-        electricity = createSpecialObject(true, SpecialNames.Electricity, LSs.SpecialObjectElectricity, LSs.SpecialObjectElectricityDescription,
+        var electricity = createSpecialObject(true, SpecialNames.Electricity, LSs.SpecialObjectElectricity, LSs.SpecialObjectElectricityDescription,
             "__core__/graphics/icons/alerts/electricity-icon-unplugged.png", "signal-E");
 
         heat = createSpecialObject(true, SpecialNames.Heat, LSs.SpecialObjectHeat, LSs.SpecialObjectHeatDescription, "__core__/graphics/arrows/heat-exchange-indication.png", "signal-H");
@@ -104,17 +98,14 @@ internal partial class FactorioDataDeserializer {
         Analysis.ExcludeFromAnalysis<CostAnalysis>(science);
         formerAliases["Special.research-unit"] = science;
 
-        generatorProduction = CreateSpecialRecipe(electricity, SpecialNames.GeneratorRecipe, LSs.SpecialRecipeGenerating);
+        var generatorProduction = CreateSpecialRecipe(electricity, SpecialNames.GeneratorRecipe, LSs.SpecialRecipeGenerating);
         generatorProduction.products = [new Product(electricity, 1f)];
         generatorProduction.flags |= RecipeFlags.ScaleProductionWithPower;
         generatorProduction.ingredients = [];
 
-        voidEntityEnergy = new EntityEnergy { type = EntityEnergyType.Void, effectivity = float.PositiveInfinity };
-        laborEntityEnergy = new EntityEnergy { type = EntityEnergyType.Labor, effectivity = float.PositiveInfinity };
-
         // Note: These must be Items (or possibly a derived type) so belt capacity can be displayed and set.
-        totalItemInput = createSpecialItem("item-total-input", LSs.SpecialItemTotalConsumption, LSs.SpecialItemTotalConsumptionDescription, "__base__/graphics/icons/signal/signal_I.png");
-        totalItemOutput = createSpecialItem("item-total-output", LSs.SpecialItemTotalProduction, LSs.SpecialItemTotalProductionDescription, "__base__/graphics/icons/signal/signal_O.png");
+        Item totalItemInput = createSpecialItem("item-total-input", LSs.SpecialItemTotalConsumption, LSs.SpecialItemTotalConsumptionDescription, "__base__/graphics/icons/signal/signal_I.png");
+        Item totalItemOutput = createSpecialItem("item-total-output", LSs.SpecialItemTotalProduction, LSs.SpecialItemTotalProductionDescription, "__base__/graphics/icons/signal/signal_O.png");
         formerAliases["Special.total-item-input"] = totalItemInput;
         formerAliases["Special.total-item-output"] = totalItemOutput;
     }
@@ -259,74 +250,6 @@ internal partial class FactorioDataDeserializer {
         allObjects.Add(newObject);
         registeredObjects[key] = newObject;
         return newObject;
-    }
-
-    private int Skip(int from, FactorioObjectSortOrder sortOrder) {
-        for (; from < allObjects.Count; from++) {
-            if (allObjects[from].sortingOrder != sortOrder) {
-                break;
-            }
-        }
-
-        return from;
-    }
-
-    private void ExportBuiltData() {
-        Database.rootAccessible = [.. rootAccessible];
-        Database.objectsByTypeName = allObjects.ToDictionary(x => x.typeDotName);
-        foreach (var alias in formerAliases) {
-            _ = Database.objectsByTypeName.TryAdd(alias.Key, alias.Value);
-        }
-
-        Database.allSciencePacks = [.. sciencePacks];
-        Database.voidEnergy = voidEnergy.With(Quality.Normal);
-        Database.science = science.With(Quality.Normal);
-        Database.itemInput = totalItemInput.With(Quality.Normal);
-        Database.itemOutput = totalItemOutput.With(Quality.Normal);
-        Database.electricity = electricity.With(Quality.Normal);
-        Database.electricityGeneration = generatorProduction.With(Quality.Normal);
-        Database.heat = heat.With(Quality.Normal);
-        Database.character = character;
-        int firstSpecial = 0;
-        int firstItem = Skip(firstSpecial, FactorioObjectSortOrder.SpecialGoods);
-        int firstFluid = Skip(firstItem, FactorioObjectSortOrder.Items);
-        int firstRecipe = Skip(firstFluid, FactorioObjectSortOrder.Fluids);
-        int firstMechanics = Skip(firstRecipe, FactorioObjectSortOrder.Recipes);
-        int firstTechnology = Skip(firstMechanics, FactorioObjectSortOrder.Mechanics);
-        int firstEntity = Skip(firstTechnology, FactorioObjectSortOrder.Technologies);
-        int firstTile = Skip(firstEntity, FactorioObjectSortOrder.Entities);
-        int firstQuality = Skip(firstTile, FactorioObjectSortOrder.Tiles);
-        int firstLocation = Skip(firstQuality, FactorioObjectSortOrder.Qualities);
-        int firstTrigger = Skip(firstLocation, FactorioObjectSortOrder.Locations);
-        int last = Skip(firstTrigger, FactorioObjectSortOrder.Triggers);
-        if (last != allObjects.Count) {
-            throw new Exception("Something is not right");
-        }
-
-        Database.objects = new FactorioIdRange<FactorioObject>(0, last, allObjects);
-        Database.specials = new FactorioIdRange<Special>(firstSpecial, firstItem, allObjects);
-        Database.items = new FactorioIdRange<Item>(firstItem, firstFluid, allObjects);
-        Database.fluids = new FactorioIdRange<Fluid>(firstFluid, firstRecipe, allObjects);
-        Database.goods = new FactorioIdRange<Goods>(firstSpecial, firstRecipe, allObjects);
-        Database.recipes = new FactorioIdRange<Recipe>(firstRecipe, firstTechnology, allObjects);
-        Database.mechanics = new FactorioIdRange<Mechanics>(firstMechanics, firstTechnology, allObjects);
-        Database.recipesAndTechnologies = new FactorioIdRange<RecipeOrTechnology>(firstRecipe, firstEntity, allObjects);
-        Database.technologies = new FactorioIdRange<Technology>(firstTechnology, firstEntity, allObjects);
-        Database.entities = new FactorioIdRange<Entity>(firstEntity, firstTile, allObjects);
-        Database.qualities = new FactorioIdRange<Quality>(firstQuality, firstLocation, allObjects);
-        Database.locations = new FactorioIdRange<Location>(firstLocation, firstTrigger, allObjects);
-        Database.fluidVariants = fluidVariants;
-        Database.heatVariants = heat.variants;
-
-        Database.allModules = [.. allModules];
-        Database.allBeacons = [.. Database.entities.all.OfType<EntityBeacon>()];
-        Database.allCrafters = [.. Database.entities.all.OfType<EntityCrafter>()];
-        Database.allBelts = [.. Database.entities.all.OfType<EntityBelt>()];
-        Database.allInserters = [.. Database.entities.all.OfType<EntityInserter>()];
-        Database.allAccumulators = [.. Database.entities.all.OfType<EntityAccumulator>()];
-        Database.allContainers = [.. Database.entities.all.OfType<EntityContainer>()];
-
-        Database.rocketCapacity = rocketCapacity;
     }
 
     private static bool AreInverseRecipes(Recipe packing, Recipe unpacking) {

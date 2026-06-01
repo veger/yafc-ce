@@ -6,11 +6,11 @@ using Yafc.I18n;
 namespace Yafc.Model;
 
 public abstract class Analysis {
+    // Renaming either of these fields requires matching changes to the cache reader and writer.
     internal readonly HashSet<FactorioObject> excludedObjects = [];
+    private static readonly List<Analysis> analyses = [];
 
     public abstract void Compute(Project project, ErrorCollector warnings);
-
-    private static readonly List<Analysis> analyses = [];
 
     // TODO don't ignore dependencies
     public static void RegisterAnalysis(Analysis analysis, params Analysis[] dependencies) => analyses.Add(analysis);
@@ -38,6 +38,12 @@ public abstract class Analysis {
     public static void ExcludeFromAnalysis<T>(FactorioObject obj) where T : Analysis {
         foreach (T analysis in analyses.OfType<T>()) {
             analysis.excludedObjects.Add(obj);
+        }
+    }
+
+    public static void ClearExclusions() {
+        foreach (Analysis analysis in analyses) {
+            analysis.excludedObjects.Clear();
         }
     }
 }
