@@ -23,6 +23,7 @@ Version:
 Date:
     Features:
     Fixes:
+        - Several improvements loading Exotic Space Industries:Remembrance and its dependencies.
 ----------------------------------------------------------------------------------------------------------------------
 Version: 2.19.0
 Date: 01 June 2026
