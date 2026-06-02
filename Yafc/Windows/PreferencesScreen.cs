@@ -99,7 +99,7 @@ public class PreferencesScreen : PseudoScreen {
         using (gui.EnterRow()) {
             gui.allocator = RectAllocator.LeftRow;
             gui.BuildFactorioObjectButton(tech, ButtonDisplayStyle.Default);
-            gui.BuildText(LSs.PreferencesTechnologyLevel.L(tech.locName));
+            gui.BuildText(LSs.PreferencesTechnologyLevel.L(tech.locName), maxWidth: gui.layoutRect.Width - 5);
             int currentLevel = Project.current.settings.productivityTechnologyLevels.GetValueOrDefault(tech, 0);
             if (gui.BuildIntegerInput(currentLevel, out int newLevel) && newLevel >= 0) {
                 Project.current.settings.RecordUndo().productivityTechnologyLevels[tech] = newLevel;
