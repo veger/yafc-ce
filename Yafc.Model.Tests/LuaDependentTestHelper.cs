@@ -79,7 +79,7 @@ internal static class LuaDependentTestHelper {
                         """);
                 }
                 bytes = new byte[stream.Length];
-                stream.Read(bytes);
+                stream.ReadExactly(bytes);
             }
             context.Exec(bytes, "*", "");
 
