@@ -31,39 +31,32 @@ public record BeaconConfiguration(IObjectWithQuality<EntityBeacon>? beacon, int 
 /// </summary>
 /// <remarks>This class handles its own <see cref="DataUtils.RecordUndo{T}(T, bool)"/> calls.</remarks>
 public class ModuleFillerParameters : ModelObject<ModelObject> {
-    private bool _fillMiners;
-    private float _autoFillPayback;
-    private IObjectWithQuality<Module>? _fillerModule;
-    private IObjectWithQuality<EntityBeacon>? _beacon;
-    private IObjectWithQuality<Module>? _beaconModule;
-    private int _beaconsPerBuilding = 8;
-
     public ModuleFillerParameters(ModelObject owner) : base(owner) => overrideCrafterBeacons.OverrideSettingChanging += ModuleFillerParametersChanging;
 
     public bool fillMiners {
-        get => _fillMiners;
-        set => ChangeModuleFillerParameters(ref _fillMiners, value);
+        get;
+        set => ChangeModuleFillerParameters(ref field, value);
     }
     public float autoFillPayback {
-        get => _autoFillPayback;
-        set => ChangeModuleFillerParameters(ref _autoFillPayback, value);
+        get;
+        set => ChangeModuleFillerParameters(ref field, value);
     }
     public IObjectWithQuality<Module>? fillerModule {
-        get => _fillerModule;
-        set => ChangeModuleFillerParameters(ref _fillerModule, value);
+        get;
+        set => ChangeModuleFillerParameters(ref field, value);
     }
     public IObjectWithQuality<EntityBeacon>? beacon {
-        get => _beacon;
-        set => ChangeModuleFillerParameters(ref _beacon, value);
+        get;
+        set => ChangeModuleFillerParameters(ref field, value);
     }
     public IObjectWithQuality<Module>? beaconModule {
-        get => _beaconModule;
-        set => ChangeModuleFillerParameters(ref _beaconModule, value);
+        get;
+        set => ChangeModuleFillerParameters(ref field, value);
     }
     public int beaconsPerBuilding {
-        get => _beaconsPerBuilding;
-        set => ChangeModuleFillerParameters(ref _beaconsPerBuilding, value);
-    }
+        get;
+        set => ChangeModuleFillerParameters(ref field, value);
+    } = 8;
     public OverrideCrafterBeacons overrideCrafterBeacons { get; } = [];
 
     [Obsolete("Moved to project settings", true)]

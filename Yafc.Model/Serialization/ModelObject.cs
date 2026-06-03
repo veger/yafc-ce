@@ -63,13 +63,11 @@ public abstract class ModelObject {
     public bool justChanged => undo.HasChangesPending(this);
 }
 public abstract class ModelObject<TOwner>(TOwner owner) : ModelObject(owner.undo) where TOwner : ModelObject {
-    private TOwner _owner = owner ?? throw new ArgumentNullException(nameof(owner));
-
     [SkipSerialization]
     public TOwner owner {
-        get => _owner;
-        protected set => _owner = value ?? throw new ArgumentNullException(nameof(value));
-    }
+        get;
+        protected set => field = value ?? throw new ArgumentNullException(nameof(value));
+    } = owner ?? throw new ArgumentNullException(nameof(owner));
 
     public override ModelObject? ownerObject {
         get => owner;

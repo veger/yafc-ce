@@ -304,54 +304,48 @@ public interface ISolverRow {
 /// Represents a row in a production table that can be configured by the user.
 /// </summary>
 public sealed class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<ProductionTable> {
-    private IObjectWithQuality<EntityCrafter>? _entity;
-    private IObjectWithQuality<Goods>? _fuel;
-    private float _fixedBuildings;
-    private IObjectWithQuality<Goods>? _fixedProduct;
-    private ModuleTemplate? _modules;
-
     public IObjectWithQuality<RecipeOrTechnology>? recipe { get; }
     public FactorioObject? icon { get; set; }
     public string? description { get; set; }
 
     // Variable parameters
     public IObjectWithQuality<EntityCrafter>? entity {
-        get => _entity;
+        get;
         set {
-            if (_entity == value || recipe is null) {
+            if (field == value || recipe is null) {
                 // Nothing to do
                 return;
             }
 
             if (SerializationMap.IsDeserializing) {
                 // Just apply the deserialized entity and stop further processing
-                _entity = value;
+                field = value;
                 return;
             }
 
             // By default show the total item consumption and production signals for unloading crafters (miners, recyclers, etc) when they output multiple products.
             // Don't turn the setting on when just changing the quality, though.
-            showTotalIO |= (value?.target != _entity?.target) && value?.target.hasVectorToPlaceResult == true && recipe.target.products.Length > 1;
+            showTotalIO |= (value?.target != field?.target) && value?.target.hasVectorToPlaceResult == true && recipe.target.products.Length > 1;
 
-            if (fixedBuildings == 0 || (fixedFuel && !(value?.target.energy.fuels ?? []).Contains(_fuel?.target))) {
+            if (fixedBuildings == 0 || (fixedFuel && !(value?.target.energy.fuels ?? []).Contains(fuel?.target))) {
                 // We're either changing both the entity and the fuel (changing between electric, fluid-burning, item-burning, heat-powered, and steam-powered crafter categories),
                 // or fixedBuilding is zero.
                 // Don't try to preserve fuel consumption in these cases.
                 fixedBuildings = 0;
-                _entity = value;
+                field = value;
             }
             else {
                 using (new ChangeModulesOrEntity(this)) {
-                    _entity = value;
+                    field = value;
                 }
             }
         }
     }
     public IObjectWithQuality<Goods>? fuel {
-        get => _fuel;
+        get;
         set {
-            if (SerializationMap.IsDeserializing || fixedBuildings == 0 || _fuel == value) {
-                _fuel = value;
+            if (SerializationMap.IsDeserializing || fixedBuildings == 0 || field == value) {
+                field = value;
             }
             else if (fixedProduct != null) {
                 // We're changing the fuel and there's a fixed product. Make sure the amount doesn't change.
@@ -359,12 +353,12 @@ public sealed class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Pr
 
                 if (Products.SingleOrDefault(p => p.Goods == fixedProduct, false) is not RecipeRowProduct product) {
                     fixedBuildings = 0; // We couldn't find the Product corresponding to fixedProduct. Just clear the fixed amount.
-                    _fuel = value;
+                    field = value;
                 }
                 else {
                     float oldAmount = product.Amount;
 
-                    _fuel = value;
+                    field = value;
                     parameters = RecipeParameters.CalculateParameters(this);
                     float newAmount = Products.First(p => p.Goods == fixedProduct).Amount;
 
@@ -372,16 +366,16 @@ public sealed class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Pr
                 }
             }
             else if (fixedFuel) {
-                if (value == null || _fuel == null || _fuel.target.fuelValue == 0) {
+                if (value == null || field == null || field.target.fuelValue == 0) {
                     fixedBuildings = 0;
                 }
                 else {
-                    fixedBuildings *= value.target.fuelValue / _fuel.target.fuelValue;
+                    fixedBuildings *= value.target.fuelValue / field.target.fuelValue;
                 }
-                _fuel = value;
+                field = value;
             }
             else {
-                _fuel = value;
+                field = value;
             }
         }
     }
@@ -392,9 +386,9 @@ public sealed class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Pr
     /// This property is set/modified so the solver gets the correct answer without testing the values of those properties.
     /// </summary>
     public float fixedBuildings {
-        get => _fixedBuildings;
+        get;
         set {
-            _fixedBuildings = value;
+            field = value;
             if (value == 0) {
                 fixedFuel = false;
                 fixedIngredient = null;
@@ -414,21 +408,21 @@ public sealed class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Pr
     /// If not <see langword="null"/>, <see cref="fixedBuildings"/> is set to control the production of this product.
     /// </summary>
     public IObjectWithQuality<Goods>? fixedProduct {
-        get => _fixedProduct;
+        get;
         set {
             if (value == null) {
-                _fixedProduct = null;
+                field = null;
             }
             else if (recipe != null) {
                 // This takes advantage of the fact that ObjectWithQuality automatically downgrades high-quality fluids (etc.) to normal.
                 var products = recipe.target.products.AsEnumerable().Select(p => p.goods.With(recipe.quality));
                 if (value != Database.itemOutput && products.All(p => p != value)) {
                     // The UI doesn't know the difference between a product and a spent fuel, but we care about the difference
-                    _fixedProduct = null;
+                    field = null;
                     fixedFuel = true;
                 }
                 else {
-                    _fixedProduct = value;
+                    field = value;
                 }
             }
         }
@@ -468,14 +462,14 @@ public sealed class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Pr
     }
 
     public ModuleTemplate? modules {
-        get => _modules;
+        get;
         set {
-            if (SerializationMap.IsDeserializing || fixedBuildings == 0 || _modules == value || recipe is null) {
-                _modules = value;
+            if (SerializationMap.IsDeserializing || fixedBuildings == 0 || field == value || recipe is null) {
+                field = value;
             }
             else {
                 using (new ChangeModulesOrEntity(this)) {
-                    _modules = value;
+                    field = value;
                 }
             }
         }
@@ -754,7 +748,7 @@ public sealed class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Pr
                 }
             }
 
-            if (oldFuel != null && (row._entity?.target.energy.fuels ?? []).Contains(oldFuel.target)) {
+            if (oldFuel != null && (row.entity?.target.energy.fuels ?? []).Contains(oldFuel.target)) {
                 row.fuel = oldFuel; // step 4
             }
         }

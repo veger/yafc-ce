@@ -42,14 +42,14 @@ public class WelcomeScreen : WindowUtility, IProgress<(string, string)>, IKeyboa
     private readonly ILogger logger = Logging.GetLogger<WelcomeScreen>();
     private bool loading, downloading;
     private string? currentLoad1, currentLoad2;
-    private string path = "", dataPath = "", _modsPath = "";
+    private string path = "", dataPath = "";
     private string modsPath {
-        get => _modsPath;
+        get;
         set {
-            _modsPath = value;
+            field = value;
             FactorioDataSource.ClearDisabledMods();
         }
-    }
+    } = "";
     private bool expensive;
     private bool netProduction;
     private string createText;

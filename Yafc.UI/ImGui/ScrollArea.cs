@@ -361,15 +361,13 @@ public class VirtualScrollList<TData>(float height, Vector2 elementSize, Virtual
     // The first block of bufferRows that was rendered last time BuildContents was called. If it changes while scrolling, we need to re-render the scrollable content.
     private int firstVisibleBlock;
     private int elementsPerRow;
-    private IReadOnlyList<TData> _data = [];
     private readonly int maxRowsVisible = MathUtils.Ceil(height / elementSize.Y) + BufferRows + 1;
     private readonly Vector2 elementSize = elementSize.X > 0 && elementSize.Y > 0 ? elementSize : throw new ArgumentException("Both element size dimensions must be positive", nameof(elementSize));
-    private float _spacing;
 
     public float spacing {
-        get => _spacing;
+        get;
         set {
-            _spacing = value;
+            field = value;
             RebuildContents();
         }
     }
@@ -377,12 +375,12 @@ public class VirtualScrollList<TData>(float height, Vector2 elementSize, Virtual
     public delegate void Drawer(ImGui gui, TData element, int index);
 
     public IReadOnlyList<TData> data {
-        get => _data;
+        get;
         set {
-            _data = value ?? [];
+            field = value ?? [];
             RebuildContents();
         }
-    }
+    } = [];
 
     private int CalculateFirstBlock() => Math.Max(0, MathUtils.Floor((scrollY - contents.initialPadding.top) / (elementSize.Y * BufferRows)));
 
@@ -399,19 +397,19 @@ public class VirtualScrollList<TData>(float height, Vector2 elementSize, Virtual
     }
 
     protected override void BuildContents(ImGui gui) {
-        elementsPerRow = MathUtils.Floor((gui.width + _spacing) / (elementSize.X + _spacing));
+        elementsPerRow = MathUtils.Floor((gui.width + spacing) / (elementSize.X + spacing));
 
         if (elementsPerRow < 1) {
             elementsPerRow = 1;
         }
 
-        int rowCount = IntegerMath.CeilingDivide(_data.Count, elementsPerRow);
+        int rowCount = IntegerMath.CeilingDivide(data.Count, elementsPerRow);
         firstVisibleBlock = CalculateFirstBlock();
         // Scroll up until there are maxRowsVisible, or to the top.
         int firstRow = Math.Max(0, Math.Min(firstVisibleBlock * BufferRows, rowCount - maxRowsVisible));
         int index = firstRow * elementsPerRow;
 
-        if (index >= _data.Count) {
+        if (index >= data.Count) {
             // If _data is empty, there's nothing to draw. Make sure MeasureContent reports that, instead of the size of the most recent non-empty content.
             // This will remove the scroll bar when the search doesn't match anything.
             gui.lastContentRect = new Rect(gui.lastContentRect.X, gui.lastContentRect.Y, 0, 0);
@@ -423,15 +421,15 @@ public class VirtualScrollList<TData>(float height, Vector2 elementSize, Virtual
         using var manualPlacing = gui.EnterFixedPositioning(gui.width, rowCount * elementSize.Y, default);
         var offset = gui.statePosition.Position;
         float elementWidth = gui.width / elementsPerRow;
-        Rect cell = new Rect(offset.X, offset.Y, elementWidth - _spacing, elementSize.Y);
+        Rect cell = new Rect(offset.X, offset.Y, elementWidth - spacing, elementSize.Y);
 
         for (int row = firstRow; row < lastRow; row++) {
-            cell.Y = row * (elementSize.Y + _spacing);
+            cell.Y = row * (elementSize.Y + spacing);
 
             for (int elem = 0; elem < elementsPerRow; elem++) {
                 cell.X = elem * elementWidth;
                 manualPlacing.SetManualRectRaw(cell);
-                BuildElement(gui, _data[index], index);
+                BuildElement(gui, data[index], index);
 
                 if (reorder != null) {
                     if (gui.DoListReordering(cell, cell, index, out int fromIndex)) {
@@ -439,7 +437,7 @@ public class VirtualScrollList<TData>(float height, Vector2 elementSize, Virtual
                     }
                 }
 
-                if (++index >= _data.Count) {
+                if (++index >= data.Count) {
                     return;
                 }
             }

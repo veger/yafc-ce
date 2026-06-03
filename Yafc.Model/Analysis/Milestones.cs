@@ -2,6 +2,7 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Threading.Tasks;
 using Serilog;
@@ -18,7 +19,17 @@ public class Milestones : Analysis {
     public FactorioObject[] currentMilestones = [];
     private Mapping<FactorioObject, Bits> milestoneResult;
     public Bits lockedMask { get; private set; } = new();
-    private Project? project;
+    [DisallowNull]
+    private Project? project {
+        get;
+        set {
+            if (field != value) {
+                field?.settings.changed -= ProjectSettingsChanged;
+                field = value;
+                value.settings.changed += ProjectSettingsChanged;
+            }
+        }
+    }
 
     public bool IsAccessibleWithCurrentMilestones(FactorioId obj) => (milestoneResult[obj] & lockedMask) == 1;
 
@@ -107,13 +118,7 @@ public class Milestones : Analysis {
     }
 
     public void ComputeWithParameters(Project project, ErrorCollector warnings, FactorioObject[] milestones, bool autoSort) {
-        if (this.project != project) {
-            if (this.project != null) {
-                this.project.settings.changed -= ProjectSettingsChanged;
-            }
-            this.project = project;
-            project.settings.changed += ProjectSettingsChanged;
-        }
+        this.project = project;
 
         Stopwatch time = Stopwatch.StartNew();
         ConcurrentDictionary<FactorioId, bool[]> accessibility = [];

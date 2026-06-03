@@ -71,8 +71,7 @@ public sealed partial class ImGui : IDisposable, IPanel {
     private float buildWidth;
     public bool mouseCapture { get; set; } = true;
     [MemberNotNullWhen(true, nameof(window))]
-    public bool valid => !disposed && window != null && window.visible;
-    private bool disposed;
+    public bool valid { get => field && window != null && window.visible; private set; } = true;
     public Vector2 contentSize { get; private set; }
     public ImGuiAction action { get; private set; }
 
@@ -289,7 +288,7 @@ public sealed partial class ImGui : IDisposable, IPanel {
     }
 
     private void ReleaseUnmanagedResources() {
-        disposed = true;
+        valid = false;
         textCache.Dispose();
     }
 

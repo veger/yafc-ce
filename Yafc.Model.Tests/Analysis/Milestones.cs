@@ -68,7 +68,7 @@ public class MilestonesTests {
     public void GetLockedMaskFromProject_ShouldCalculateMask(bool unlocked, int[] bitsCleared) {
         var milestonesType = typeof(Milestones);
         var getLockedMaskFromProject = milestonesType.GetMethod("GetLockedMaskFromProject", BindingFlags.NonPublic | BindingFlags.Instance);
-        var projectField = milestonesType.GetField("project", BindingFlags.NonPublic | BindingFlags.Instance);
+        var projectProperty = milestonesType.GetProperty("project", BindingFlags.NonPublic | BindingFlags.Instance);
 
         var milestones = setupMilestones(0, 0, out FactorioObject factorioObj);
         Project project = new Project();
@@ -82,7 +82,7 @@ public class MilestonesTests {
             itemFlagsField.SetValue(project.settings, flags);
         }
 
-        projectField.SetValue(milestones, project);
+        projectProperty.SetValue(milestones, project);
 
         _ = getLockedMaskFromProject.Invoke(milestones, null);
         var lockedBits = milestones.lockedMask;

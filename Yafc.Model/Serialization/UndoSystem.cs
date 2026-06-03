@@ -27,14 +27,14 @@ public class UndoSystem {
         => DefaultScheduler is ImmediateUndoBatchScheduler ? new ImmediateUndoBatchScheduler() : DefaultScheduler;
 
     public uint version {
-        get => _version;
+        get;
         private set {
-            if (_version != value) {
-                _version = value;
+            if (field != value) {
+                field = value;
                 versionChanged?.Invoke();
             }
         }
-    }
+    } = 2;
     public event Action? versionChanged;
     private bool undoBatchVisualOnly = true;
     private readonly List<UndoSnapshot> currentUndoBatch = [];
@@ -44,7 +44,6 @@ public class UndoSystem {
     private bool suspended;
     private bool scheduled;
     private uint scheduleGeneration;
-    private uint _version = 2;
 
     internal void CreateUndoSnapshot(ModelObject target, bool visualOnly) {
         if (SerializationMap.IsDeserializing) {

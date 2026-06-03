@@ -998,7 +998,6 @@ public class EntityContainer : Entity {
 }
 
 public class Technology : RecipeOrTechnology { // Technology is very similar to recipe
-    private Quality? _triggerMinimumQuality;
 
     public float count { get; internal set; } // TODO support formula count
     public Technology[] prerequisites { get; internal set; } = [];
@@ -1025,8 +1024,8 @@ public class Technology : RecipeOrTechnology { // Technology is very similar to 
     /// </summary>
     [AllowNull]
     public Quality triggerMinimumQuality {
-        get => _triggerMinimumQuality ?? Quality.Normal;
-        internal set => _triggerMinimumQuality = value;
+        get => field ?? Quality.Normal;
+        internal set;
     }
 
     /// <summary>

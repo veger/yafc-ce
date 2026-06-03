@@ -5,12 +5,10 @@ namespace Yafc.Model;
 
 public readonly struct SearchQuery(string query) {
     private static readonly IReadOnlyList<string> emptyTokens = Array.AsReadOnly(Array.Empty<string>());
-    private readonly IReadOnlyList<string>? _tokens = string.IsNullOrWhiteSpace(query)
-        ? emptyTokens
-        : Array.AsReadOnly(query.Split(' ', StringSplitOptions.RemoveEmptyEntries));
 
     public readonly string query = query;
-    public readonly IReadOnlyList<string> tokens => _tokens ?? emptyTokens;
+    public readonly IReadOnlyList<string> tokens { get => field ?? emptyTokens; }
+        = string.IsNullOrWhiteSpace(query) ? emptyTokens : Array.AsReadOnly(query.Split(' ', StringSplitOptions.RemoveEmptyEntries));
     public readonly bool empty => tokens.Count == 0;
 
     public bool Match(string? text) {

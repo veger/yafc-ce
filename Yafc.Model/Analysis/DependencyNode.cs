@@ -233,14 +233,13 @@ public abstract class DependencyNode {
     /// </summary>
     public sealed class ListNode : DependencyNode {
         private readonly ReadOnlyCollection<FactorioId> elements;
-        private readonly Flags flags;
 
         /// <summary>Gets the <see cref="FactorioId"/>s of the dependency objects in this list.
         /// Duplicate IDs are guaranteed to have been removed.</summary>
         public IReadOnlyList<FactorioId> Elements => elements;
 
         /// <summary>Gets the <see cref="Flags"/> that describe the require-any/-all behavior and how to describe the dependencies.</summary>
-        public Flags NodeFlags => flags;
+        public Flags NodeFlags { get; }
 
         // Do not call directly; use DependencyNode.Create() or the implicit conversion operator.
         // This internal factory delegates instantiation so the constructor can remain private
@@ -250,14 +249,14 @@ public abstract class DependencyNode {
 
         private ListNode(IEnumerable<FactorioObject> elements, Flags flags) {
             this.elements = elements.Select(e => e.id).Distinct().ToList().AsReadOnly();
-            this.flags = flags;
+            NodeFlags = flags;
         }
 
         internal override IEnumerable<FactorioId> Flatten() => elements;
 
         internal override bool IsAccessible(Func<FactorioId, bool> isAccessible) {
             // Use for instead of foreach or elements.All(isAccessible) to reduce allocations and increase speed.
-            if (flags.HasFlags(Flags.RequireEverything)) {
+            if (NodeFlags.HasFlags(Flags.RequireEverything)) {
                 for (int i = 0; i < elements.Count; i++) {
                     if (!isAccessible(elements[i])) {
                         return false;
@@ -276,7 +275,7 @@ public abstract class DependencyNode {
 
         internal override Bits AggregateBits(Func<FactorioId, Bits> getBits) {
             Bits bits = new();
-            if (flags.HasFlags(Flags.RequireEverything)) {
+            if (NodeFlags.HasFlags(Flags.RequireEverything)) {
                 foreach (FactorioId item in elements) {
                     bits |= getBits(item);
                 }
@@ -290,8 +289,8 @@ public abstract class DependencyNode {
 
         internal override AutomationStatus IsAutomatable(Func<FactorioId, AutomationStatus> getAutomation, AutomationStatus automationState) {
             // Copied from AutomationAnalysis.cs.
-            if (!flags.HasFlags(Flags.OneTimeInvestment)) {
-                if (flags.HasFlags(Flags.RequireEverything)) {
+            if (!NodeFlags.HasFlags(Flags.OneTimeInvestment)) {
+                if (NodeFlags.HasFlags(Flags.RequireEverything)) {
                     foreach (FactorioId element in elements) {
                         AutomationStatus status = getAutomation(element);
                         if (status < automationState) {
@@ -314,7 +313,7 @@ public abstract class DependencyNode {
                     }
                 }
             }
-            else if (automationState == AutomationStatus.AutomatableNow && flags == Flags.CraftingEntity) {
+            else if (automationState == AutomationStatus.AutomatableNow && NodeFlags == Flags.CraftingEntity) {
                 // If only character is accessible at current milestones as a crafting entity, don't count the object as currently automatable
                 bool hasMachine = false;
 

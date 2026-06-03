@@ -12,7 +12,6 @@ public class Preferences {
     public static readonly Preferences Instance;
     public static readonly string appDataFolder;
     private static readonly string fileName;
-    private string _language = "en";
 
     static Preferences() {
         appDataFolder = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
@@ -45,9 +44,9 @@ public class Preferences {
     public bool darkMode { get; set; }
     public bool exportEntitiesWithFuelFilter { get; set; } = true;
     public string language {
-        get => _language;
+        get;
         set {
-            _language = value;
+            field = value;
             // An intentional but possibly undesirable choice: We never reload the English locale unless the user explicitly selects English.
             // As a result, a user could select pt-BR, then pt-PT, and use Yafc strings first from Portuguese, then Brazilian Portuguese, and
             // then from English.
@@ -55,7 +54,7 @@ public class Preferences {
             // TODO: Update i18n to support proper fallbacking, both in Yafc and Factorio strings.
             FactorioDataSource.LoadYafcLocale(value);
         }
-    }
+    } = "en";
     public string? overrideFont { get; set; }
     /// <summary>
     /// Whether or not the main screen should be created maximized.

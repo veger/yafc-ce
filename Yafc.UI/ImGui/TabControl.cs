@@ -12,12 +12,6 @@ public sealed class TabControl {
     private readonly TabPage[] tabPages;
 
     private int activePage;
-    private float horizontalTextPadding = .5f;
-    private float horizontalTabSeparation = .8f;
-    private float maximumTextCompression = .75f;
-    private float verticalTabSeparation = .25f;
-    private bool fullWidthTabRows = true;
-
     private readonly List<TabRow> rows = [];
     private float layoutWidth;
     private ImGui gui = null!;
@@ -33,29 +27,29 @@ public sealed class TabControl {
     /// Gets or sets the (minimum) padding between the left and right ends of the text and the left and right edges of the tab. Must not be negative.
     /// </summary>
     public float HorizontalTextPadding {
-        get => horizontalTextPadding;
+        get;
         set {
-            if (horizontalTextPadding != value) {
+            if (field != value) {
                 ArgumentOutOfRangeException.ThrowIfNegative(value);
-                horizontalTextPadding = value;
+                field = value;
                 InvalidateLayout();
             }
         }
-    }
+    } = .5f;
 
     /// <summary>
     /// Gets or sets the blank space left between two adjacent tabs. Must not be negative.
     /// </summary>
     public float HorizontalTabSeparation {
-        get => horizontalTabSeparation;
+        get;
         set {
-            if (horizontalTabSeparation != value) {
+            if (field != value) {
                 ArgumentOutOfRangeException.ThrowIfNegative(value);
-                horizontalTabSeparation = value;
+                field = value;
                 InvalidateLayout();
             }
         }
-    }
+    } = .8f;
 
     /// <summary>
     /// Gets or sets the smallest horizontal scale factor that may be applied to title text before creating a new row of tabs. Must not be negative or greater than 1.
@@ -64,43 +58,43 @@ public sealed class TabControl {
     /// If a tab's title text does not fit on a single row, it will be compressed to fit regardless of this setting.
     /// </summary>
     public float MaximumTextCompression {
-        get => maximumTextCompression;
+        get;
         set {
-            if (maximumTextCompression != value) {
+            if (field != value) {
                 ArgumentOutOfRangeException.ThrowIfNegative(value);
                 ArgumentOutOfRangeException.ThrowIfGreaterThan(value, 1);
-                maximumTextCompression = value;
+                field = value;
                 InvalidateLayout();
             }
         }
-    }
+    } = .75f;
 
     /// <summary>
     /// Gets or sets the vertical spacing between rows of tabs. Must not be negative.
     /// </summary>
     // Does not invalidate layout. The layout is only concerned about widths, not heights.
     public float VerticalTabSeparation {
-        get => verticalTabSeparation;
+        get;
         set {
-            if (verticalTabSeparation != value) {
+            if (field != value) {
                 ArgumentOutOfRangeException.ThrowIfNegative(value);
-                verticalTabSeparation = value;
+                field = value;
             }
         }
-    }
+    } = .25f;
 
     /// <summary>
     /// If <see cref="true"/>, tab buttons (not title text) will be stretched horizontally to fill complete rows.
     /// </summary>
     public bool FullWidthTabRows {
-        get => fullWidthTabRows;
+        get;
         set {
-            if (fullWidthTabRows != value) {
-                fullWidthTabRows = value;
+            if (field != value) {
+                field = value;
                 InvalidateLayout();
             }
         }
-    }
+    } = true;
 
     /// <summary>
     /// Gets or sets the height of the tab buttons. Must not be smaller than the height of a line of text.

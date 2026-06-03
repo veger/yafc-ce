@@ -14,37 +14,34 @@ public class SearchableList<TData>(float height, Vector2 elementSize, VirtualScr
 
     private readonly Filter filterFunc = filter;
 
-    private IEnumerable<TData> _data = [];
     // TODO (https://github.com/Yafc-CE/yafc-ce/issues/293) investigate set()
     public new IEnumerable<TData> data {
-        get => _data;
+        get;
         set {
-            _data = value ?? [];
+            field = value ?? [];
             RefreshData();
         }
-    }
-
-    private SearchQuery _filter = default;
+    } = [];
 
     public SearchQuery filter {
-        get => _filter;
+        get;
         set {
-            _filter = value;
+            field = value;
             RefreshData();
         }
-    }
+    } = default;
 
     private void RefreshData() {
         list.Clear();
-        if (!_filter.empty) {
-            foreach (var element in _data) {
-                if (filterFunc(element, _filter)) {
+        if (!filter.empty) {
+            foreach (var element in data) {
+                if (filterFunc(element, filter)) {
                     list.Add(element);
                 }
             }
         }
         else {
-            list.AddRange(_data);
+            list.AddRange(data);
         }
 
         if (comparer != null) {

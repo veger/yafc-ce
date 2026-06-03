@@ -20,12 +20,10 @@ public readonly struct TextureHandle(DrawingSurface surface, IntPtr handle) {
 }
 
 public abstract class DrawingSurface(float pixelsPerUnit) : IDisposable {
-    private IntPtr rendererHandle;
-
     public IntPtr renderer {
-        get => rendererHandle;
+        get;
         protected set {
-            rendererHandle = value;
+            field = value;
             rendererVersion++;
         }
     }
