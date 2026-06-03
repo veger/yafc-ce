@@ -53,4 +53,4 @@ libSDL2_ttf.dylib
 Note that [the version available on Flathub](https://flathub.org/apps/details/com.github.petebuffon.yafc) is not the Community Edition. Its repo can be found at https://github.com/petebuffon/yafc.
 
 ### Other
-In general, ensure you have SDL2, OpenGL and dotnet 8 or later. Use the `Yafc` executable to run.
+In general, ensure you have SDL2, OpenGL and dotnet 10 or later. Use the `Yafc` executable to run.

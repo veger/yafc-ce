@@ -42,7 +42,7 @@ We also have the following materials to improve your Yafc experience:
 * [Tips and Tricks](/Docs/TipsAndTricks.md) and the [in-built tips](https://github.com/Yafc-CE/yafc-ce/blob/master/Yafc/Data/Tips.txt) for useful info.
 * [Shortcuts](/Docs/Shortcuts.md) for quality of life.
 
-If you want to build Yafc from source, you need to install [.NET 8](https://dotnet.microsoft.com/en-us/download/dotnet/8.0).  
+If you want to build Yafc from source, you need to install [.NET 10](https://dotnet.microsoft.com/en-us/download/dotnet/10.0).  
 You can run `build.sh` with [Git Bash](https://git-scm.com/downloads) to build for all systems, or just a single line from it that contains `dotnet publish` to build for your system.
 
 ## Project features

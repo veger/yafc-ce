@@ -25,6 +25,8 @@ Date:
     Fixes:
         - Several improvements loading Exotic Space Industries:Remembrance and its dependencies.
         - Ensure technology levels can always be specified, even with super-long technology names.
+    Internal changes:
+        - Upgrade to .NET 10.
 ----------------------------------------------------------------------------------------------------------------------
 Version: 2.19.0
 Date: 01 June 2026
