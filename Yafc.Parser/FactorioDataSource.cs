@@ -9,6 +9,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Serilog;
+using Yafc.Core;
 using Yafc.I18n;
 using Yafc.Model;
 using Yafc.UI;
@@ -143,7 +144,7 @@ public static partial class FactorioDataSource {
     /// <param name="progress">An <see cref="IProgress{T}"/> that receives two strings describing the current loading state.</param>
     /// <param name="mods">The <see cref="List{T}"/> that will receive the newly-discovered mods.</param>
     private static void FindMods(string directory, bool isBuiltIn, IProgress<(string, string)> progress, List<ModInfo> mods) {
-        Crc32 modHash = new();
+        Crc32 dataHash = new();
         foreach (string entry in Directory.EnumerateDirectories(directory)) {
             string infoFile = Path.Combine(entry, "info.json");
 
@@ -153,7 +154,7 @@ public static partial class FactorioDataSource {
 
                 if (isBuiltIn) {
                     // The official mods only load the info.json, since loading and hashing multiple megabytes takes longer than I'd like.
-                    modHash.Append(infoBytes);
+                    dataHash.Append(infoBytes);
                 }
                 else {
                     // Other mods (and all zipped mods, below) load all lua and language data.
@@ -161,13 +162,13 @@ public static partial class FactorioDataSource {
                         .Concat(Directory.GetFiles(entry, "*.cfg", SearchOption.AllDirectories).Order())) {
 
                         byte[] bytes = File.ReadAllBytes(file);
-                        appendEntry(modHash, Path.GetRelativePath(entry, file), bytes.Length, Crc32.HashToUInt32(bytes));
+                        appendEntry(dataHash, Path.GetRelativePath(entry, file), bytes.Length, Crc32.HashToUInt32(bytes));
                     }
                 }
 
-                ModInfo info = new(entry, infoBytes, modHash.GetCurrentHashAsUInt32());
+                ModInfo info = new(entry, infoBytes, dataHash.GetCurrentHashAsUInt32());
                 mods.Add(info);
-                modHash.Reset();
+                dataHash.Reset();
             }
         }
 
@@ -187,21 +188,21 @@ public static partial class FactorioDataSource {
                         .Concat(zipArchive.Entries.Where(e => e.FullName.EndsWith(".cfg")).OrderBy(e => e.FullName))) {
 
                         // GetRelativePath converts zip's always-/-delimited paths to the OS's native delimiters, matching unzipped relative paths.
-                        appendEntry(modHash, Path.GetRelativePath(folder, fileEntry.FullName), fileEntry.Length, fileEntry.Crc32);
+                        appendEntry(dataHash, Path.GetRelativePath(folder, fileEntry.FullName), fileEntry.Length, fileEntry.Crc32);
                     }
 
-                    ModInfo info = new(folder, infoEntry.Open().ReadAllBytes((int)infoEntry.Length), modHash.GetCurrentHashAsUInt32(), zipArchive);
+                    ModInfo info = new(folder, infoEntry.Open().ReadAllBytes((int)infoEntry.Length), dataHash.GetCurrentHashAsUInt32(), zipArchive);
                     mods.Add(info);
-                    modHash.Reset();
+                    dataHash.Reset();
                 }
             }
         }
 
         // Append a filesystem entry or zip entry to the mod's running hash.
-        static void appendEntry(Crc32 modHash, string relativePath, long size, uint fileCrc) {
-            modHash.Append(Encoding.UTF8.GetBytes(relativePath));
-            modHash.Append(BitConverter.GetBytes(size));
-            modHash.Append(BitConverter.GetBytes(fileCrc));
+        static void appendEntry(Crc32 hash, string relativePath, long size, uint fileCrc) {
+            hash.Append(Encoding.UTF8.GetBytes(relativePath));
+            hash.Append(BitConverter.GetBytes(size));
+            hash.Append(BitConverter.GetBytes(fileCrc));
         }
     }
 
@@ -409,14 +410,14 @@ public static partial class FactorioDataSource {
             dataContext = new LuaContext(factorioVersion);
             object? settings = null;
 
-            Crc32 modData = new();
+            Crc32 modPackDataHash = new();
             if (File.Exists(modSettingsPath)) {
                 using (FileStream fs = new FileStream(Path.Combine(modPath, "mod-settings.dat"), FileMode.Open, FileAccess.Read)) {
                     settings = FactorioPropertyTree.ReadModSettings(new BinaryReader(fs), dataContext);
                 }
 
                 logger.Information("Mod settings parsed");
-                modData.Append(File.ReadAllBytes(Path.Combine(modPath, "mod-settings.dat")));
+                modPackDataHash.Append(File.ReadAllBytes(Path.Combine(modPath, "mod-settings.dat")));
             }
             settings ??= dataContext.NewTable();
 
@@ -424,26 +425,32 @@ public static partial class FactorioDataSource {
             dataContext.SetGlobal("settings", settings);
 
             foreach (string mod in modLoadOrder) {
-                modData.Append(BitConverter.GetBytes(allMods[mod].crc));
+                modPackDataHash.Append(BitConverter.GetBytes(allMods[mod].dataHash));
             }
 
             foreach (string modFix in Directory.EnumerateFiles("Data/Mod-fixes", "*.lua")) {
-                modData.Append(File.ReadAllBytes(modFix));
+                modPackDataHash.Append(File.ReadAllBytes(modFix));
             }
             foreach (string localeFile in Directory.EnumerateFiles("Data/locale/en", "*.cfg")) {
-                modData.Append(File.ReadAllBytes(localeFile));
+                modPackDataHash.Append(File.ReadAllBytes(localeFile));
             }
             if (Directory.Exists(Path.Combine("Data/locale", locale))) {
                 foreach (string localeFile in Directory.EnumerateFiles(Path.Combine("Data/locale", locale), "*.cfg")) {
-                    modData.Append(File.ReadAllBytes(localeFile));
+                    modPackDataHash.Append(File.ReadAllBytes(localeFile));
                 }
             }
-            modData.Append(Encoding.UTF8.GetBytes(locale));
+            modPackDataHash.Append(Encoding.UTF8.GetBytes(locale));
 
-            FactorioDataDeserializer deserializer = new FactorioDataDeserializer(factorioVersion ?? defaultFactorioVersion);
-            if (Cache.ReadCSharp(progress, modData)) {
-                deserializer.StartRendering(renderIcons, Database.objects.all);
+            Task? renderTask = null;
+            ProgressForwarder<(string, string)> renderProgress = new();
+            void startIconRendering(IReadOnlyList<FactorioObject> objects) {
+                renderTask = FactorioDataDeserializer.StartRendering(objects, renderProgress);
+            }
 
+            if (Cache.ReadCSharp(progress, modPackDataHash)) {
+                if (renderIcons) {
+                    startIconRendering(Database.objects.all);
+                }
                 progress.Report((LSs.ProgressPostprocessing, LSs.ProgressCalculatingDependencies));
                 Dependencies.Calculate();
                 TechnologyLoopsFinder.FindTechnologyLoops();
@@ -462,13 +469,17 @@ public static partial class FactorioDataSource {
                 postProcess = File.ReadAllBytes($"Data/Postprocess.lua");
                 _ = dataContext.Exec(postProcess, "*", "post");
 
-                deserializer.LoadLuaData(dataContext.data, (LuaTable)dataContext.defines["prototypes"]!, netProduction, progress, errorCollector, renderIcons);
+                FactorioDataDeserializer deserializer = new(factorioVersion ?? defaultFactorioVersion);
+                deserializer.LoadLuaData(dataContext.data, (LuaTable)dataContext.defines["prototypes"]!, netProduction, progress, errorCollector,
+                    renderIcons ? startIconRendering : null);
 
-                Task.Run(Cache.WriteCSharp(modData));
+                Task.Run(Cache.WriteCSharp(modPackDataHash));
             }
 
             var project = FactorioDataDeserializer.LoadProject(projectPath, progress, errorCollector, useLatestSave);
-            deserializer.WaitForRendering(progress);
+            renderProgress.Destination = progress;
+            renderTask?.Wait();
+
             logger.Information("Completed!");
             progress.Report((LSs.ProgressCompleted, ""));
 
@@ -521,10 +532,10 @@ public static partial class FactorioDataSource {
         public bool expansion_shaders_required { get; set; }
 
         public ZipArchive? zipArchive;
-        public string folder;
-        public uint crc;
+        public readonly string folder;
+        public readonly uint dataHash;
 
-        public ModInfo(string folder, byte[] json, uint crc, ZipArchive? zipArchive = null) {
+        public ModInfo(string folder, byte[] json, uint dataHash, ZipArchive? zipArchive = null) {
             this.folder = folder;
             this.zipArchive = zipArchive;
             Newtonsoft.Json.JsonSerializer.Create().Populate(new StreamReader(new MemoryStream(json)), this);
@@ -532,7 +543,7 @@ public static partial class FactorioDataSource {
             parsedVersion = parsedV ?? new Version();
             _ = Version.TryParse(factorio_version, out parsedV);
             parsedFactorioVersion = parsedV ?? defaultFactorioVersion;
-            this.crc = crc;
+            this.dataHash = dataHash;
         }
 
         public void ParseDependencies() {
