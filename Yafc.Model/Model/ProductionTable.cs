@@ -540,7 +540,7 @@ match:
             }
         }
 
-        await Ui.ExitMainThread();
+        await page.owner.modelThreadSwitcher.SwitchToBackground();
 
         for (int i = 0; i < allRecipes.Count; i++) {
             objective.SetCoefficient(vars[i], allRecipes[i].BaseCost);
@@ -577,7 +577,7 @@ match:
             result = productionTableSolver.Solve();
 
             logger.Information("Solver finished with result {result}", result);
-            await Ui.EnterMainThread();
+            await page.owner.modelThreadSwitcher.SwitchToForeground();
 
             if (result is Solver.ResultStatus.OPTIMAL or Solver.ResultStatus.FEASIBLE) {
                 List<IProductionLink> linkList = [];

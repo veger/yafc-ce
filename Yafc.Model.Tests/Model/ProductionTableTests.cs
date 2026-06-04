@@ -1,7 +1,9 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace Yafc.Model.Tests.Model;
@@ -44,6 +46,98 @@ public class ProductionTableTests {
         Assert.False(table.linkMap.ContainsKey(goods));
         Assert.True(table.CreateLink(goods));
         Assert.Single(table.links);
+    }
+
+    [Fact]
+    public async Task Solve_UsesProjectThreadSwitcher_ForInfeasibleLink() {
+        Project project = LuaDependentTestHelper.GetProjectForLua("Yafc.Model.Tests.Model.ProductionTableContentTests.lua");
+        Project originalProject = Project.current;
+        project.modelThreadSwitcher = new CountingModelThreadSwitcher();
+        Project.current = project;
+
+        PropertyInfo ingredientsProperty = typeof(RecipeOrTechnology).GetProperty(nameof(RecipeOrTechnology.ingredients),
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)!;
+        RecipeOrTechnology producerRecipe = Database.recipes.all.Single(r => r.name == "recipe").With(Quality.Normal).target;
+        RecipeOrTechnology consumerRecipe = Database.recipes.all.Single(r => r.name == "recipe2").With(Quality.Normal).target;
+        Ingredient[] originalIngredients = consumerRecipe.ingredients;
+        Goods dummy3 = Database.items.all.Single(g => g.name == "dummy_3");
+        Goods ash = Database.items.all.Single(g => g.name == "ash");
+        IObjectWithQuality<Goods> dummy3Link = dummy3.With(Quality.Normal);
+        IObjectWithQuality<Goods> ashLink = ash.With(Quality.Normal);
+        Dictionary<FactorioObject, float> originalCosts = [];
+
+        void OverrideCost(FactorioObject obj, float cost) {
+            if (!originalCosts.ContainsKey(obj)) {
+                originalCosts[obj] = CostAnalysis.Instance.cost[obj];
+            }
+            CostAnalysis.Instance.cost[obj] = cost;
+        }
+
+        try {
+            ingredientsProperty.SetValue(consumerRecipe, new Ingredient[] {
+                new Ingredient(dummy3, originalIngredients[0].amount),
+                new Ingredient(ash, originalIngredients[1].amount),
+            });
+
+            ProjectPage page = new(project, typeof(ProductionTable));
+            project.pages.Add(page);
+            ProductionTable table = (ProductionTable)page.content;
+
+            table.AddRecipe(producerRecipe.With(Quality.Normal), DataUtils.DeterministicComparer);
+            table.AddRecipe(consumerRecipe.With(Quality.Normal), DataUtils.DeterministicComparer);
+            RecipeRow producer = table.GetAllRecipes().Single(r => r.recipe?.target.name == "recipe");
+            RecipeRow consumer = table.GetAllRecipes().Single(r => r.recipe?.target.name == "recipe2");
+
+            producer.fixedBuildings = 1f;
+            consumer.fixedBuildings = 1f;
+            Assert.True(table.CreateLink(dummy3Link));
+            Assert.True(table.CreateLink(ashLink));
+            ProductionLink dummy3LinkRecord = Assert.Single(table.links, link => link.goods == dummy3Link);
+            ProductionLink ashLinkRecord = Assert.Single(table.links, link => link.goods == ashLink);
+            dummy3LinkRecord.amount = 1f;
+            ashLinkRecord.amount = 1f;
+            OverrideCost(dummy3, 1f);
+            OverrideCost(ash, 1f);
+
+            Recipe recoveryRecipe = Database.recipes.all.OfType<Recipe>().First(r => r.products.Length > 1 || r.ingredients.Length > 1);
+            foreach (var product in recoveryRecipe.products) {
+                OverrideCost(product.goods, 1f);
+            }
+            foreach (var ingredient in recoveryRecipe.ingredients) {
+                OverrideCost(ingredient.goods, 1f);
+            }
+
+            table.AddRecipe(recoveryRecipe.With(Quality.Normal), DataUtils.DeterministicComparer);
+            RecipeRow recoveryRow = table.GetAllRecipes().Last(r => r.recipe?.target == recoveryRecipe);
+            recoveryRow.fixedBuildings = 1f;
+            Product? recoveryProduct = recoveryRecipe.products.FirstOrDefault(p => p.goods.isLinkable && !table.linkMap.ContainsKey(p.goods.With(Quality.Normal)));
+            Ingredient? recoveryIngredient = recoveryProduct is null
+                ? recoveryRecipe.ingredients.FirstOrDefault(i => i.goods.isLinkable && !table.linkMap.ContainsKey(i.goods.With(Quality.Normal)))
+                : null;
+            IObjectWithQuality<Goods> recoveryGoods = (recoveryProduct?.goods ?? recoveryIngredient!.goods).With(Quality.Normal);
+            Assert.True(table.CreateLink(recoveryGoods));
+            ProductionLink recoveryLink = Assert.Single(table.links, link => link.goods == recoveryGoods);
+            recoveryLink.amount = 1f;
+
+            string? error = await table.Solve(page);
+            CountingModelThreadSwitcher switcher = (CountingModelThreadSwitcher)project.modelThreadSwitcher;
+
+            Assert.NotNull(error);
+            Assert.Equal(1, switcher.backgroundSwitches);
+            Assert.Equal(1, switcher.foregroundSwitches);
+            Assert.Equal([CountingModelThreadSwitcher.SwitchEvent.Background, CountingModelThreadSwitcher.SwitchEvent.Foreground], switcher.events);
+            Assert.True(table.links.Any(link => link.notMatchedFlow != 0f || link.flags.HasFlags(ProductionLink.Flags.LinkNotMatched) || link.flags.HasFlags(ProductionLink.Flags.LinkRecursiveNotMatched))
+                || (producer.warningFlags | consumer.warningFlags | recoveryRow.warningFlags) != 0,
+                $"links={string.Join(", ", table.links.Select(link => $"{link.goods.target.name}:{link.notMatchedFlow}:{link.flags}"))}; " +
+                $"warnings={producer.warningFlags}|{consumer.warningFlags}|{recoveryRow.warningFlags}; error={error}");
+        }
+        finally {
+            ingredientsProperty.SetValue(consumerRecipe, originalIngredients);
+            foreach (var (obj, cost) in originalCosts) {
+                CostAnalysis.Instance.cost[obj] = cost;
+            }
+            Project.current = originalProject;
+        }
     }
 
     [Fact]
@@ -149,6 +243,29 @@ public class ProductionTableTests {
 
     public static TheoryData<Type> ProjectPageContentTypes => [.. AppDomain.CurrentDomain.GetAssemblies().SelectMany(a => a.GetTypes())
         .Where(t => typeof(ProjectPageContents).IsAssignableFrom(t) && !t.IsAbstract)];
+
+    private sealed class CountingModelThreadSwitcher : IModelThreadSwitcher {
+        public enum SwitchEvent {
+            Background,
+            Foreground,
+        }
+
+        public int backgroundSwitches { get; private set; }
+        public int foregroundSwitches { get; private set; }
+        public List<SwitchEvent> events { get; } = [];
+
+        public ModelThreadSwitch SwitchToBackground() {
+            backgroundSwitches++;
+            events.Add(SwitchEvent.Background);
+            return default;
+        }
+
+        public ModelThreadSwitch SwitchToForeground() {
+            foregroundSwitches++;
+            events.Add(SwitchEvent.Foreground);
+            return default;
+        }
+    }
 
     [Fact]
     public void ProductionTableTest_CanLoadWithNullRecipe() {
