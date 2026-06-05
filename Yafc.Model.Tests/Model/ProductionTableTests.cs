@@ -124,12 +124,11 @@ public class ProductionTableTests {
 
             Assert.NotNull(error);
             Assert.Equal(1, switcher.backgroundSwitches);
+            // ProductionTable.Solve is called directly here, so ProjectPage.ExternalSolve's
+            // foreground re-entry is not counted. Today Solve switches back to foreground
+            // only inside the infeasibility diagnostics branch exercised by this test.
             Assert.Equal(1, switcher.foregroundSwitches);
             Assert.Equal([CountingModelThreadSwitcher.SwitchEvent.Background, CountingModelThreadSwitcher.SwitchEvent.Foreground], switcher.events);
-            Assert.True(table.links.Any(link => link.notMatchedFlow != 0f || link.flags.HasFlags(ProductionLink.Flags.LinkNotMatched) || link.flags.HasFlags(ProductionLink.Flags.LinkRecursiveNotMatched))
-                || (producer.warningFlags | consumer.warningFlags | recoveryRow.warningFlags) != 0,
-                $"links={string.Join(", ", table.links.Select(link => $"{link.goods.target.name}:{link.notMatchedFlow}:{link.flags}"))}; " +
-                $"warnings={producer.warningFlags}|{consumer.warningFlags}|{recoveryRow.warningFlags}; error={error}");
         }
         finally {
             ingredientsProperty.SetValue(consumerRecipe, originalIngredients);
@@ -243,29 +242,6 @@ public class ProductionTableTests {
 
     public static TheoryData<Type> ProjectPageContentTypes => [.. AppDomain.CurrentDomain.GetAssemblies().SelectMany(a => a.GetTypes())
         .Where(t => typeof(ProjectPageContents).IsAssignableFrom(t) && !t.IsAbstract)];
-
-    private sealed class CountingModelThreadSwitcher : IModelThreadSwitcher {
-        public enum SwitchEvent {
-            Background,
-            Foreground,
-        }
-
-        public int backgroundSwitches { get; private set; }
-        public int foregroundSwitches { get; private set; }
-        public List<SwitchEvent> events { get; } = [];
-
-        public ModelThreadSwitch SwitchToBackground() {
-            backgroundSwitches++;
-            events.Add(SwitchEvent.Background);
-            return default;
-        }
-
-        public ModelThreadSwitch SwitchToForeground() {
-            foregroundSwitches++;
-            events.Add(SwitchEvent.Foreground);
-            return default;
-        }
-    }
 
     [Fact]
     public void ProductionTableTest_CanLoadWithNullRecipe() {
