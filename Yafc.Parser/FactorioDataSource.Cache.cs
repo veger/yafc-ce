@@ -177,8 +177,7 @@ public static partial class FactorioDataSource {
                     return null;
                 }
 
-                file.Position = 4;
-                file.Write(BitConverter.GetBytes(DateTime.UtcNow.ToBinary())); // Update the atime
+                file.Position = 12;
 
                 DecompressAndVerifyStream result = new(hash, file);
                 file = null; // ownership has been transfered to result.
@@ -287,7 +286,16 @@ public static partial class FactorioDataSource {
                         crcMismatch = true;
                     }
                     lZip.Dispose();
+
+                    if (!crcMismatch) {
+                        try {
+                            file.Position = 4;
+                            file.Write(BitConverter.GetBytes(DateTime.UtcNow.ToBinary())); // Update the atime (ignoring errors)
+                        }
+                        catch { }
+                    }
                     file.Dispose();
+
                     _disposed = true;
                 }
 
