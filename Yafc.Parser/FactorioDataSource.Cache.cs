@@ -9,10 +9,12 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
+using SDL2;
 using SharpCompress.Compressors;
 using SharpCompress.Compressors.LZMA;
 using Yafc.I18n;
 using Yafc.Model;
+using Yafc.UI;
 
 namespace Yafc.Parser;
 
@@ -110,6 +112,49 @@ public static partial class FactorioDataSource {
                 logger.Information(ex, "Could not load data cache.");
                 return false;
             }
+        }
+
+        /// <summary>
+        /// Writes icon data from <see cref="IconCollection"/> and <see cref="FactorioObject.iconId"/> into the appropriate cache file.
+        /// </summary>
+        /// <param name="modData">The <see cref="Crc32"/> that was passed to the <c>reportHash</c> parameter of <see cref="ReadIcons"/>.</param>
+        public static Action WriteIcons(Crc32 modData) => () => {
+            try {
+                IconCache cache = new(Database.objects.all);
+                using var stream = cache.OpenWriteCache(modData);
+                cache.Write(stream);
+            }
+            catch (Exception ex) {
+                logger.Warning(ex, "Could not write icon cache.");
+            }
+        };
+
+        /// <summary>
+        /// Tries to load icon data from the appropriate cache file into <see cref="IconCollection"/> and <see cref="FactorioObject.iconId"/>.
+        /// </summary>
+        /// <param name="modData">A <see cref="Crc32"/> that has been initialized with data dependent on the active built-in mods.</param>
+        /// <param name="objects">The <see cref="FactorioObject"/>s that will receive the loaded icon data. (<see cref="Database.objects"/> may not
+        /// have been initialized yet.)</param>
+        /// <param name="reportHash">An action that will receive the calculated icon layer hash, so the cache writer doesn't depend on
+        /// <see cref="allMods"/>.</param>
+        /// <param name="progress">An <see cref="IProgress{T}"/> that receives two strings describing the current loading state.</param>
+        /// <returns><see langword="true"/> if the data was successfully loaded from the cache file, or <see langword="false"/> if the CRC did not
+        /// match or an error occurred.</returns>
+        public static bool ReadIcons(Crc32 modData, IReadOnlyList<FactorioObject> objects, Action<Crc32> reportHash,
+            IProgress<(string, string)> progress) {
+
+            try {
+                IconCache cache = new(objects, reportHash);
+                using var stream = cache.OpenReadCache(modData);
+                if (stream != null) {
+                    return cache.Read(progress, stream);
+                }
+            }
+            catch (Exception ex) {
+                logger.Information(ex, "Could not load icon cache.");
+                IconCollection.ClearCustomIcons();
+            }
+            return false;
         }
 
         /// <summary>
@@ -692,6 +737,145 @@ public static partial class FactorioDataSource {
                     throw new Exception($"Don't know how to deserialize {fieldType} from the cache. Does it need to be added to '{nameof(types)}'?");
                 }
             }
+        }
+    }
+
+    private sealed class IconCache(IReadOnlyList<FactorioObject> objects, Action<Crc32>? reportHash = null) : Cache {
+        // The icon cache data is:
+        // The iconId for each object. Non-zero IDs are offset so they start at 1, not Icon.FirstCustom. (Changing the value of FirstCustom will not
+        //     invalidate the cache).
+        // The number of custom icons.
+        // A list of icons, encoded as WW HH followed by the 32-bit value for each pixel. All icons are currently 32x32, meaning 4098 bytes per icon.
+        // The icon IDs and icon count use .NET's 7-bit integer encoding.
+
+        // Increment the version whenever FactorioDataDeserializer.RenderIcons gets a rendering fix.
+        protected override int DataVersion => 0;
+        protected override string FileExtension => "iconcache";
+
+        /// <summary>
+        /// Computes or regurgitates the icon specification hash.
+        /// </summary>
+        /// <returns>The fully-computed hash to be used for file lookup and cache coherency checks.</returns>
+        protected override uint FinishHash(Crc32 hash) {
+            if (reportHash == null) {
+                // We're opening the cache for write. allMods could be invalid, so replay the hash.
+                return hash.GetCurrentHashAsUInt32();
+            }
+
+            // We're opening the cache for read. allMods is definitely valid, since a read failure will be followed by a real render pass.
+
+            byte[] empty = [0];
+            HashSet<string> seenImages = [];
+
+            foreach (var obj in objects) {
+                if (obj.iconSpec?.Length > 0) {
+                    foreach (var layer in obj.iconSpec) {
+                        hash.Append(BitConverter.GetBytes(layer.a));
+                        hash.Append(BitConverter.GetBytes(layer.r));
+                        hash.Append(BitConverter.GetBytes(layer.g));
+                        hash.Append(BitConverter.GetBytes(layer.b));
+                        hash.Append(BitConverter.GetBytes(layer.x));
+                        hash.Append(BitConverter.GetBytes(layer.y));
+                        hash.Append(BitConverter.GetBytes(layer.size));
+                        hash.Append(BitConverter.GetBytes(layer.scale));
+                        hash.Append(Encoding.UTF8.GetBytes(layer.path));
+
+                        var (mod, path) = ResolveModPath("", layer.path);
+                        if (mod is not "core" and not "base" and not "quality" and not "elevated-rails" and not "space-age" and not "."
+                            && seenImages.Add(layer.path)) {
+
+                            var (size, crc) = getImageData(mod, path);
+                            hash.Append(BitConverter.GetBytes(size));
+                            hash.Append(BitConverter.GetBytes(crc));
+                        }
+                    }
+                }
+                else {
+                    hash.Append(empty);
+                }
+            }
+
+            reportHash(hash);
+
+            return hash.GetCurrentHashAsUInt32();
+
+            static (long, uint) getImageData(string modName, string path) {
+                if (allMods.TryGetValue(modName, out var mod) && mod.zipArchive?.GetEntry(mod.folder + path) is { } entry) {
+                    return (entry.Length, entry.Crc32);
+                }
+
+                // It's not a zip or the mod/image is missing. Let ReadModFile try a filesystem read, or fall back to an empty array.
+                byte[] bytes = ReadModFile(modName, path);
+                return (bytes.Length, Crc32.HashToUInt32(bytes));
+            }
+        }
+
+        protected override unsafe void Write(Stream stream) {
+            using BinaryWriter writer = new(stream);
+
+            Dictionary<int, FactorioId> iconIdIndex = [];
+            foreach (var obj in objects) {
+                if (obj.iconId == 0) {
+                    writer.Write((byte)0);
+                }
+                else {
+                    writer.Write7BitEncodedInt(obj.iconId - (int)Icon.FirstCustom + 1);
+                }
+            }
+
+            writer.Write7BitEncodedInt(IconCollection.IconCount - (int)Icon.FirstCustom);
+            for (int i = (int)Icon.FirstCustom; i < IconCollection.IconCount; i++) {
+                nint surface = IconCollection.GetIconSurface((Icon)i);
+                ref var sdlSurface = ref RenderingUtils.AsSdlSurface(surface);
+                if (SDL.SDL_MUSTLOCK(surface)) {
+                    throw new Exception("MUSTLOCK surfaces are not supported for icon caching.");
+                }
+
+                checked {
+                    writer.Write((byte)sdlSurface.w);
+                    writer.Write((byte)sdlSurface.h);
+                }
+
+                ref var format = ref Unsafe.AsRef<SDL.SDL_PixelFormat>((void*)sdlSurface.format);
+                if (format.BytesPerPixel != 4) {
+                    throw new Exception("Non-RGBA surfaces are not supported for icon caching.");
+                }
+                writer.Write(new ReadOnlySpan<byte>((void*)sdlSurface.pixels, sdlSurface.w * sdlSurface.h * format.BytesPerPixel));
+            }
+        }
+
+        protected override unsafe bool Read(IProgress<(string, string)> progress, Stream stream) {
+            using BinaryReader reader = new(stream);
+            foreach (var obj in objects) {
+                int id = reader.Read7BitEncodedInt();
+                if (id > 0) {
+                    obj.iconId = id + (int)Icon.FirstCustom - 1;
+                }
+            }
+
+            int iconCount = reader.Read7BitEncodedInt();
+            IconCollection.ClearCustomIcons();
+
+            for (int i = 0; i < iconCount; i++) {
+                if (i % 1000 == 0) {
+                    progress.Report((LSs.ProgressLoadingCacheIcons, LSs.ProgressRenderingXOfY.L(i, iconCount)));
+                }
+                int width = reader.ReadByte();
+                int height = reader.ReadByte();
+
+                nint surface = SDL.SDL_CreateRGBSurfaceWithFormat(0, width, height, 0, SDL.SDL_PIXELFORMAT_RGBA8888);
+                IconCollection.AddIcon(surface);
+
+                ref var sdlSurface = ref RenderingUtils.AsSdlSurface(surface);
+                ref var format = ref Unsafe.AsRef<SDL.SDL_PixelFormat>((void*)sdlSurface.format);
+                int expectedBytes = width * height * format.BytesPerPixel;
+                if (reader.Read(new Span<byte>((void*)sdlSurface.pixels, expectedBytes)) != expectedBytes) {
+                    logger.Information("Unexpected end of data reading icon cache.");
+                    return false;
+                }
+            }
+
+            return true;
         }
     }
 }

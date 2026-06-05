@@ -144,7 +144,7 @@ public static partial class FactorioDataSource {
     /// <param name="progress">An <see cref="IProgress{T}"/> that receives two strings describing the current loading state.</param>
     /// <param name="mods">The <see cref="List{T}"/> that will receive the newly-discovered mods.</param>
     private static void FindMods(string directory, bool isBuiltIn, IProgress<(string, string)> progress, List<ModInfo> mods) {
-        Crc32 dataHash = new();
+        Crc32 dataHash = new(), infoHash = new();
         foreach (string entry in Directory.EnumerateDirectories(directory)) {
             string infoFile = Path.Combine(entry, "info.json");
 
@@ -155,6 +155,7 @@ public static partial class FactorioDataSource {
                 if (isBuiltIn) {
                     // The official mods only load the info.json, since loading and hashing multiple megabytes takes longer than I'd like.
                     dataHash.Append(infoBytes);
+                    infoHash.Append(infoBytes);
                 }
                 else {
                     // Other mods (and all zipped mods, below) load all lua and language data.
@@ -166,9 +167,10 @@ public static partial class FactorioDataSource {
                     }
                 }
 
-                ModInfo info = new(entry, infoBytes, dataHash.GetCurrentHashAsUInt32());
+                ModInfo info = new(entry, infoBytes, dataHash.GetCurrentHashAsUInt32(), infoHash.GetCurrentHashAsUInt32());
                 mods.Add(info);
                 dataHash.Reset();
+                infoHash.Reset();
             }
         }
 
@@ -191,7 +193,7 @@ public static partial class FactorioDataSource {
                         appendEntry(dataHash, Path.GetRelativePath(folder, fileEntry.FullName), fileEntry.Length, fileEntry.Crc32);
                     }
 
-                    ModInfo info = new(folder, infoEntry.Open().ReadAllBytes((int)infoEntry.Length), dataHash.GetCurrentHashAsUInt32(), zipArchive);
+                    ModInfo info = new(folder, infoEntry.Open().ReadAllBytes((int)infoEntry.Length), dataHash.GetCurrentHashAsUInt32(), 0, zipArchive);
                     mods.Add(info);
                     dataHash.Reset();
                 }
@@ -410,7 +412,7 @@ public static partial class FactorioDataSource {
             dataContext = new LuaContext(factorioVersion);
             object? settings = null;
 
-            Crc32 modPackDataHash = new();
+            Crc32 modPackDataHash = new(), builtInModsInfoHash = new();
             if (File.Exists(modSettingsPath)) {
                 using (FileStream fs = new FileStream(Path.Combine(modPath, "mod-settings.dat"), FileMode.Open, FileAccess.Read)) {
                     settings = FactorioPropertyTree.ReadModSettings(new BinaryReader(fs), dataContext);
@@ -426,6 +428,10 @@ public static partial class FactorioDataSource {
 
             foreach (string mod in modLoadOrder) {
                 modPackDataHash.Append(BitConverter.GetBytes(allMods[mod].dataHash));
+                if (allMods[mod].infoHash != 0) {
+                    // Built-in mods only, to tie the image cache to the Factorio version.
+                    builtInModsInfoHash.Append(BitConverter.GetBytes(allMods[mod].infoHash));
+                }
             }
 
             foreach (string modFix in Directory.EnumerateFiles("Data/Mod-fixes", "*.lua")) {
@@ -443,13 +449,24 @@ public static partial class FactorioDataSource {
 
             Task? renderTask = null;
             ProgressForwarder<(string, string)> renderProgress = new();
-            void startIconRendering(IReadOnlyList<FactorioObject> objects) {
-                renderTask = FactorioDataDeserializer.StartRendering(objects, renderProgress);
-            }
+            void loadOrRenderIcons(IReadOnlyList<FactorioObject> objects)
+                => renderTask = Task.Run(() => {
+                    // Store the hash calculated by the read attempt, so we can replay it (if necessary) for the write.
+                    Crc32? calculatedHash = null;
+                    void reportHash(Crc32 hash) => calculatedHash = hash;
+
+                    if (!Cache.ReadIcons(builtInModsInfoHash, objects, reportHash, renderProgress)) {
+                        FactorioDataDeserializer.StartRendering(objects, renderProgress).Wait();
+                        if (calculatedHash != null) {
+                            // Use the previously calculated hash. We can't re-read the png files because allMods might be cleared/disposed.
+                            Task.Run(Cache.WriteIcons(calculatedHash));
+                        }
+                    }
+                });
 
             if (Cache.ReadCSharp(progress, modPackDataHash)) {
                 if (renderIcons) {
-                    startIconRendering(Database.objects.all);
+                    loadOrRenderIcons(Database.objects.all);
                 }
                 progress.Report((LSs.ProgressPostprocessing, LSs.ProgressCalculatingDependencies));
                 Dependencies.Calculate();
@@ -471,7 +488,7 @@ public static partial class FactorioDataSource {
 
                 FactorioDataDeserializer deserializer = new(factorioVersion ?? defaultFactorioVersion);
                 deserializer.LoadLuaData(dataContext.data, (LuaTable)dataContext.defines["prototypes"]!, netProduction, progress, errorCollector,
-                    renderIcons ? startIconRendering : null);
+                    renderIcons ? loadOrRenderIcons : null);
 
                 Task.Run(Cache.WriteCSharp(modPackDataHash));
             }
@@ -534,8 +551,15 @@ public static partial class FactorioDataSource {
         public ZipArchive? zipArchive;
         public readonly string folder;
         public readonly uint dataHash;
+        /// <summary>
+        /// The hash of info.json for built-in mods. Zero and unused for all other mods.
+        /// </summary>
+        public readonly uint infoHash;
 
-        public ModInfo(string folder, byte[] json, uint dataHash, ZipArchive? zipArchive = null) {
+        /// <param name="json">The bytes in this mod's info.json.</param>
+        /// <param name="dataHash">A hash of the .lua and .cfg data in this mod.</param>
+        /// <param name="infoHash">A hash of info.json in this built-in mod, or zero.</param>
+        public ModInfo(string folder, byte[] json, uint dataHash, uint infoHash, ZipArchive? zipArchive = null) {
             this.folder = folder;
             this.zipArchive = zipArchive;
             Newtonsoft.Json.JsonSerializer.Create().Populate(new StreamReader(new MemoryStream(json)), this);
@@ -544,6 +568,7 @@ public static partial class FactorioDataSource {
             _ = Version.TryParse(factorio_version, out parsedV);
             parsedFactorioVersion = parsedV ?? defaultFactorioVersion;
             this.dataHash = dataHash;
+            this.infoHash = infoHash;
         }
 
         public void ParseDependencies() {

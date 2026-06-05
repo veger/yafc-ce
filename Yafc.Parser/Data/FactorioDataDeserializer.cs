@@ -302,6 +302,7 @@ internal partial class FactorioDataDeserializer {
         => CreateIconFromSpec(cache, new FactorioIconPart("__core__/graphics/" + graphicsPath + ".png"));
 
     private static void RenderIcons(IReadOnlyList<FactorioObject> objects, IProgress<(string, string)> progress) {
+        // Whenever this method gets a rendering fix, invalidate the caches by incrementing FactorioDataSource.IconCache.DataVersion.
         Dictionary<(string mod, string path), IntPtr> cache = [];
         try {
             foreach (char digit in "0123456789d") {
