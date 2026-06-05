@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -50,93 +49,55 @@ public class ProductionTableTests {
 
     [Fact]
     public async Task Solve_UsesProjectThreadSwitcher_ForInfeasibleLink() {
-        Project project = LuaDependentTestHelper.GetProjectForLua("Yafc.Model.Tests.Model.ProductionTableContentTests.lua");
-        Project originalProject = Project.current;
-        project.modelThreadSwitcher = new CountingModelThreadSwitcher();
-        Project.current = project;
+        Project project = LuaDependentTestHelper.GetProjectForLua();
+        CountingModelThreadSwitcher switcher = new();
+        project.modelThreadSwitcher = switcher;
 
-        PropertyInfo ingredientsProperty = typeof(RecipeOrTechnology).GetProperty(nameof(RecipeOrTechnology.ingredients),
-            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)!;
-        RecipeOrTechnology producerRecipe = Database.recipes.all.Single(r => r.name == "recipe").With(Quality.Normal).target;
-        RecipeOrTechnology consumerRecipe = Database.recipes.all.Single(r => r.name == "recipe2").With(Quality.Normal).target;
-        Ingredient[] originalIngredients = consumerRecipe.ingredients;
+        RecipeOrTechnology producerRecipe = Database.recipes.all.Single(r => r.name == "recipe");
+        RecipeOrTechnology consumerRecipe = Database.recipes.all.Single(r => r.name == "recipe2");
         Goods dummy3 = Database.items.all.Single(g => g.name == "dummy_3");
         Goods ash = Database.items.all.Single(g => g.name == "ash");
         IObjectWithQuality<Goods> dummy3Link = dummy3.With(Quality.Normal);
         IObjectWithQuality<Goods> ashLink = ash.With(Quality.Normal);
-        Dictionary<FactorioObject, float> originalCosts = [];
+        CostAnalysis.Instance.cost[dummy3] = 1f;
+        CostAnalysis.Instance.cost[ash] = 1f;
 
-        void OverrideCost(FactorioObject obj, float cost) {
-            if (!originalCosts.ContainsKey(obj)) {
-                originalCosts[obj] = CostAnalysis.Instance.cost[obj];
-            }
-            CostAnalysis.Instance.cost[obj] = cost;
-        }
+        ProjectPage page = new(project, typeof(ProductionTable));
+        project.pages.Add(page);
+        ProductionTable table = (ProductionTable)page.content;
 
-        try {
-            ingredientsProperty.SetValue(consumerRecipe, new Ingredient[] {
-                new Ingredient(dummy3, originalIngredients[0].amount),
-                new Ingredient(ash, originalIngredients[1].amount),
-            });
+        table.AddRecipe(producerRecipe.With(Quality.Normal), DataUtils.DeterministicComparer);
+        table.AddRecipe(consumerRecipe.With(Quality.Normal), DataUtils.DeterministicComparer);
+        RecipeRow producer = table.recipes[0];
+        RecipeRow consumer = table.recipes[1];
 
-            ProjectPage page = new(project, typeof(ProductionTable));
-            project.pages.Add(page);
-            ProductionTable table = (ProductionTable)page.content;
+        producer.fixedBuildings = 1f;
+        consumer.fixedBuildings = 1f;
+        Assert.True(table.CreateLink(dummy3Link));
+        Assert.True(table.CreateLink(ashLink));
+        ProductionLink dummy3LinkRecord = Assert.Single(table.links, link => link.goods == dummy3Link);
+        ProductionLink ashLinkRecord = Assert.Single(table.links, link => link.goods == ashLink);
+        dummy3LinkRecord.amount = 1f;
+        ashLinkRecord.amount = 1f;
 
-            table.AddRecipe(producerRecipe.With(Quality.Normal), DataUtils.DeterministicComparer);
-            table.AddRecipe(consumerRecipe.With(Quality.Normal), DataUtils.DeterministicComparer);
-            RecipeRow producer = table.GetAllRecipes().Single(r => r.recipe?.target.name == "recipe");
-            RecipeRow consumer = table.GetAllRecipes().Single(r => r.recipe?.target.name == "recipe2");
+        Recipe recoveryRecipe = Assert.IsType<Recipe>(producerRecipe);
+        table.AddRecipe(recoveryRecipe.With(Quality.Normal), DataUtils.DeterministicComparer);
+        RecipeRow recoveryRow = table.recipes[2];
+        recoveryRow.fixedBuildings = 1f;
+        IObjectWithQuality<Goods> recoveryGoods = Database.goods.all.Single(g => g.name == "dummy_1").With(Quality.Normal);
+        Assert.True(table.CreateLink(recoveryGoods));
+        ProductionLink recoveryLink = Assert.Single(table.links, link => link.goods == recoveryGoods);
+        recoveryLink.amount = 1f;
 
-            producer.fixedBuildings = 1f;
-            consumer.fixedBuildings = 1f;
-            Assert.True(table.CreateLink(dummy3Link));
-            Assert.True(table.CreateLink(ashLink));
-            ProductionLink dummy3LinkRecord = Assert.Single(table.links, link => link.goods == dummy3Link);
-            ProductionLink ashLinkRecord = Assert.Single(table.links, link => link.goods == ashLink);
-            dummy3LinkRecord.amount = 1f;
-            ashLinkRecord.amount = 1f;
-            OverrideCost(dummy3, 1f);
-            OverrideCost(ash, 1f);
+        var error = await table.Solve(page);
 
-            Recipe recoveryRecipe = Database.recipes.all.OfType<Recipe>().First(r => r.products.Length > 1 || r.ingredients.Length > 1);
-            foreach (var product in recoveryRecipe.products) {
-                OverrideCost(product.goods, 1f);
-            }
-            foreach (var ingredient in recoveryRecipe.ingredients) {
-                OverrideCost(ingredient.goods, 1f);
-            }
-
-            table.AddRecipe(recoveryRecipe.With(Quality.Normal), DataUtils.DeterministicComparer);
-            RecipeRow recoveryRow = table.GetAllRecipes().Last(r => r.recipe?.target == recoveryRecipe);
-            recoveryRow.fixedBuildings = 1f;
-            Product? recoveryProduct = recoveryRecipe.products.FirstOrDefault(p => p.goods.isLinkable && !table.linkMap.ContainsKey(p.goods.With(Quality.Normal)));
-            Ingredient? recoveryIngredient = recoveryProduct is null
-                ? recoveryRecipe.ingredients.FirstOrDefault(i => i.goods.isLinkable && !table.linkMap.ContainsKey(i.goods.With(Quality.Normal)))
-                : null;
-            IObjectWithQuality<Goods> recoveryGoods = (recoveryProduct?.goods ?? recoveryIngredient!.goods).With(Quality.Normal);
-            Assert.True(table.CreateLink(recoveryGoods));
-            ProductionLink recoveryLink = Assert.Single(table.links, link => link.goods == recoveryGoods);
-            recoveryLink.amount = 1f;
-
-            string? error = await table.Solve(page);
-            CountingModelThreadSwitcher switcher = (CountingModelThreadSwitcher)project.modelThreadSwitcher;
-
-            Assert.NotNull(error);
-            Assert.Equal(1, switcher.backgroundSwitches);
-            // ProductionTable.Solve is called directly here, so ProjectPage.ExternalSolve's
-            // foreground re-entry is not counted. Today Solve switches back to foreground
-            // only inside the infeasibility diagnostics branch exercised by this test.
-            Assert.Equal(1, switcher.foregroundSwitches);
-            Assert.Equal([CountingModelThreadSwitcher.SwitchEvent.Background, CountingModelThreadSwitcher.SwitchEvent.Foreground], switcher.events);
-        }
-        finally {
-            ingredientsProperty.SetValue(consumerRecipe, originalIngredients);
-            foreach (var (obj, cost) in originalCosts) {
-                CostAnalysis.Instance.cost[obj] = cost;
-            }
-            Project.current = originalProject;
-        }
+        Assert.NotNull(error);
+        Assert.Equal(1, switcher.backgroundSwitches);
+        // ProductionTable.Solve is called directly here, so ProjectPage.ExternalSolve's
+        // foreground re-entry is not counted. Today Solve switches back to foreground
+        // only inside the infeasibility diagnostics branch exercised by this test.
+        Assert.Equal(1, switcher.foregroundSwitches);
+        Assert.Equal([CountingModelThreadSwitcher.SwitchEvent.Background, CountingModelThreadSwitcher.SwitchEvent.Foreground], switcher.events);
     }
 
     [Fact]
