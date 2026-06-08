@@ -49,7 +49,6 @@ public partial class MainScreen : WindowMain, IKeyboardFocus, IProgress<(string,
     public MainScreen(int display, Project project) : base(default, Preferences.Instance.forceSoftwareRenderer) {
         summaryView = new SummaryView();
         RegisterPageView<ProductionTable>(new ProductionTableView());
-        RegisterPageView<AutoPlanner>(new AutoPlannerView());
         RegisterPageView<ProductionSummary>(new ProductionSummaryView());
         RegisterPageView<Summary>(summaryView);
         searchGui = new ImGui(BuildSearch, new Padding(1f)) { boxShadow = RectangleBorder.Thin, boxColor = SchemeColor.Background };

@@ -10,11 +10,6 @@ namespace Yafc.Model.Serialization.Tests;
 
 public class SerializationTreeChangeDetection {
     private static readonly Dictionary<Type, Dictionary<string, Type>> propertyTree = new() {
-        [typeof(AutoPlanner)] = new() {
-            [nameof(AutoPlanner.goals)] = typeof(List<AutoPlannerGoal>),
-            [nameof(AutoPlanner.done)] = typeof(HashSet<Recipe>),
-            [nameof(AutoPlanner.roots)] = typeof(HashSet<Goods>),
-        },
         [typeof(ModuleFillerParameters)] = new() {
             [nameof(ModuleFillerParameters.fillMiners)] = typeof(bool),
             [nameof(ModuleFillerParameters.autoFillPayback)] = typeof(float),
@@ -131,10 +126,6 @@ public class SerializationTreeChangeDetection {
         },
         [typeof(Summary)] = new() {
             [nameof(Summary.showOnlyIssues)] = typeof(bool),
-        },
-        [typeof(AutoPlannerGoal)] = new() {
-            [nameof(AutoPlannerGoal.item)] = typeof(Goods),
-            [nameof(AutoPlannerGoal.amount)] = typeof(float),
         },
         [typeof(BeaconOverrideConfiguration)] = new() {
             [nameof(BeaconOverrideConfiguration.beacon)] = typeof(IObjectWithQuality<EntityBeacon>),
