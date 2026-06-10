@@ -449,22 +449,17 @@ public static partial class FactorioDataSource {
 
             Task? renderTask = null;
             ProgressForwarder<(string, string)> renderProgress = new();
-            void loadOrRenderIcons(IReadOnlyList<FactorioObject> objects)
-                => renderTask = Task.Run(() => {
-                    // Store the hash calculated by the read attempt, so we can replay it (if necessary) for the write.
-                    Crc32? calculatedHash = null;
-                    void reportHash(Crc32 hash) => calculatedHash = hash;
+            void loadOrRenderIcons(IReadOnlyList<FactorioObject> objects) => renderTask = Task.Run(() => {
+                if (!Cache.ReadIcons(builtInModsInfoHash, objects, renderProgress, out uint? hash)) {
+                    FactorioDataDeserializer.StartRendering(objects, renderProgress).Wait();
+                    if (hash != null) {
 
-                    if (!Cache.ReadIcons(builtInModsInfoHash, objects, reportHash, renderProgress)) {
-                        FactorioDataDeserializer.StartRendering(objects, renderProgress).Wait();
-                        if (calculatedHash != null) {
-                            // Use the previously calculated hash. We can't re-read the png files because allMods might be cleared/disposed.
-                            Task.Run(Cache.WriteIcons(calculatedHash));
-                        }
+                        Task.Run(Cache.WriteIcons(hash.Value));
                     }
-                });
+                }
+            });
 
-            if (Cache.ReadCSharp(progress, modPackDataHash)) {
+            if (Cache.ReadCSharp(modPackDataHash, progress, out uint? hash)) {
                 if (renderIcons) {
                     loadOrRenderIcons(Database.objects.all);
                 }
@@ -490,7 +485,9 @@ public static partial class FactorioDataSource {
                 deserializer.LoadLuaData(dataContext.data, (LuaTable)dataContext.defines["prototypes"]!, netProduction, progress, errorCollector,
                     renderIcons ? loadOrRenderIcons : null);
 
-                Task.Run(Cache.WriteCSharp(modPackDataHash));
+                if (hash != null) {
+                    Task.Run(Cache.WriteCSharp(hash.Value));
+                }
             }
 
             var project = FactorioDataDeserializer.LoadProject(projectPath, progress, errorCollector, useLatestSave);

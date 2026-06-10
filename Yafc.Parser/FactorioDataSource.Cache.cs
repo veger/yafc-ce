@@ -63,25 +63,26 @@ public static partial class FactorioDataSource {
         /// <summary>
         /// When implemented in a derived class, reads the cache data from the supplied <see cref="Stream"/>.
         /// </summary>
-        /// <param name="progress">An <see cref="IProgress{T}"/> that receives two strings describing the current loading state.</param>
         /// <param name="stream">The readable stream that contains the cache data. This stream will contain trailing data that was not written by
         /// <see cref="Write"/>, and implementing classes must not read that data.</param>
+        /// <param name="progress">An <see cref="IProgress{T}"/> that receives two strings describing the current loading state.</param>
         /// <returns><see langword="true"/> if the data was loaded successfully, or <see langword="false"/> if an error occurred.</returns>
         /// <remarks>Cache container concerns are handled automatically by <see cref="Cache"/>.</remarks>
-        protected abstract bool Read(IProgress<(string, string)> progress, Stream stream);
+        protected abstract bool Read(Stream stream, IProgress<(string, string)> progress);
 
         /// <summary>
         /// Writes data into the appropriate cache file from the storage maintained by <see cref="Database"/> and <see cref="Analysis"/>.
         /// (<see cref="ObjectWithQuality"/> must be initialized by the cache reader, but that only requires the data in <see cref="Database"/>.)
         /// </summary>
-        /// <param name="modData">A <see cref="Crc32"/> that has been initialized with data dependent on the active mods, mod versions, and mod
-        /// settings. To load this file, a <see cref="Crc32"/> initialized with the same data must be passed to <see cref="ReadCSharp"/>.</param>
+        /// <param name="hash">The hash that was received from <see cref="ReadCSharp"/>.</param>
         /// <returns>An <see cref="Action"/> that should be executed asynchronously to write the cache file.</returns>
-        public static Action WriteCSharp(Crc32 modData) => () => {
+        public static Action WriteCSharp(uint hash) => () => {
             try {
                 CSharpCache cache = new();
-                using var stream = cache.OpenWriteCache(modData);
+                using var stream = cache.OpenWriteCache(hash);
                 cache.Write(stream);
+                // We might have created a new file. Check to see if we need to delete any old ones.
+                cache.DeleteOldFiles();
             }
             catch (Exception ex) {
                 logger.Warning(ex, "Could not write data cache.");
@@ -92,21 +93,24 @@ public static partial class FactorioDataSource {
         /// Tries to load data from the appropriate cache file into the storage maintained by <see cref="ObjectWithQuality"/>, <see cref="Database"/>,
         /// and <see cref="Analysis"/>.
         /// </summary>
-        /// <param name="progress">An <see cref="IProgress{T}"/> that receives two strings describing the current loading state.</param>
         /// <param name="modData">A <see cref="Crc32"/> that has been initialized with data dependent on the active mods, mod versions, and mod
-        /// settings. This must match the <see cref="Crc32"/> passed to <see cref="WriteCSharp"/> when this file was written.</param>
+        /// settings.</param>
+        /// <param name="progress">An <see cref="IProgress{T}"/> that receives two strings describing the current loading state.</param>
+        /// <param name="hash">If not <see langword="null"/>, the calculated hash that was used to locate the cache file. Pass this to
+        /// <see cref="WriteCSharp"/> if the read fails. If <see langword="null"/>, do not attempt to write a cache file.</param>
         /// <returns><see langword="true"/> if the data was successfully loaded from the cache file, or <see langword="false"/> if the CRC did not
         /// match or an error occurred.</returns>
-        public static bool ReadCSharp(IProgress<(string, string)> progress, Crc32 modData) {
+        public static bool ReadCSharp(Crc32 modData, IProgress<(string, string)> progress, out uint? hash) {
+            hash = null;
             try {
                 CSharpCache cache = new();
-                using var stream = cache.OpenReadCache(modData);
+                using var stream = cache.OpenReadCache(modData, out hash);
                 if (stream == null) {
                     // OpenReadCache already logged the problem.
                     return false;
                 }
 
-                return cache.Read(progress, stream);
+                return cache.Read(stream, progress);
             }
             catch (Exception ex) {
                 logger.Information(ex, "Could not load data cache.");
@@ -117,12 +121,14 @@ public static partial class FactorioDataSource {
         /// <summary>
         /// Writes icon data from <see cref="IconCollection"/> and <see cref="FactorioObject.iconId"/> into the appropriate cache file.
         /// </summary>
-        /// <param name="modData">The <see cref="Crc32"/> that was passed to the <c>reportHash</c> parameter of <see cref="ReadIcons"/>.</param>
-        public static Action WriteIcons(Crc32 modData) => () => {
+        /// <param name="hash">The hash that was received from <see cref="ReadIcons"/>.</param>
+        public static Action WriteIcons(uint hash) => () => {
             try {
                 IconCache cache = new(Database.objects.all);
-                using var stream = cache.OpenWriteCache(modData);
+                using var stream = cache.OpenWriteCache(hash);
                 cache.Write(stream);
+                // We might have created a new file. Check to see if we need to delete any old ones.
+                cache.DeleteOldFiles();
             }
             catch (Exception ex) {
                 logger.Warning(ex, "Could not write icon cache.");
@@ -135,19 +141,18 @@ public static partial class FactorioDataSource {
         /// <param name="modData">A <see cref="Crc32"/> that has been initialized with data dependent on the active built-in mods.</param>
         /// <param name="objects">The <see cref="FactorioObject"/>s that will receive the loaded icon data. (<see cref="Database.objects"/> may not
         /// have been initialized yet.)</param>
-        /// <param name="reportHash">An action that will receive the calculated icon layer hash, so the cache writer doesn't depend on
-        /// <see cref="allMods"/>.</param>
         /// <param name="progress">An <see cref="IProgress{T}"/> that receives two strings describing the current loading state.</param>
+        /// <param name="hash">If not <see langword="null"/>, the calculated hash that was used to locate the cache file. Pass this to
+        /// <see cref="WriteIcons"/> if the read fails. If <see langword="null"/>, do not attempt to write a cache file.</param>
         /// <returns><see langword="true"/> if the data was successfully loaded from the cache file, or <see langword="false"/> if the CRC did not
         /// match or an error occurred.</returns>
-        public static bool ReadIcons(Crc32 modData, IReadOnlyList<FactorioObject> objects, Action<Crc32> reportHash,
-            IProgress<(string, string)> progress) {
-
+        public static bool ReadIcons(Crc32 modData, IReadOnlyList<FactorioObject> objects, IProgress<(string, string)> progress, out uint? hash) {
+            hash = null;
             try {
-                IconCache cache = new(objects, reportHash);
-                using var stream = cache.OpenReadCache(modData);
+                IconCache cache = new(objects);
+                using var stream = cache.OpenReadCache(modData, out hash);
                 if (stream != null) {
-                    return cache.Read(progress, stream);
+                    return cache.Read(stream, progress);
                 }
             }
             catch (Exception ex) {
@@ -188,8 +193,7 @@ public static partial class FactorioDataSource {
         /// </summary>
         /// <param name="hash">The hash used for file lookup and cache coherency checks.</param>
         /// <returns>A stream that can store data in the appropriate file.</returns>
-        private CompressAndStampStream OpenWriteCache(Crc32 partialHash) {
-            uint hash = FinishHash(partialHash.Clone());
+        private CompressAndStampStream OpenWriteCache(uint hash) {
             // This will throw if the cache is open in any other process, either for read or write.
             FileStream file = File.Open(GetCacheFile(hash), FileMode.Create, FileAccess.Write, FileShare.Read);
             file.Write(BitConverter.GetBytes(DataVersion + CONTAINER_VERSION));
@@ -201,13 +205,14 @@ public static partial class FactorioDataSource {
         /// Attempts to open a cache file for read, and returns a stream that contains the previously cached data.
         /// This may throw or return <see langword="null"/>
         /// </summary>
-        /// <param name="hash">The hash used for file lookup and cache coherency checks.</param>
+        /// <param name="partialHash">The partially computed hash of mod data, that will have cache-specific data appended.</param>
+        /// <param name="hash">When this method returns, the fully-computed hash used for cache lookup and coherency.</param>
         /// <returns>A stream that contains the previously cached data. If the crc written by <see cref="OpenWriteCache"/> is not present at the end
         /// of this stream, it will <b>throw when closed</b>.</returns>
-        private DecompressAndVerifyStream? OpenReadCache(Crc32 partialHash) {
-            uint hash = FinishHash(partialHash.Clone());
+        private DecompressAndVerifyStream? OpenReadCache(Crc32 partialHash, out uint? hash) {
+            hash = FinishHash(partialHash.Clone());
             // This will throw if the cache is open in any other process for write.
-            FileStream? file = File.Open(GetCacheFile(hash), FileMode.Open, FileAccess.ReadWrite, FileShare.ReadWrite);
+            FileStream? file = File.Open(GetCacheFile(hash.Value), FileMode.Open, FileAccess.ReadWrite, FileShare.ReadWrite);
 
             try { // conditional using block; dispose file if something fails before we transfer ownership
                 Span<byte> bytes = stackalloc byte[4];
@@ -224,7 +229,7 @@ public static partial class FactorioDataSource {
 
                 file.Position = 12;
 
-                DecompressAndVerifyStream result = new(hash, file);
+                DecompressAndVerifyStream result = new(hash.Value, file);
                 file = null; // ownership has been transfered to result.
                 return result;
             }
@@ -457,9 +462,6 @@ public static partial class FactorioDataSource {
                 writeValue(writer, excludedObjects.FieldType, excludedObjects.GetValue(analysis));
             }
 
-            // We might have created a new file. Check to see if we need to delete any old ones.
-            DeleteOldFiles();
-
             // Write one value of the type fieldType, recursing as necessary for complex values.
             static void writeValue(BinaryWriter writer, Type fieldType, object? value) {
                 if (value == null) {
@@ -562,7 +564,7 @@ public static partial class FactorioDataSource {
             }
         }
 
-        protected override bool Read(IProgress<(string, string)> progress, Stream cacheStream) {
+        protected override bool Read(Stream cacheStream, IProgress<(string, string)> progress) {
             using BinaryReader reader = new(cacheStream);
             byte typeId;
             // Read the type of each FactorioObject, and construct empty storage.
@@ -740,7 +742,7 @@ public static partial class FactorioDataSource {
         }
     }
 
-    private sealed class IconCache(IReadOnlyList<FactorioObject> objects, Action<Crc32>? reportHash = null) : Cache {
+    private sealed class IconCache(IReadOnlyList<FactorioObject> objects) : Cache {
         // The icon cache data is:
         // The iconId for each object. Non-zero IDs are offset so they start at 1, not Icon.FirstCustom. (Changing the value of FirstCustom will not
         //     invalidate the cache).
@@ -753,17 +755,10 @@ public static partial class FactorioDataSource {
         protected override string FileExtension => "iconcache";
 
         /// <summary>
-        /// Computes or regurgitates the icon specification hash.
+        /// Computes the icon specification hash.
         /// </summary>
         /// <returns>The fully-computed hash to be used for file lookup and cache coherency checks.</returns>
         protected override uint FinishHash(Crc32 hash) {
-            if (reportHash == null) {
-                // We're opening the cache for write. allMods could be invalid, so replay the hash.
-                return hash.GetCurrentHashAsUInt32();
-            }
-
-            // We're opening the cache for read. allMods is definitely valid, since a read failure will be followed by a real render pass.
-
             byte[] empty = [0];
             HashSet<string> seenImages = [];
 
@@ -794,8 +789,6 @@ public static partial class FactorioDataSource {
                     hash.Append(empty);
                 }
             }
-
-            reportHash(hash);
 
             return hash.GetCurrentHashAsUInt32();
 
@@ -844,7 +837,7 @@ public static partial class FactorioDataSource {
             }
         }
 
-        protected override unsafe bool Read(IProgress<(string, string)> progress, Stream stream) {
+        protected override unsafe bool Read(Stream stream, IProgress<(string, string)> progress) {
             using BinaryReader reader = new(stream);
             foreach (var obj in objects) {
                 int id = reader.Read7BitEncodedInt();
