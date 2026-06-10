@@ -41,21 +41,6 @@ public class ProjectPageTests {
         Assert.False(page.IsSolutionStale());
     }
 
-    private sealed class CountingModelThreadSwitcher : IModelThreadSwitcher {
-        public int backgroundSwitches { get; private set; }
-        public int foregroundSwitches { get; private set; }
-
-        public ModelThreadSwitch SwitchToBackground() {
-            backgroundSwitches++;
-            return default;
-        }
-
-        public ModelThreadSwitch SwitchToForeground() {
-            foregroundSwitches++;
-            return default;
-        }
-    }
-
     private sealed class GuardedModelThreadSwitcher : IModelThreadSwitcher {
         private bool inForegroundDispatch;
 

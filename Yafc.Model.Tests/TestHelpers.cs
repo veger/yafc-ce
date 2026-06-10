@@ -13,3 +13,26 @@ internal static class TestHelpers {
     public static IEnumerable<IObjectWithQuality<T>> WithAllQualities<T>(this IEnumerable<T> values) where T : FactorioObject
         => values.SelectMany(c => Database.qualities.all.Select(q => c.With(q))).Distinct();
 }
+
+internal sealed class CountingModelThreadSwitcher : IModelThreadSwitcher {
+    public enum SwitchEvent {
+        Background,
+        Foreground,
+    }
+
+    public int backgroundSwitches { get; private set; }
+    public int foregroundSwitches { get; private set; }
+    public List<SwitchEvent> events { get; } = [];
+
+    public ModelThreadSwitch SwitchToBackground() {
+        backgroundSwitches++;
+        events.Add(SwitchEvent.Background);
+        return default;
+    }
+
+    public ModelThreadSwitch SwitchToForeground() {
+        foregroundSwitches++;
+        events.Add(SwitchEvent.Foreground);
+        return default;
+    }
+}

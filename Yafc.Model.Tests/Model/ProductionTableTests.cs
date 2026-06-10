@@ -2,6 +2,7 @@
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace Yafc.Model.Tests.Model;
@@ -44,6 +45,59 @@ public class ProductionTableTests {
         Assert.False(table.linkMap.ContainsKey(goods));
         Assert.True(table.CreateLink(goods));
         Assert.Single(table.links);
+    }
+
+    [Fact]
+    public async Task Solve_UsesProjectThreadSwitcher_ForInfeasibleLink() {
+        Project project = LuaDependentTestHelper.GetProjectForLua();
+        CountingModelThreadSwitcher switcher = new();
+        project.modelThreadSwitcher = switcher;
+
+        RecipeOrTechnology producerRecipe = Database.recipes.all.Single(r => r.name == "recipe");
+        RecipeOrTechnology consumerRecipe = Database.recipes.all.Single(r => r.name == "recipe2");
+        Goods dummy3 = Database.items.all.Single(g => g.name == "dummy_3");
+        Goods ash = Database.items.all.Single(g => g.name == "ash");
+        IObjectWithQuality<Goods> dummy3Link = dummy3.With(Quality.Normal);
+        IObjectWithQuality<Goods> ashLink = ash.With(Quality.Normal);
+        CostAnalysis.Instance.cost[dummy3] = 1f;
+        CostAnalysis.Instance.cost[ash] = 1f;
+
+        ProjectPage page = new(project, typeof(ProductionTable));
+        project.pages.Add(page);
+        ProductionTable table = (ProductionTable)page.content;
+
+        table.AddRecipe(producerRecipe.With(Quality.Normal), DataUtils.DeterministicComparer);
+        table.AddRecipe(consumerRecipe.With(Quality.Normal), DataUtils.DeterministicComparer);
+        RecipeRow producer = table.recipes[0];
+        RecipeRow consumer = table.recipes[1];
+
+        producer.fixedBuildings = 1f;
+        consumer.fixedBuildings = 1f;
+        Assert.True(table.CreateLink(dummy3Link));
+        Assert.True(table.CreateLink(ashLink));
+        ProductionLink dummy3LinkRecord = Assert.Single(table.links, link => link.goods == dummy3Link);
+        ProductionLink ashLinkRecord = Assert.Single(table.links, link => link.goods == ashLink);
+        dummy3LinkRecord.amount = 1f;
+        ashLinkRecord.amount = 1f;
+
+        Recipe recoveryRecipe = Assert.IsType<Recipe>(producerRecipe);
+        table.AddRecipe(recoveryRecipe.With(Quality.Normal), DataUtils.DeterministicComparer);
+        RecipeRow recoveryRow = table.recipes[2];
+        recoveryRow.fixedBuildings = 1f;
+        IObjectWithQuality<Goods> recoveryGoods = Database.goods.all.Single(g => g.name == "dummy_1").With(Quality.Normal);
+        Assert.True(table.CreateLink(recoveryGoods));
+        ProductionLink recoveryLink = Assert.Single(table.links, link => link.goods == recoveryGoods);
+        recoveryLink.amount = 1f;
+
+        var error = await table.Solve(page);
+
+        Assert.NotNull(error);
+        Assert.Equal(1, switcher.backgroundSwitches);
+        // ProductionTable.Solve is called directly here, so ProjectPage.ExternalSolve's
+        // foreground re-entry is not counted. Today Solve switches back to foreground
+        // only inside the infeasibility diagnostics branch exercised by this test.
+        Assert.Equal(1, switcher.foregroundSwitches);
+        Assert.Equal([CountingModelThreadSwitcher.SwitchEvent.Background, CountingModelThreadSwitcher.SwitchEvent.Foreground], switcher.events);
     }
 
     [Fact]
