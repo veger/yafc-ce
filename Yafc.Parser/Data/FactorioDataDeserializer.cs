@@ -298,9 +298,6 @@ internal partial class FactorioDataDeserializer {
     public static Task StartRendering(IReadOnlyList<FactorioObject> objects, IProgress<(string, string)> progress)
         => Task.Run(() => RenderIcons(objects, progress));
 
-    private static Icon CreateSimpleIcon(Dictionary<(string mod, string path), IntPtr> cache, string graphicsPath)
-        => CreateIconFromSpec(cache, new FactorioIconPart("__core__/graphics/" + graphicsPath + ".png"));
-
     private static void RenderIcons(IReadOnlyList<FactorioObject> objects, IProgress<(string, string)> progress) {
         // Whenever this method gets a rendering fix, invalidate the caches by incrementing FactorioDataSource.IconCache.DataVersion.
         Dictionary<(string mod, string path), IntPtr> cache = [];
@@ -308,11 +305,6 @@ internal partial class FactorioDataDeserializer {
             foreach (char digit in "0123456789d") {
                 cache[(".", digit.ToString())] = SDL_image.IMG_Load("Data/Digits/" + digit + ".png");
             }
-
-            SystemIcons.Initialize(
-                noFuelIcon: CreateSimpleIcon(cache, "fuel-icon-red"),
-                warningIcon: CreateSimpleIcon(cache, "warning-icon"),
-                handIcon: CreateSimpleIcon(cache, "hand"));
 
             Dictionary<string, int> simpleSpritesCache = [];
             int rendered = 0;
