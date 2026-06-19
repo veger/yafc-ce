@@ -204,10 +204,10 @@ internal partial class FactorioDataDeserializer {
     /// but will appear as only producing U-235 and consuming U-238 when <see langword="true"/>.</param>
     /// <param name="progress">An <see cref="IProgress{T}"/> that receives two strings describing the current loading state.</param>
     /// <param name="errorCollector">An <see cref="ErrorCollector"/> that will collect the errors and warnings encountered while loading and processing the file and data.</param>
-    /// <param name="renderIcons">If <see langword="true"/>, Yafc will start rendering the icons necessary for UI display. To wait for the rendering
-    /// to complete, call <see cref="WaitForRendering"/>.</param>
+    /// <param name="startIconRendering">If not <see langword="null"/>, this action will be called synchronously when the objects have enough
+    /// information that rendering can begin.</param>
     public void LoadLuaData(LuaTable data, LuaTable prototypes, bool netProduction, IProgress<(string, string)> progress,
-        ErrorCollector errorCollector, bool renderIcons) {
+        ErrorCollector errorCollector, Action<IReadOnlyList<FactorioObject>>? startIconRendering) {
 
         progress.Report((LSs.ProgressLoading, LSs.ProgressLoadingItems));
         raw = (LuaTable?)data["raw"] ?? throw new ArgumentException("Could not load data.raw from data argument", nameof(data));
@@ -262,7 +262,7 @@ internal partial class FactorioDataDeserializer {
         UpdateSplitHeats();
         UpdateRecipeIngredientFluids(errorCollector);
         CalculateMaps(netProduction);
-        StartRendering(renderIcons, allObjects);
+        startIconRendering?.Invoke(allObjects);
         UpdateRecipeCatalysts();
         CalculateItemWeights();
         ObjectWithQuality.LoadCache(allObjects);
@@ -272,8 +272,6 @@ internal partial class FactorioDataDeserializer {
         Dependencies.Calculate();
         TechnologyLoopsFinder.FindTechnologyLoops();
     }
-
-    public void StartRendering(bool renderIcons, ICollection<FactorioObject> objects) => iconRenderTask = renderIcons ? Task.Run(() => RenderIcons(objects)) : Task.CompletedTask;
 
     /// <summary>
     /// Load the project specified by <paramref name="projectPath"/>.
@@ -292,41 +290,28 @@ internal partial class FactorioDataDeserializer {
     }
 
     /// <summary>
-    /// Block until the current rendering task is complete.
+    /// Start rendering icons for the supplied <paramref name="objects"/>.
     /// </summary>
-    /// <param name="progress">An <see cref="IProgress{T}"/> that receives two strings describing the current icon rendering state.</param>
-    public void WaitForRendering(IProgress<(string, string)> progress) {
-        if (iconRenderTask.IsCompleted) { return; }
+    /// <param name="objects">The <see cref="FactorioObject"/>s to render.</param>
+    /// <param name="progress">An <see cref="IProgress{T}"/> that receives two strings describing the current loading state.</param>
+    /// <returns>Returns a task that will complete when all icons are rendered.</returns>
+    public static Task StartRendering(IReadOnlyList<FactorioObject> objects, IProgress<(string, string)> progress)
+        => Task.Run(() => RenderIcons(objects, progress));
 
-        progress.Report((LSs.ProgressRenderingIcons, ""));
-        iconRenderedProgress = progress;
-        iconRenderTask.Wait();
-    }
-
-    private IProgress<(string, string)>? iconRenderedProgress;
-    private Task iconRenderTask = Task.CompletedTask;
-
-    private static Icon CreateSimpleIcon(Dictionary<(string mod, string path), IntPtr> cache, string graphicsPath)
-        => CreateIconFromSpec(cache, new FactorioIconPart("__core__/graphics/" + graphicsPath + ".png"));
-
-    private void RenderIcons(ICollection<FactorioObject> allObjects) {
+    private static void RenderIcons(IReadOnlyList<FactorioObject> objects, IProgress<(string, string)> progress) {
+        // Whenever this method gets a rendering fix, invalidate the caches by incrementing FactorioDataSource.IconCache.DataVersion.
         Dictionary<(string mod, string path), IntPtr> cache = [];
         try {
             foreach (char digit in "0123456789d") {
                 cache[(".", digit.ToString())] = SDL_image.IMG_Load("Data/Digits/" + digit + ".png");
             }
 
-            SystemIcons.Initialize(
-                noFuelIcon: CreateSimpleIcon(cache, "fuel-icon-red"),
-                warningIcon: CreateSimpleIcon(cache, "warning-icon"),
-                handIcon: CreateSimpleIcon(cache, "hand"));
-
             Dictionary<string, int> simpleSpritesCache = [];
             int rendered = 0;
 
-            foreach (var o in allObjects) {
+            foreach (var o in objects) {
                 if (++rendered % 100 == 0) {
-                    iconRenderedProgress?.Report((LSs.ProgressRenderingIcons, LSs.ProgressRenderingXOfY.L(rendered, allObjects.Count)));
+                    progress.Report((LSs.ProgressRenderingIcons, LSs.ProgressRenderingXOfY.L(rendered, objects.Count)));
                 }
 
                 if (o.iconSpec != null && o.iconSpec.Length > 0) {

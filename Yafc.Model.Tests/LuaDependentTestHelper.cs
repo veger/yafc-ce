@@ -83,7 +83,7 @@ internal static class LuaDependentTestHelper {
             }
             context.Exec(bytes, "*", "");
 
-            new FactorioDataDeserializer(new(1, 1)).LoadLuaData(context.data, (LuaTable)context.defines["prototypes"], false, helper, new(), false);
+            new FactorioDataDeserializer(new(1, 1)).LoadLuaData(context.data, (LuaTable)context.defines["prototypes"], false, helper, new(), null);
             project = FactorioDataDeserializer.LoadProject(null, helper, new(), false);
         }
 
