@@ -232,7 +232,7 @@ public class WelcomeScreen : WindowUtility, IProgress<(string, string)>, IKeyboa
             }
         }
         else {
-            BuildPathSelect(gui, path, LSs.WelcomeProjectFileLocation, LSs.WelcomeProjectFileLocationHint, EditType.Workspace, "Enter Project Name");
+            BuildPathSelect(gui, path, LSs.WelcomeProjectFileLocation, LSs.WelcomeProjectFileLocationHint, EditType.Workspace, LSs.EnterProjectName);
             BuildPathSelect(gui, dataPath, LSs.WelcomeDataLocation,
                 LSs.WelcomeDataLocationHint, EditType.Factorio);
             BuildPathSelect(gui, modsPath, LSs.WelcomeModLocation,
