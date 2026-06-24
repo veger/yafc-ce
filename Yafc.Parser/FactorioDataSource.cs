@@ -295,8 +295,8 @@ public static partial class FactorioDataSource {
             if (factorioVersion is null) {
                 throw new NotSupportedException(LSs.CouldNotReadFactorioInfoJson);
             }
-            if (factorioVersion < new Version(1, 1) || factorioVersion >= new Version(2, 1)) {
-                // To support versions other than 1.1 and 2.0, one of the first steps is adding an appropriate Defines<major>.<minor>.lua
+            if (factorioVersion < new Version(1, 1) || factorioVersion >= new Version(2, 2)) {
+                // To support other versions, one of the first steps is adding an appropriate Defines<major>.<minor>.lua
                 // For example, 0.17 would need Defines0.17.lua.
                 throw new NotSupportedException(LSs.UnsupportedFactorioVersion.L(factorioVersion));
             }

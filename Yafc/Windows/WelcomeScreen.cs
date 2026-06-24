@@ -58,7 +58,7 @@ public class WelcomeScreen : WindowUtility, IProgress<(string, string)>, IKeyboa
     private readonly ScrollArea recentProjectScroll;
     private readonly ScrollArea languageScroll;
     private string? errorMod;
-    private const string DefinesUpdateCommand = "/command helpers.write_file(\"Defines2.0.lua\", \"return \" .. serpent.line(defines), false)";
+    private const string DefinesUpdateCommand = "/command helpers.write_file(\"Defines2.1.lua\", \"return \" .. serpent.line(defines), false)";
     private DefinesUpdateState definesUpdateState;
     private string? errorMessage;
     private string? tip;
@@ -313,9 +313,9 @@ public class WelcomeScreen : WindowUtility, IProgress<(string, string)>, IKeyboa
             ];
 
             foreach (string root in factorioUserFolders) {
-                string file = Path.Combine(root, "script-output/Defines2.0.lua");
+                string file = Path.Combine(root, "script-output/Defines2.1.lua");
                 if (File.Exists(file)) {
-                    File.Move(file, Path.Combine(Environment.CurrentDirectory, "Data/Defines2.0.lua"), true);
+                    File.Move(file, Path.Combine(Environment.CurrentDirectory, "Data/Defines2.1.lua"), true);
                     return true;
                 }
             }
