@@ -34,6 +34,7 @@ internal partial class FactorioDataDeserializer {
 
     internal static readonly Version v0_18 = new Version(0, 18);
     internal static readonly Version v2_0 = new Version(2, 0);
+    internal static readonly Version v2_1 = new Version(2, 1);
 
     public FactorioDataDeserializer(Version factorioVersion) {
         Analysis.ClearExclusions();

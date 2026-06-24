@@ -29,21 +29,21 @@ internal partial class FactorioDataDeserializer {
 
     private void DeserializeRecipe(LuaTable table, ErrorCollector errorCollector) {
         var recipe = DeserializeWithDifficulty<Recipe>(table, "recipe", LoadRecipeData, errorCollector);
-        _ = table.Get("category", out string recipeCategory, "crafting");
-        // "recycling-or-hand-crafting" is Scrap recycling. It's special so it isn't considered a potential source recipe when ctrl+clicking.
-        // It'll still be used as a ctrl+click consumption recipe for scrap.
-        if (recipeCategory is "recycling" or "recycling-or-hand-crafting") {
-            recipe.specialType = FactorioObjectSpecialType.Recycling;
+
+        if (table["categories"] is LuaTable categoriesTable) { // 2.1
+            tryReadCategories(categoriesTable, recipe);
         }
-        recipeCategories.Add(recipeCategory, recipe);
-        if (table.Get("additional_categories", out LuaTable? additional_categories)) {
-            foreach (var category in additional_categories.ArrayElements<string>()) {
-                recipeCategories.Add(category, recipe);
-                if (recipeCategory == "recycling") {
-                    recipe.specialType = FactorioObjectSpecialType.Recycling;
-                }
+        else { // 2.0
+            string recipeCategory = table.Get("category", "crafting");
+            // "recycling-or-hand-crafting" is Scrap recycling. It's special so it isn't considered a potential source recipe when ctrl+clicking.
+            // It'll still be used as a ctrl+click consumption recipe for scrap.
+            if (recipeCategory is "recycling" or "recycling-or-hand-crafting") {
+                recipe.specialType = FactorioObjectSpecialType.Recycling;
             }
+            recipeCategories.Add(recipeCategory, recipe);
+            tryReadCategories(table["additional_categories"], recipe);
         }
+
         AllowedEffects allowedEffects = AllowedEffects.None;
         if (table.Get("allow_consumption", true)) {
             allowedEffects |= AllowedEffects.Consumption;
@@ -64,6 +64,17 @@ internal partial class FactorioDataDeserializer {
         recipe.allowedEffects = allowedEffects;
         if (table.Get("allowed_module_categories", out LuaTable? categories)) {
             recipe.allowedModuleCategories = [.. categories.ArrayElements<string>()];
+        }
+
+        void tryReadCategories(object? maybeTable, Recipe recipe) {
+            if (maybeTable is LuaTable categories) {
+                foreach (var category in categories.ArrayElements<string>()) {
+                    recipeCategories.Add(category, recipe);
+                    if (category is "recycling" or "recycling-or-hand-crafting") {
+                        recipe.specialType = FactorioObjectSpecialType.Recycling;
+                    }
+                }
+            }
         }
     }
 
