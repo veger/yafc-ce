@@ -369,11 +369,18 @@ internal partial class FactorioDataDeserializer {
                 break;
             case "mine-entity":
                 technology.flags = RecipeFlags.HasResearchTriggerMineEntity;
-                if (!researchTriggerTable.Get("entity", out entity)) {
-                    errorCollector.Error($"Research trigger {type} of {technology.typeDotName} does not have an entity field", ErrorSeverity.MinorDataLoss);
-                    break;
+                if (researchTriggerTable.Get("entity", out entity)) { // 2.0
+                    technology.getTriggerEntities = new(() => [((Entity)Database.objectsByTypeName["Entity." + entity])]);
                 }
-                technology.getTriggerEntities = new(() => [((Entity)Database.objectsByTypeName["Entity." + entity])]);
+                else if (researchTriggerTable["entities"] is LuaTable entitiesTable) { // 2.1
+                    // Entity names must be captured now; the Lua context is disposed before the Lazy is evaluated.
+                    var entities = entitiesTable.ArrayElements<string>();
+                    technology.getTriggerEntities = new(() => [.. entities.Select(entity => (Entity)Database.objectsByTypeName["Entity." + entity])]);
+                }
+                else {
+                    errorCollector.Error($"Research trigger {type} of {technology.typeDotName} does not have an entity field", ErrorSeverity.MinorDataLoss);
+                }
+
                 break;
             case "build-entity":
                 technology.flags = RecipeFlags.HasResearchTriggerBuildEntity;
