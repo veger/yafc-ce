@@ -274,6 +274,9 @@ public static partial class FactorioDataSource {
                     // ... and its dependencies
                     allMods.Add("quality", null!);
                     allMods.Add("elevated-rails", null!);
+                    if (allFoundMods.Exists(modInfo => modInfo.name == "recycler")) { // 2.1
+                        allMods.Add("recycler", null!);
+                    }
                 }
             }
 
@@ -626,7 +629,7 @@ public static partial class FactorioDataSource {
             }
         }
 
-        [GeneratedRegex("^\\(?([?!~]?)\\)?\\s*([\\w- ]+?)(?:\\s*[><=]+\\s*[\\d.]*)?\\s*$")]
+        [GeneratedRegex("^\\(?([?!~+]?)\\)?\\s*([\\w- ]+?)(?:\\s*[><=]+\\s*[\\d.]*)?\\s*$")]
         private static partial Regex DependencyRegex();
     }
 
