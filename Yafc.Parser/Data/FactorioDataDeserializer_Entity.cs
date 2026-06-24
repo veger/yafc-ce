@@ -560,10 +560,15 @@ internal partial class FactorioDataDeserializer {
         var entity = DeserializeCommon<Entity>(table, "entity");
 
         if (table.Get("loot", out LuaTable? lootList)) {
-            entity.loot = [.. lootList.ArrayElements<LuaTable>().Select(x => {
-                Product product = new Product(GetObject<Item>(x.Get("item", "")), x.Get("count_min", 1f), x.Get("count_max", 1f), x.Get("probability", 1f));
-                return product;
-            })];
+            if (factorioVersion < v2_1) {
+                entity.loot = [.. lootList.ArrayElements<LuaTable>().Select(x => {
+                    Product product = new Product(GetObject<Item>(x.Get("item", "")), x.Get("count_min", 1f), x.Get("count_max", 1f), x.Get("probability", 1f));
+                    return product;
+                })];
+            }
+            else {
+                entity.loot = [.. lootList.ArrayElements<LuaTable>().Select(LoadProduct(entity.name + ".loot"))];
+            }
         }
 
         if (table.Get("minable", out LuaTable? minable)) {
