@@ -211,8 +211,14 @@ public static partial class FactorioDataSource {
         /// of this stream, it will <b>throw when closed</b>.</returns>
         private DecompressAndVerifyStream? OpenReadCache(Crc32 partialHash, out uint? hash) {
             hash = FinishHash(partialHash.Clone());
+            string cacheFile = GetCacheFile(hash.Value);
+            if (!File.Exists(cacheFile)) {
+                // A missing cache file is an ordinary cache miss (e.g. first run, or the hash changed); not an error worth logging.
+                return null;
+            }
+
             // This will throw if the cache is open in any other process for write.
-            FileStream? file = File.Open(GetCacheFile(hash.Value), FileMode.Open, FileAccess.ReadWrite, FileShare.ReadWrite);
+            FileStream? file = File.Open(cacheFile, FileMode.Open, FileAccess.ReadWrite, FileShare.ReadWrite);
 
             try { // conditional using block; dispose file if something fails before we transfer ownership
                 Span<byte> bytes = stackalloc byte[4];
