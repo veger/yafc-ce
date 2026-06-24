@@ -178,6 +178,7 @@ internal partial class LuaContext : IDisposable {
         SetGlobal("mods", mods);
 
         var featureFlags = NewTable();
+        // TODO: These are all always-false, since the *_required properties are never set. Investigate how it should/needs to work.
         featureFlags["quality"] = FactorioDataSource.allMods.Any(x => x.Value.quality_required);
         featureFlags["rail_bridges"] = FactorioDataSource.allMods.Any(x => x.Value.rail_bridges_required);
         featureFlags["space_travel"] = FactorioDataSource.allMods.Any(x => x.Value.space_travel_required);
@@ -185,6 +186,7 @@ internal partial class LuaContext : IDisposable {
         featureFlags["freezing"] = FactorioDataSource.allMods.Any(x => x.Value.freezing_required);
         featureFlags["segmented_units"] = FactorioDataSource.allMods.Any(x => x.Value.segmented_units_required);
         featureFlags["expansion_shaders"] = FactorioDataSource.allMods.Any(x => x.Value.expansion_shaders_required);
+        featureFlags["expansion"] = FactorioDataSource.allMods.Any(x => x.Value.expansion_required);
 
         SetGlobal("feature_flags", featureFlags);
 
