@@ -736,7 +736,11 @@ public class EntityCrafter : EntityWithModules {
     public Item[]? inputs { get; internal set; }
     public RecipeOrTechnology[] recipes { get; internal set; } = null!; // null-forgiving: Set in the first step of CalculateMaps
     private float _craftingSpeed = 1;
-    // For rocket silos, the number of inventory slots. Launch recipes are limited by both weight and available slots.
+    /// <summary>
+    /// The number of inventory slots. 2.0 launch recipes are limited by both weight and available slots.
+    /// 2.1 launch recipes are limited by either weight or slots.
+    /// </summary>
+    /// <remarks><see cref="int.MaxValue"/> indicates a weight-limited rocket silo in 2.1.</remarks>
     internal int rocketInventorySize;
 
     public virtual float baseCraftingSpeed {

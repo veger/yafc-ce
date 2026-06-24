@@ -727,13 +727,20 @@ nextWeightCalculation:;
         foreach (Item item in allObjects.OfType<Item>()) {
             // If it doesn't otherwise have a weight, it gets the default weight.
             if (item.weight == 0) {
+                if (defaultItemWeight == 0) {
+                    // If we couldn't figure out a weight, it doesn't go on a rocket.
+                    // Nothing in the at-time-of-writing versions of either Py (non-hard) or kry-all-planet-mods triggers this.
+                    item.rocketCapacity = 0;
+                    continue;
+                }
                 item.weight = defaultItemWeight;
             }
 
             // The item count is initialized to 1, but it should be the rocket capacity. Scale up the ingredient and product(s).
-            // item.weight == 0 is possible if defaultItemWeight is 0, so we bail out on the / item.weight in that case.
-            int maxFactor = maxStacks * item.stackSize;
-            int factor = item.weight == 0 ? maxFactor : Math.Min(rocketCapacity / item.weight, maxFactor);
+            int factor = rocketCapacity / item.weight;
+            if (factorioVersion < v2_1 || maxStacks < int.MaxValue) {
+                factor = Math.Min(factor, maxStacks * item.stackSize);
+            }
 
             item.rocketCapacity = factor;
 

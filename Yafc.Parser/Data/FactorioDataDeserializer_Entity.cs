@@ -164,13 +164,13 @@ internal partial class FactorioDataDeserializer {
         entity.moduleSlots = table.Get<LuaTable>("module_specification")?.Get<int>("module_slots") ?? table.Get("module_slots", 0);
     }
 
-    private Recipe CreateLaunchRecipe(EntityCrafter entity, Recipe recipe, int partsRequired, int outputCount) {
+    private Recipe CreateLaunchRecipe(EntityCrafter entity, Recipe recipe, int partsRequired) {
         string launchCategory = SpecialNames.RocketCraft + entity.name;
         var launchRecipe = CreateSpecialRecipe(recipe, launchCategory, LSs.SpecialRecipeLaunch);
         recipeCrafters.Add(entity, launchCategory);
         launchRecipe.ingredients = [.. recipe.products.Select(x => new Ingredient(x.goods, x.amount * partsRequired))];
-        launchRecipe.products = [new Product(rocketLaunch, outputCount)];
-        launchRecipe.time = 40.33f / outputCount;
+        launchRecipe.products = [new Product(rocketLaunch, 1)];
+        launchRecipe.time = 40.33f;
         recipeCrafters.Add(entity, SpecialNames.RocketLaunch);
 
         return launchRecipe;
@@ -394,20 +394,23 @@ internal partial class FactorioDataDeserializer {
 
                 if (factorioType == "rocket-silo") {
                     bool launchToSpacePlatforms = table.Get("launch_to_space_platforms", false);
-                    int rocketInventorySize = table.Get("to_be_inserted_to_rocket_inventory_size", factorioVersion < v2_0 ? 1 : 0);
+                    int rocketInventorySize = int.MaxValue;
+                    if (!launchToSpacePlatforms || factorioVersion < v2_1) {
+                        rocketInventorySize = table.Get("to_be_inserted_to_rocket_inventory_size", factorioVersion < v2_0 ? 1 : 0);
+                    }
 
                     if (rocketInventorySize > 0) {
                         _ = table.Get("rocket_parts_required", out int partsRequired, 100);
 
                         if (fixedRecipe != null) {
-                            var launchRecipe = CreateLaunchRecipe(crafter, fixedRecipe, partsRequired, rocketInventorySize);
+                            var launchRecipe = CreateLaunchRecipe(crafter, fixedRecipe, partsRequired);
                             formerAliases["Mechanics.launch" + crafter.name + "." + crafter.name] = launchRecipe;
                         }
                         else {
                             foreach (string categoryName in recipeCrafters.GetRaw(crafter).ToArray()) {
                                 foreach (var possibleRecipe in recipeCategories.GetRaw(categoryName)) {
                                     if (possibleRecipe is Recipe rec) {
-                                        _ = CreateLaunchRecipe(crafter, rec, partsRequired, rocketInventorySize);
+                                        _ = CreateLaunchRecipe(crafter, rec, partsRequired);
                                     }
                                 }
                             }
