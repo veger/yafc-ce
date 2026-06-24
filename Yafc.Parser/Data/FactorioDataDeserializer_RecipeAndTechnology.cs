@@ -269,7 +269,18 @@ internal partial class FactorioDataDeserializer {
             throw new NotSupportedException($"Could not load one of the products for {recipeName}, possibly named '{table.Get("name", "")}'.");
         }
 
-        Product product = new Product(goods, min * multiplier, max * multiplier, table.Get("probability", 1f)) { percentSpoiled = percentSpoiled };
+        float probability;
+        if (factorioVersion < v2_1) {
+            probability = table.Get("probability", 1f);
+        }
+        else {
+            probability = table.Get("independent_probability", 1f);
+            if (table["shared_probability"] is LuaTable shared) {
+                probability = (float)(probability * (shared.Get("max", 1d) - shared.Get("min", 0d)));
+            }
+        }
+
+        Product product = new Product(goods, min * multiplier, max * multiplier, probability) { percentSpoiled = percentSpoiled };
 
         if (catalyst > 0f) {
             product.SetCatalyst(catalyst);

@@ -20,6 +20,8 @@ internal static class DataParserUtils {
         ConvertersFromLua<long?>.convert = (o, def) => o is long l ? l : o is double d ? (long)d : o is string s && long.TryParse(s, out long res) ? res : def;
         ConvertersFromLua<float>.convert = (o, def) => o is long l ? l : o is double d ? (float)d : o is string s && float.TryParse(s, out float res) ? res : def;
         ConvertersFromLua<float?>.convert = (o, def) => o is long l ? l : o is double d ? (float)d : o is string s && float.TryParse(s, out float res) ? res : def;
+        ConvertersFromLua<double>.convert = (o, def) => o is long l ? l : o is double d ? d : o is string s && double.TryParse(s, out double res) ? res : def;
+        ConvertersFromLua<double?>.convert = (o, def) => o is long l ? l : o is double d ? d : o is string s && double.TryParse(s, out double res) ? res : def;
         ConvertersFromLua<bool>.convert = (o, def) => ConvertersFromLua<bool?>.convert!(o, def).Value;
         ConvertersFromLua<bool?>.convert = (o, def) => {
 
