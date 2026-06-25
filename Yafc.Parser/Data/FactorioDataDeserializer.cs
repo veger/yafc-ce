@@ -727,22 +727,32 @@ nextWeightCalculation:;
         foreach (Item item in allObjects.OfType<Item>()) {
             // If it doesn't otherwise have a weight, it gets the default weight.
             if (item.weight == 0) {
+                if (defaultItemWeight == 0) {
+                    // If we couldn't figure out a weight, it doesn't go on a rocket.
+                    // Nothing in the at-time-of-writing versions of either Py (non-hard) or kry-all-planet-mods triggers this.
+                    item.rocketCapacity = 0;
+                    continue;
+                }
                 item.weight = defaultItemWeight;
             }
 
-            // The item count is initialized to 1, but it should be the rocket capacity. Scale up the ingredient and product(s).
-            // item.weight == 0 is possible if defaultItemWeight is 0, so we bail out on the / item.weight in that case.
-            int maxFactor = maxStacks * item.stackSize;
-            int factor = item.weight == 0 ? maxFactor : Math.Min(rocketCapacity / item.weight, maxFactor);
+            int capacity = rocketCapacity / item.weight; // The rocket capacity (and recipe scaling factor) if we have 2.1 Space Age silos.
+            if (maxStacks < int.MaxValue || factorioVersion < v2_1) {
+                // If not Space Age or not 2.1, clamp the capacity according to the vanilla/2.0/1.1 rules.
+                // Assume players will always use the largest-capacity silo for their launches.
+                capacity = Math.Min(capacity, maxStacks * item.stackSize);
+            }
 
-            item.rocketCapacity = factor;
+            item.rocketCapacity = capacity;
 
             if (registeredObjects.TryGetValue((typeof(Mechanics), SpecialNames.RocketLaunch + "." + item.name), out FactorioObject? r)
                 && r is Mechanics recipe) {
 
-                recipe.ingredients[0] = new(item, factor);
+                // The launch recipes are created launcing only one item, but they should launch the rocket capacity.
+                // Scale up the first ingredient and the product(s).
+                recipe.ingredients[0] = new(item, capacity);
                 for (int i = 0; i < recipe.products.Length; i++) {
-                    recipe.products[i] *= factor;
+                    recipe.products[i] *= capacity;
                 }
             }
         }

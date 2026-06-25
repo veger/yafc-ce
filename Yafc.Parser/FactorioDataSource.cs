@@ -274,6 +274,9 @@ public static partial class FactorioDataSource {
                     // ... and its dependencies
                     allMods.Add("quality", null!);
                     allMods.Add("elevated-rails", null!);
+                    if (allFoundMods.Exists(modInfo => modInfo.name == "recycler")) { // 2.1
+                        allMods.Add("recycler", null!);
+                    }
                 }
             }
 
@@ -295,8 +298,8 @@ public static partial class FactorioDataSource {
             if (factorioVersion is null) {
                 throw new NotSupportedException(LSs.CouldNotReadFactorioInfoJson);
             }
-            if (factorioVersion < new Version(1, 1) || factorioVersion >= new Version(2, 1)) {
-                // To support versions other than 1.1 and 2.0, one of the first steps is adding an appropriate Defines<major>.<minor>.lua
+            if (factorioVersion < new Version(1, 1) || factorioVersion >= new Version(2, 2)) {
+                // To support other versions, one of the first steps is adding an appropriate Defines<major>.<minor>.lua
                 // For example, 0.17 would need Defines0.17.lua.
                 throw new NotSupportedException(LSs.UnsupportedFactorioVersion.L(factorioVersion));
             }
@@ -537,6 +540,7 @@ public static partial class FactorioDataSource {
         private readonly List<(string mod, bool optional)> parsedDependencies = [];
         private readonly List<string> incompatibilities = [];
 
+        // TODO: These properties are never set. Investigate how they should/need to work.
         public bool quality_required { get; set; }
         public bool rail_bridges_required { get; set; }
         public bool space_travel_required { get; set; }
@@ -544,6 +548,7 @@ public static partial class FactorioDataSource {
         public bool freezing_required { get; set; }
         public bool segmented_units_required { get; set; }
         public bool expansion_shaders_required { get; set; }
+        public bool expansion_required { get; set; }
 
         public ZipArchive? zipArchive;
         public readonly string folder;
@@ -626,7 +631,7 @@ public static partial class FactorioDataSource {
             }
         }
 
-        [GeneratedRegex("^\\(?([?!~]?)\\)?\\s*([\\w- ]+?)(?:\\s*[><=]+\\s*[\\d.]*)?\\s*$")]
+        [GeneratedRegex("^\\(?([?!~+]?)\\)?\\s*([\\w- ]+?)(?:\\s*[><=]+\\s*[\\d.]*)?\\s*$")]
         private static partial Regex DependencyRegex();
     }
 
