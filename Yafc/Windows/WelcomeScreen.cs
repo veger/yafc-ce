@@ -8,6 +8,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
 using SDL2;
 using Serilog;
@@ -562,12 +563,18 @@ public class WelcomeScreen : WindowUtility, IProgress<(string, string)>, IKeyboa
             loading = true;
             rootGui.Rebuild();
 
-            await Ui.ExitMainThread();
-
             ErrorCollector collector = new ErrorCollector();
-            var project = FactorioDataSource.Parse(dataPath, modsPath, projectPath, expensive, netProduction, this, collector, Preferences.Instance.language, Preferences.Instance.useMostRecentSave);
+            var project = await Task.Run(() => FactorioDataSource.Parse(
+                dataPath,
+                modsPath,
+                projectPath,
+                expensive,
+                netProduction,
+                this,
+                collector,
+                Preferences.Instance.language,
+                Preferences.Instance.useMostRecentSave));
 
-            await Ui.EnterMainThread();
             logger.Information("Opening main screen");
             _ = new MainScreen(displayIndex, project);
 
@@ -580,11 +587,9 @@ public class WelcomeScreen : WindowUtility, IProgress<(string, string)>, IKeyboa
             logger.Information("GC: {TotalMemory}", GC.GetTotalMemory(false));
         }
         catch (InvalidOperationException ex) when (FactorioDataSource.CurrentLoadingMod == null && (ex.StackTrace?.Contains("MoveNext") ?? false)) {
-            await Ui.EnterMainThread();
             definesUpdateState = DefinesUpdateState.WaitingForCopy;
         }
         catch (Exception ex) {
-            await Ui.EnterMainThread();
             while (ex.InnerException != null) {
                 ex = ex.InnerException;
             }
