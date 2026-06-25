@@ -736,20 +736,23 @@ nextWeightCalculation:;
                 item.weight = defaultItemWeight;
             }
 
-            // The item count is initialized to 1, but it should be the rocket capacity. Scale up the ingredient and product(s).
-            int factor = rocketCapacity / item.weight;
-            if (factorioVersion < v2_1 || maxStacks < int.MaxValue) {
-                factor = Math.Min(factor, maxStacks * item.stackSize);
+            int capacity = rocketCapacity / item.weight; // The rocket capacity (and recipe scaling factor) if we have 2.1 Space Age silos.
+            if (maxStacks < int.MaxValue || factorioVersion < v2_1) {
+                // If not Space Age or not 2.1, clamp the capacity according to the vanilla/2.0/1.1 rules.
+                // Assume players will always use the largest-capacity silo for their launches.
+                capacity = Math.Min(capacity, maxStacks * item.stackSize);
             }
 
-            item.rocketCapacity = factor;
+            item.rocketCapacity = capacity;
 
             if (registeredObjects.TryGetValue((typeof(Mechanics), SpecialNames.RocketLaunch + "." + item.name), out FactorioObject? r)
                 && r is Mechanics recipe) {
 
-                recipe.ingredients[0] = new(item, factor);
+                // The launch recipes are created launcing only one item, but they should launch the rocket capacity.
+                // Scale up the first ingredient and the product(s).
+                recipe.ingredients[0] = new(item, capacity);
                 for (int i = 0; i < recipe.products.Length; i++) {
-                    recipe.products[i] *= factor;
+                    recipe.products[i] *= capacity;
                 }
             }
         }

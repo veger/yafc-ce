@@ -394,9 +394,12 @@ internal partial class FactorioDataDeserializer {
 
                 if (factorioType == "rocket-silo") {
                     bool launchToSpacePlatforms = table.Get("launch_to_space_platforms", false);
-                    int rocketInventorySize = int.MaxValue;
-                    if (!launchToSpacePlatforms || factorioVersion < v2_1) {
+                    int rocketInventorySize;
+                    if (factorioVersion < v2_1 || !launchToSpacePlatforms) { // 1.1, 2.0, and non-Space Age 2.1 silos
                         rocketInventorySize = table.Get("to_be_inserted_to_rocket_inventory_size", factorioVersion < v2_0 ? 1 : 0);
+                    }
+                    else { // Spage Age 2.1 silos
+                        rocketInventorySize = int.MaxValue;
                     }
 
                     if (rocketInventorySize > 0) {
