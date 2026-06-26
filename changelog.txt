@@ -28,6 +28,7 @@ Date:
         - Several improvements loading Exotic Space Industries:Remembrance and its dependencies.
         - Ensure technology levels can always be specified, even with super-long technology names.
         - Don't log an exception when a cache file is simply absent.
+        - Show the per-cycle amount for every science pack in a technology tooltip, instead of only the first.
     Internal changes:
         - Upgrade to .NET 10.
 ----------------------------------------------------------------------------------------------------------------------
