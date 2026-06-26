@@ -25,6 +25,7 @@ Date:
         - Yafc will cache rendered icons to improve mod load times.
         - Support Factorio 2.1.
     Fixes:
+        - Don't show spoilage information (e.g. "always fresh") for non-spoilable recipe products.
         - Several improvements loading Exotic Space Industries:Remembrance and its dependencies.
         - Ensure technology levels can always be specified, even with super-long technology names.
         - Don't log an exception when a cache file is simply absent.

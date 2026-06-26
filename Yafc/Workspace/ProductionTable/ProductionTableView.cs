@@ -704,7 +704,11 @@ goodsHaveNoProduction:;
             else if (recipe.recipe != null) {
                 foreach (var (goods, amount, link, percentSpoiled) in recipe.Products) {
                     grid.Next();
-                    if (recipe.recipe.target is Recipe { preserveProducts: true }) {
+                    // Spoilage only makes sense for perishable products; non-spoilable items have no freshness to report.
+                    if (goods?.target is not Item { spoilResult: not null }) {
+                        view.BuildGoodsIcon(gui, goods, link, amount, ProductDropdownType.Product, recipe, recipe.linkRoot, HintLocations.OnConsumingRecipes);
+                    }
+                    else if (recipe.recipe.target is Recipe { preserveProducts: true }) {
                         view.BuildGoodsIcon(gui, goods, link, amount, ProductDropdownType.Product, recipe, recipe.linkRoot, new() {
                             HintLocations = HintLocations.OnConsumingRecipes,
                             ExtraSpoilInformation = gui => gui.BuildText(LSs.ProductionTableOutputPreservedInMachine, TextBlockDisplayStyle.WrappedText)
