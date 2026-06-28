@@ -475,7 +475,23 @@ doneDrawing:;
 
         using (gui.EnterGroup(contentPadding)) {
             if (recipe is Technology) {
-                BuildIconRow(gui, recipe.ingredients, 2, DataUtils.DefaultSciencePackOrdering);
+                var sortedPacks = recipe.ingredients.OrderBy(x => (IFactorioObjectWrapper)x, DataUtils.DefaultSciencePackOrdering);
+                if (recipe.ingredients.Length > 2) {
+                    // Many science packs: show each pack's per-cycle amount as a compact badge. (Spelling out every
+                    // "Nx <name>" on its own line would make the tooltip too tall, and collapsing all but the first into
+                    // amount-less icons hides the per-pack amounts, which can differ between packs.)
+                    using var grid = gui.EnterInlineGrid(2f);
+                    foreach (Ingredient ingredient in sortedPacks) {
+                        grid.Next();
+                        _ = gui.BuildFactorioObjectWithAmount(ingredient.goods, ingredient.amount, ButtonDisplayStyle.Default);
+                    }
+                }
+                else {
+                    // One or two packs: spell out "Nx <name>" so new players can learn the layout meaning.
+                    foreach (Ingredient ingredient in sortedPacks) {
+                        BuildItem(gui, ingredient);
+                    }
+                }
             }
             else {
                 foreach (Ingredient ingredient in recipe.ingredients) {
