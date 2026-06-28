@@ -374,11 +374,14 @@ public class Product : IFactorioObjectWrapper {
                 }
             }
 
-            if (percentSpoiled == 0) {
-                text = LSs.ProductAlwaysFresh.L(text);
-            }
-            else if (percentSpoiled != null) {
-                text = LSs.ProductFixedSpoilage.L(text, DataUtils.FormatAmount(percentSpoiled.Value, UnitOfMeasure.Percent));
+            // Spoilage only makes sense for perishable products; non-spoilable items have no freshness to report.
+            if (goods is Item { spoilResult: not null }) {
+                if (percentSpoiled == 0) {
+                    text = LSs.ProductAlwaysFresh.L(text);
+                }
+                else if (percentSpoiled != null) {
+                    text = LSs.ProductFixedSpoilage.L(text, DataUtils.FormatAmount(percentSpoiled.Value, UnitOfMeasure.Percent));
+                }
             }
 
             return text;
