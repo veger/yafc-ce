@@ -58,7 +58,10 @@ internal abstract class SerializationMap {
     public abstract void ReadUndo(object? target, UndoSnapshotReader reader);
 
     private static readonly Dictionary<Type, SerializationMap> undoBuilders = [];
-    protected static int deserializingCount;
+    // Deserialization is a synchronous, single-threaded operation, but the test suite runs multiple
+    // collections in parallel. A process-global counter would let one thread's deserialization make
+    // IsDeserializing observable on unrelated threads, so this is per-thread.
+    [ThreadStatic] protected static int deserializingCount;
     public static bool IsDeserializing => deserializingCount > 0;
 
     public static SerializationMap GetSerializationMap(Type type) {
