@@ -72,7 +72,7 @@ public sealed class TextCache : ImGuiCache<TextCache, (FontFile.FontSize size, s
     }
 
     public void Render(DrawingSurface surface, SDL.SDL_Rect position, SDL.SDL_Color color) {
-        if (texture.surface != surface) {
+        if (!texture.valid || texture.surface != surface) {
             texture = texture.Destroy();
             texture = surface.CreateTextureFromSurface(this.surface);
             curColor = RenderingUtils.White;
