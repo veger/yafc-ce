@@ -80,6 +80,9 @@ internal class UtilityWindowDrawingSurface : SoftwareDrawingSurface {
     }
 
     private void InvalidateRenderer() {
+        if (renderer != IntPtr.Zero) {
+            SDL.SDL_DestroyRenderer(renderer);
+        }
         surface = SDL.SDL_GetWindowSurface(window.window);
         renderer = SDL.SDL_CreateSoftwareRenderer(surface);
         _ = SDL.SDL_SetRenderDrawBlendMode(renderer, SDL.SDL_BlendMode.SDL_BLENDMODE_BLEND);
