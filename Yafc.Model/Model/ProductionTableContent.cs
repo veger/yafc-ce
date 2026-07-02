@@ -551,7 +551,8 @@ public sealed class RecipeRow : ModelObject<ProductionTable>, IGroupedElement<Pr
             float runningProbability = 1;
             // Fill upgradeProbabilities with "this quality or better" probabilities.
             while (quality != null && quality < Quality.MaxAccessible) {
-                runningProbability *= quality.UpgradeChance;
+                bool isInitialUpgrade = quality == recipe.quality;
+                runningProbability *= isInitialUpgrade ? quality.UpgradeChance : quality.ChainChance;
                 upgradeProbabilities.Add(Math.Min(1, runningProbability * parameters.activeEffects.qualityMod));
                 quality = quality.nextQuality;
             }

@@ -3,6 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using Yafc.I18n;
 using Yafc.Model;
+using Yafc.UI;
 
 namespace Yafc.Parser;
 
@@ -92,6 +93,7 @@ internal partial class FactorioDataDeserializer {
         quality.BeaconConsumptionFactor = table.Get("beacon_power_usage_multiplier", 1f);
         quality.level = table.Get("level", 0);
         quality.UpgradeChance = table.Get("next_probability", 0f);
+        quality.ChainChance = table.Get("chain_probability", MathUtils.Clamp(quality.UpgradeChance * 0.1f, 0f, 1f));
     }
 
     private void UpdateRecipeCatalysts() {

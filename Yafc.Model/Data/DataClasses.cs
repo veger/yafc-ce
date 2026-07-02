@@ -853,9 +853,14 @@ public sealed class Quality : FactorioObject {
     internal float ApplyStandardBonus(float baseValue) => baseValue * (1 + .3f * level);
     // applies the +100% per level accumulator capacity bonus
     internal float ApplyAccumulatorCapacityBonus(float baseValue) => baseValue * (1 + level);
-    // applies the standard +30% per level bonus, but with the exception that the result is floored to the nearest hundredth
-    // Modules use this: a 25% normal bonus is a 32% uncommon bonus, not 32.5%.
+    // Applies the standard +30% per level bonus, but rounded down the nearest 1%.
+    // This applies to all modules except quality modules.
+    // Example: Productivity 1 modules have a base bonus of .04 (4%).
+    // The level 1 bonus (uncommon) gives .04 * 1.3 = .052 (5.2%), which is rounded down to 0.05 (5%).
     internal float ApplyModuleBonus(float baseValue) => MathF.Floor(ApplyStandardBonus(baseValue) * 100) / 100;
+    // From Factorio 2.1, Quality module bonuses are rounded to the nearest 0.01% instead of 0.1%.
+    internal float ApplyQualityModuleBonus(float baseValue) => MathF.Floor(ApplyStandardBonus(baseValue) * 10_000) / 10_000;
+
     // applies the .2 per level beacon transmission bonus
     internal float ApplyBeaconBonus(float baseValue) => baseValue + level * .2f;
 
@@ -864,6 +869,7 @@ public sealed class Quality : FactorioObject {
     public float BeaconTransmissionBonus => .2f * level;
     public float BeaconConsumptionFactor { get; internal set; }
     public float UpgradeChance { get; internal set; }
+    public float ChainChance { get; internal set; }
 
     public static bool operator <(Quality left, Quality right) => left.level < right.level;
     public static bool operator >(Quality left, Quality right) => left.level > right.level;
@@ -1133,7 +1139,7 @@ public class ModuleSpecification {
     public float Speed(Quality quality) => baseSpeed <= 0 ? baseSpeed : quality.ApplyModuleBonus(baseSpeed);
     public float Productivity(Quality quality) => baseProductivity <= 0 ? baseProductivity : quality.ApplyModuleBonus(baseProductivity);
     public float Pollution(Quality quality) => basePollution >= 0 ? basePollution : quality.ApplyModuleBonus(basePollution);
-    public float Quality(Quality quality) => baseQuality <= 0 ? baseQuality : quality.ApplyModuleBonus(baseQuality);
+    public float Quality(Quality quality) => baseQuality <= 0 ? baseQuality : quality.ApplyQualityModuleBonus(baseQuality);
 }
 
 public struct TemperatureRange(int min, int max) {
