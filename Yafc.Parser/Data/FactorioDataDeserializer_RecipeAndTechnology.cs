@@ -92,8 +92,17 @@ internal partial class FactorioDataDeserializer {
         }
         quality.BeaconConsumptionFactor = table.Get("beacon_power_usage_multiplier", 1f);
         quality.level = table.Get("level", 0);
-        quality.UpgradeChance = table.Get("next_probability", 0f);
-        quality.ChainChance = table.Get("chain_probability", MathUtils.Clamp(quality.UpgradeChance * 0.1f, 0f, 1f));
+        var upgradeChance = table.Get("next_probability", 0f);
+        if (factorioVersion < v2_1) {
+            // In Factorio 2.0, quality module effects on the prototype were 10x greater. To avoid version-specific
+            // logic in the UI, this is scaled on the module and offset by multiplying the initial upgrade chance by 10.
+            quality.UpgradeChance = upgradeChance * 10f;
+            quality.ChainChance = upgradeChance;
+        }
+        else {
+            quality.UpgradeChance = upgradeChance;
+            quality.ChainChance = table.Get("chain_probability", MathUtils.Clamp(quality.UpgradeChance * 0.1f, 0f, 1f));
+        }
     }
 
     private void UpdateRecipeCatalysts() {
