@@ -26,6 +26,7 @@
       <InternalsVisibleTo Include="Yafc.Parser.Tests" />
       <ProjectReference Include="..\Yafc.I18n\Yafc.I18n.csproj" />
       <ProjectReference Include="..\Yafc.Model\Yafc.Model.csproj" />
+      <ProjectReference Include="..\Yafc.UI\Yafc.UI.csproj" />
     </ItemGroup>
 
 </Project>
