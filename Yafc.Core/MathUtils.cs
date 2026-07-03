@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Yafc.UI;
+namespace Yafc.Core;
 
 public static class MathUtils {
     public static float Clamp(float value, float min, float max) {

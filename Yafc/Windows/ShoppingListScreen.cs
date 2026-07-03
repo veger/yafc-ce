@@ -4,6 +4,7 @@ using System.Linq;
 using System.Numerics;
 using SDL2;
 using Yafc.Blueprints;
+using Yafc.Core;
 using Yafc.I18n;
 using Yafc.Model;
 using Yafc.UI;

@@ -8,6 +8,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using Google.OrTools.LinearSolver;
 using Serilog;
+using Yafc.Core;
 using Yafc.I18n;
 using Yafc.UI;
 

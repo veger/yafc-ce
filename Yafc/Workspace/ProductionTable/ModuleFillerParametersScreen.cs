@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using Yafc.Core;
 using Yafc.I18n;
 using Yafc.Model;
 using Yafc.UI;
