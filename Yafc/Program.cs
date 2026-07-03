@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using Serilog;
+using Yafc.Core;
 using Yafc.I18n;
 using Yafc.Model;
 using Yafc.Parser;

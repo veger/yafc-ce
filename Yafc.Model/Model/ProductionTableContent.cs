@@ -5,7 +5,6 @@ using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using Yafc.Core;
 using Yafc.I18n;
-using Yafc.UI;
 
 namespace Yafc.Model;
 

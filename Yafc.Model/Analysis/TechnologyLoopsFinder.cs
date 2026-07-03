@@ -1,6 +1,6 @@
-﻿using System.Linq;
+using System.Linq;
 using Serilog;
-using Yafc.UI;
+using Yafc.Core;
 
 namespace Yafc.Model;
 

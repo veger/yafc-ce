@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Diagnostics;
 using Serilog;
-using Yafc.UI;
+using Yafc.Core;
 
 namespace Yafc.Model;
 

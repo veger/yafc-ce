@@ -5,7 +5,7 @@ using Serilog.Core;
 using Serilog.Events;
 using Serilog.Formatting.Json;
 
-namespace Yafc.UI;
+namespace Yafc.Core;
 
 /// <summary>
 /// Contains default configuration for logging, to both a structured log file and to the console.

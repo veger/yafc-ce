@@ -12,6 +12,7 @@ using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
 using SDL2;
 using Serilog;
+using Yafc.Core;
 using Yafc.I18n;
 using Yafc.Model;
 using Yafc.Parser;
