@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks;
 using Yafc.I18n;
-using Yafc.UI;
 
 namespace Yafc.Model;
 
