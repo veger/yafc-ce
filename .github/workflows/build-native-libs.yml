@@ -175,6 +175,4 @@ jobs:
             * SDL2_image `${{ inputs.sdl2_image_version }}` (stb backend, no external codecs)
             * SDL2_ttf `${{ inputs.sdl2_ttf_version }}` (vendored FreeType + HarfBuzz)
 
-            macOS dylibs are relinked to `@loader_path` so they no longer require
-            Homebrew (fixes #659). Windows DLLs are MinGW cross-compiled with a
-            static runtime.
+            See `sdl/README.md` for how these are built and verified.

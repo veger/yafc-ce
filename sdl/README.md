@@ -70,13 +70,30 @@ These three DLLs replace the old dependency set — `libpng16-16.dll`,
 `libjpeg-9.dll`, `zlib1.dll` and `libfreetype-6.dll` are now built in and can be
 deleted. `lua52.dll` is unrelated and left alone.
 
+## Layout
+
+* `common.sh` — sourced by both build scripts; the single source of truth for
+  the pinned versions, checksums, download URLs, and the CMake options shared by
+  every platform.
+* `build-macos.sh`, `build-windows.sh` — the platform-specific builds.
+* `update-versions.sh` — prints the version + checksum lines to paste into
+  `common.sh`.
+* `check-macho.py` — the macOS self-containment verifier (also the CI gate).
+
 ## Bumping a version
 
-1. Edit the default `*_VERSION` and `*_SHA256` values at the top of both build
-   scripts (and the workflow input defaults). The checksums are the sha256 of
-   the release tarballs from `github.com/libsdl-org/*/releases`.
-2. Re-run the builds (workflow or local scripts).
-3. Commit the updated libraries.
+The pinned `*_SHA256` in `common.sh` is a **supply-chain pin**, not just a
+download check: it lets every later build prove it fetched exactly the source
+that was reviewed, protecting against a re-tagged release or a tampered artifact.
+That is why the build never computes its own checksum — doing so would only
+verify a download against itself. A human reviews and commits the value instead.
+
+1. Run `sdl/update-versions.sh` (optionally passing explicit versions) to fetch
+   the latest release versions and their checksums.
+2. Paste the printed lines into `common.sh` (and update the workflow input
+   defaults if you want the new versions to be the workflow's defaults).
+3. Re-run the builds (workflow or local scripts).
+4. Commit the updated libraries.
 
 ## Verifying (`check-macho.py`)
 

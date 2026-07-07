@@ -7,54 +7,43 @@
 # Why from source instead of copying Homebrew's dylibs: Homebrew builds bake
 # absolute /opt/homebrew/... paths into their Mach-O load commands, so the
 # bundled libraries fail to load on any Mac without those exact paths (no
-# Homebrew, Nix, a clean machine). See issue #659.
+# Homebrew, Nix, a clean machine).
 #
 # The libraries produced here depend only on macOS system frameworks and on
-# each other via @loader_path, so they are fully portable:
-#   * SDL2_image uses the built-in stb_image backend (PNG + JPG, which is all
-#     Yafc uses) and links no external codec libraries.
-#   * SDL2_ttf is built VENDORED, statically linking its own FreeType + HarfBuzz.
+# each other via @loader_path, so they are fully portable. Shared configuration
+# (versions, checksums, CMake options) lives in common.sh.
 #
 # By default a universal (arm64 + x86_64) binary is built on one runner and
 # split with lipo, so a single macOS runner covers both Yafc/lib/osx-arm64 and
 # Yafc/lib/osx. The result is validated by sdl/check-macho.py before copying.
 #
-# Dependencies: cmake, curl, shasum, install_name_tool, lipo, codesign, a C/C++
-# toolchain (Xcode command line tools). All present on GitHub's macOS runners.
+# Dependencies: cmake, ninja, curl, shasum, install_name_tool, lipo, codesign, a
+# C/C++ toolchain (Xcode command line tools). All present on GitHub's macOS
+# runners.
 #
-# Usage: sdl/build-macos.sh   (override versions via the env vars below)
+# Usage: sdl/build-macos.sh   (override versions via the env vars in common.sh)
 
 set -euo pipefail
 
-# ---- Pinned upstream versions ------------------------------------------------
-# Bumping SDL == change these (and the matching checksums) and re-run.
-SDL2_VERSION="${SDL2_VERSION:-2.32.10}"
-SDL2_IMAGE_VERSION="${SDL2_IMAGE_VERSION:-2.8.12}"
-SDL2_TTF_VERSION="${SDL2_TTF_VERSION:-2.24.0}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=common.sh
+. "$SCRIPT_DIR/common.sh"
 
-# sha256 of the release tarballs from github.com/libsdl-org/*/releases.
-SDL2_SHA256="${SDL2_SHA256:-5f5993c530f084535c65a6879e9b26ad441169b3e25d789d83287040a9ca5165}"
-SDL2_IMAGE_SHA256="${SDL2_IMAGE_SHA256:-393f5efb50536ec13ca4f4affb69cc9966d3c3f969e6c5e701faddf9f9785381}"
-SDL2_TTF_SHA256="${SDL2_TTF_SHA256:-0b2bf1e7b6568adbdbc9bb924643f79d9dedafe061fa1ed687d1d9ac4e453bfd}"
-
+# ---- Config ------------------------------------------------------------------
 # Architectures to build. Two arches -> a universal build that is lipo-split.
 OSX_ARCHS="${OSX_ARCHS:-arm64;x86_64}"
 # Deployment target: match the oldest macOS Yafc supports.
 export MACOSX_DEPLOYMENT_TARGET="${MACOSX_DEPLOYMENT_TARGET:-11.0}"
 
-# ---- Paths -------------------------------------------------------------------
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 WORK="$SCRIPT_DIR/.build-macos"
 STAGE="$WORK/stage"          # where the final universal dylibs are assembled
 PREFIX="$WORK/prefix"        # cmake --install destination
-
 ARM64_DIR="$REPO_ROOT/Yafc/lib/osx-arm64"
 INTEL_DIR="$REPO_ROOT/Yafc/lib/osx"
 
 # Final filenames Yafc loads (see Yafc/YafcLib.cs GetOsxMappedLibraryName).
-# A function rather than an associative array: macOS ships bash 3.2, which has
-# no `declare -A`.
+# A function rather than an associative array: macOS ships bash 3.2.
 output_name() {
   case "$1" in
     SDL2)       echo "libSDL2.dylib" ;;
@@ -63,13 +52,6 @@ output_name() {
     *) echo "unknown key: $1" >&2; return 1 ;;
   esac
 }
-
-# Heavy logging: while we are still validating this pipeline (issue #659) we want
-# to see exactly what each stage produced. Set SDL_BUILD_QUIET=1 to trim it down.
-VERBOSE="${SDL_BUILD_QUIET:+}"
-[ -z "${SDL_BUILD_QUIET:-}" ] && VERBOSE=1
-
-log() { echo "==> $*"; }
 
 # Dump everything interesting about a Mach-O file: architectures, install id,
 # and the full dependency list. Used before/after relinking so a broken load
@@ -91,97 +73,47 @@ dump_macho() { # label file
   codesign -dvv "$file" 2>&1 | sed 's/^/      /' || true
 }
 
-fetch() { # url sha256 outfile
-  local url="$1" sha="$2" out="$3"
-  if [ ! -f "$out" ]; then
-    log "Downloading $(basename "$out")"
-    curl -fL -o "$out" "$url"
-  else
-    log "Using cached $(basename "$out")"
-  fi
-  # Checksums may carry stray whitespace when edited by hand; strip it.
-  local expected="${sha// /}"
-  local actual
-  actual="$(shasum -a 256 "$out" | cut -d' ' -f1)"
-  if [ "$expected" != "$actual" ]; then
-    echo "Checksum mismatch for $out" >&2
-    echo "  expected: $expected" >&2
-    echo "  actual:   $actual" >&2
-    exit 1
-  fi
-  log "Checksum OK for $(basename "$out")"
+# build_lib SRC_DIR  extra cmake args...
+build_lib() {
+  local src="$1"; shift
+  local bld="$WORK/build-$(basename "$src")"
+  cmake -S "$src" -B "$bld" -G Ninja \
+    -DCMAKE_BUILD_TYPE=Release \
+    "${CMAKE_COMPAT_ARGS[@]}" \
+    -DCMAKE_OSX_ARCHITECTURES="$OSX_ARCHS" \
+    -DCMAKE_INSTALL_PREFIX="$PREFIX" \
+    -DCMAKE_PREFIX_PATH="$PREFIX" \
+    -DBUILD_SHARED_LIBS=ON \
+    "$@"
+  cmake --build "$bld" ${CMAKE_BUILD_VERBOSE:+--verbose}
+  cmake --install "$bld"
 }
 
 # ---- Clean workspace ---------------------------------------------------------
 rm -rf "$WORK"
 mkdir -p "$WORK" "$STAGE" "$PREFIX"
 
-# ---- SDL2 --------------------------------------------------------------------
-SDL2_TARBALL="$WORK/SDL2-$SDL2_VERSION.tar.gz"
-fetch "https://github.com/libsdl-org/SDL/releases/download/release-$SDL2_VERSION/SDL2-$SDL2_VERSION.tar.gz" \
-  "$SDL2_SHA256" "$SDL2_TARBALL"
-tar -C "$WORK" -xf "$SDL2_TARBALL"
-
+# ---- Build -------------------------------------------------------------------
+fetch "$SDL2_URL" "$SDL2_SHA256" "$WORK/SDL2.tar.gz"
+tar -C "$WORK" -xf "$WORK/SDL2.tar.gz"
 log "Building SDL2 $SDL2_VERSION ($OSX_ARCHS)"
-cmake -S "$WORK/SDL2-$SDL2_VERSION" -B "$WORK/build-SDL2" -G Ninja \
-  -DCMAKE_BUILD_TYPE=Release \
-  -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
-  -DCMAKE_OSX_ARCHITECTURES="$OSX_ARCHS" \
-  -DCMAKE_INSTALL_PREFIX="$PREFIX" \
-  -DBUILD_SHARED_LIBS=ON \
-  -DSDL_STATIC=OFF -DSDL_TEST=OFF
-cmake --build "$WORK/build-SDL2" ${CMAKE_BUILD_VERBOSE:+--verbose}
-cmake --install "$WORK/build-SDL2"
+build_lib "$WORK/SDL2-$SDL2_VERSION" -DSDL_STATIC=OFF -DSDL_TEST=OFF
 
-# ---- SDL2_image (stb backend, no external codecs) ----------------------------
-SDL2_IMAGE_TARBALL="$WORK/SDL2_image-$SDL2_IMAGE_VERSION.tar.gz"
-fetch "https://github.com/libsdl-org/SDL_image/releases/download/release-$SDL2_IMAGE_VERSION/SDL2_image-$SDL2_IMAGE_VERSION.tar.gz" \
-  "$SDL2_IMAGE_SHA256" "$SDL2_IMAGE_TARBALL"
-tar -C "$WORK" -xf "$SDL2_IMAGE_TARBALL"
-
+fetch "$SDL2_IMAGE_URL" "$SDL2_IMAGE_SHA256" "$WORK/SDL2_image.tar.gz"
+tar -C "$WORK" -xf "$WORK/SDL2_image.tar.gz"
 log "Building SDL2_image $SDL2_IMAGE_VERSION (stb backend, no external codecs)"
-cmake -S "$WORK/SDL2_image-$SDL2_IMAGE_VERSION" -B "$WORK/build-SDL2_image" -G Ninja \
-  -DCMAKE_BUILD_TYPE=Release \
-  -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
-  -DCMAKE_OSX_ARCHITECTURES="$OSX_ARCHS" \
-  -DCMAKE_INSTALL_PREFIX="$PREFIX" \
-  -DCMAKE_PREFIX_PATH="$PREFIX" \
-  -DBUILD_SHARED_LIBS=ON \
-  -DSDL2IMAGE_SAMPLES=OFF \
-  -DSDL2IMAGE_DEPS_SHARED=OFF \
-  -DSDL2IMAGE_VENDORED=OFF \
-  -DSDL2IMAGE_BACKEND_STB=ON \
-  -DSDL2IMAGE_BACKEND_IMAGEIO=OFF \
-  -DSDL2IMAGE_PNG=ON -DSDL2IMAGE_JPG=ON -DSDL2IMAGE_PNG_SAVE=ON \
-  -DSDL2IMAGE_AVIF=OFF -DSDL2IMAGE_JXL=OFF -DSDL2IMAGE_TIF=OFF -DSDL2IMAGE_WEBP=OFF
-cmake --build "$WORK/build-SDL2_image" ${CMAKE_BUILD_VERBOSE:+--verbose}
-cmake --install "$WORK/build-SDL2_image"
+build_lib "$WORK/SDL2_image-$SDL2_IMAGE_VERSION" "${SDL_IMAGE_ARGS[@]}" -DSDL2IMAGE_BACKEND_IMAGEIO=OFF
 
-# ---- SDL2_ttf (vendored: static FreeType + HarfBuzz) -------------------------
-SDL2_TTF_TARBALL="$WORK/SDL2_ttf-$SDL2_TTF_VERSION.tar.gz"
-fetch "https://github.com/libsdl-org/SDL_ttf/releases/download/release-$SDL2_TTF_VERSION/SDL2_ttf-$SDL2_TTF_VERSION.tar.gz" \
-  "$SDL2_TTF_SHA256" "$SDL2_TTF_TARBALL"
-tar -C "$WORK" -xf "$SDL2_TTF_TARBALL"
-
+fetch "$SDL2_TTF_URL" "$SDL2_TTF_SHA256" "$WORK/SDL2_ttf.tar.gz"
+tar -C "$WORK" -xf "$WORK/SDL2_ttf.tar.gz"
 log "Building SDL2_ttf $SDL2_TTF_VERSION (vendored FreeType + HarfBuzz)"
-cmake -S "$WORK/SDL2_ttf-$SDL2_TTF_VERSION" -B "$WORK/build-SDL2_ttf" -G Ninja \
-  -DCMAKE_BUILD_TYPE=Release \
-  -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
-  -DCMAKE_OSX_ARCHITECTURES="$OSX_ARCHS" \
-  -DCMAKE_INSTALL_PREFIX="$PREFIX" \
-  -DCMAKE_PREFIX_PATH="$PREFIX" \
-  -DBUILD_SHARED_LIBS=ON \
-  -DSDL2TTF_SAMPLES=OFF \
-  -DSDL2TTF_VENDORED=ON \
-  -DSDL2TTF_HARFBUZZ=ON
-cmake --build "$WORK/build-SDL2_ttf" ${CMAKE_BUILD_VERBOSE:+--verbose}
-cmake --install "$WORK/build-SDL2_ttf"
+build_lib "$WORK/SDL2_ttf-$SDL2_TTF_VERSION" "${SDL_TTF_ARGS[@]}"
 
-# ---- Stage: resolve symlinks, rename, rewrite install names to @loader_path --
-# `cmake --install` writes versioned dylibs (libSDL2-2.0.0.dylib) plus unversioned
-# symlinks. Copy the real file under the exact name Yafc loads, then rewrite every
-# non-system reference to @loader_path so the libraries find each other next to
-# the executable regardless of where Yafc is installed.
+# ---- Stage: rename, rewrite install names to @loader_path --------------------
+# `cmake --install` writes versioned dylibs (libSDL2-2.0.0.dylib) plus
+# unversioned symlinks. Copy the real file under the exact name Yafc loads, then
+# rewrite every non-system reference to @loader_path so the libraries find each
+# other next to the executable regardless of where Yafc is installed.
 log "Staging freshly built dylibs"
 for key in SDL2 SDL2_image SDL2_ttf; do
   name="$(output_name "$key")"
@@ -195,17 +127,15 @@ for key in SDL2 SDL2_image SDL2_ttf; do
   name="$(output_name "$key")"
   file="$STAGE/$name"
   install_name_tool -id "@loader_path/$name" "$file"
-  # Rewrite any dependency that isn't an OS path to its bundled @loader_path name.
-  # Note @rpath is NOT skipped: SDL's CMake build references its own libraries as
-  # @rpath/libSDL2-2.0.0.dylib, which would not resolve in our bundle (we ship
-  # libSDL2.dylib with an @loader_path id and no rpath). Rewrite those too.
+  # Rewrite any dependency that isn't an OS path to its bundled @loader_path
+  # name. @rpath is NOT skipped: SDL's CMake build references its own libraries
+  # as @rpath/libSDL2-2.0.0.dylib, which would not resolve in our bundle (we
+  # ship libSDL2.dylib with an @loader_path id and no rpath).
   while IFS= read -r dep; do
     case "$dep" in
       /usr/lib/*|/System/*|@loader_path/*) continue ;;
     esac
-    base="$(basename "$dep")"
-    newname=""
-    case "$base" in
+    case "$(basename "$dep")" in
       libSDL2-*.dylib|libSDL2.dylib)             newname="$(output_name SDL2)" ;;
       libSDL2_image-*.dylib|libSDL2_image.dylib) newname="$(output_name SDL2_image)" ;;
       libSDL2_ttf-*.dylib|libSDL2_ttf.dylib)     newname="$(output_name SDL2_ttf)" ;;
