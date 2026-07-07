@@ -18,10 +18,6 @@
 name: Build native libraries
 
 on:
-  # TEMPORARY (validation on the fork): auto-run on pushes to the work branch so
-  # we can iterate on the build and read the logs. Remove before the upstream PR.
-  push:
-    branches: [ 'fix/macos-sdl-homebrew-659' ]
   workflow_dispatch:
     inputs:
       sdl2_version:
