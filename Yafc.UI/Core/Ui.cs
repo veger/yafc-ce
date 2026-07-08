@@ -20,6 +20,8 @@ public static partial class Ui {
 
     public static void Start() {
         SDL.SDL_SetHint("SDL_WINDOWS_DPI_SCALING", "1");
+        // SDL2-compat on Wayland assumes that all SDL2 apps are not DPI aware, unless forcibly overriden.
+        SDL.SDL_SetHintWithPriority("SDL_VIDEO_WAYLAND_SCALE_TO_DISPLAY", "0", SDL.SDL_HintPriority.SDL_HINT_OVERRIDE);
         int sdlInitResult = SDL.SDL_Init(SDL.SDL_INIT_VIDEO);
         if (sdlInitResult != 0) {
             logger.Error("SDL_Init failed ({Result}): {Error}", sdlInitResult, SDL.SDL_GetError());
