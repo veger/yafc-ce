@@ -23,7 +23,7 @@ hasher() { if command -v sha256sum >/dev/null 2>&1; then sha256sum; else shasum 
 # now also publish SDL3 releases, which would show up as "latest" -- but Yafc
 # uses SDL2, so restrict to release-2.x and ignore prereleases.
 latest_version() { # repo
-  curl -fsSL "https://api.github.com/repos/libsdl-org/$1/releases?per_page=100" \
+    curl -fsSL "https://api.github.com/repos/libsdl-org/$1/releases?per_page=100" \
     | grep -oE '"tag_name": *"release-2\.[0-9]+\.[0-9]+"' \
     | grep -oE '2\.[0-9]+\.[0-9]+' \
     | head -1
@@ -31,7 +31,7 @@ latest_version() { # repo
 
 # sha256 of a release tarball, streamed (no temp file).
 tarball_sha() { # url
-  curl -fsSL "$1" | hasher | cut -d' ' -f1
+    curl -fsSL "$1" | hasher | cut -d' ' -f1
 }
 
 SDL2_V="${1:-$(latest_version SDL)}"

@@ -45,39 +45,39 @@ INTEL_DIR="$REPO_ROOT/Yafc/lib/osx"
 # Final filenames Yafc loads (see Yafc/YafcLib.cs GetOsxMappedLibraryName).
 # A function rather than an associative array: macOS ships bash 3.2.
 output_name() {
-  case "$1" in
-    SDL2)       echo "libSDL2.dylib" ;;
-    SDL2_image) echo "libSDL2_image.dylib" ;;
-    SDL2_ttf)   echo "libSDL2_ttf.dylib" ;;
-    *) echo "unknown key: $1" >&2; return 1 ;;
-  esac
+    case "$1" in
+        SDL2)       echo "libSDL2.dylib" ;;
+        SDL2_image) echo "libSDL2_image.dylib" ;;
+        SDL2_ttf)   echo "libSDL2_ttf.dylib" ;;
+        *) echo "unknown key: $1" >&2; return 1 ;;
+    esac
 }
 
 # Dump everything interesting about a Mach-O file: architectures, install id,
 # and the full dependency list. Used before/after relinking so a broken load
 # command is obvious in the CI log.
 dump_macho() { # label file
-  [ -n "${VERBOSE:-}" ] || return 0
-  local label="$1" file="$2"
-  echo "----- $label: $file"
-  if [ ! -f "$file" ]; then
-    echo "    (missing)"
-    return 0
-  fi
-  echo "    file:  $(file -b "$file")"
-  echo "    archs: $(lipo -archs "$file" 2>/dev/null || echo 'n/a')"
-  echo "    id:    $(otool -D "$file" 2>/dev/null | tail -n +2)"
-  echo "    deps:"
-  otool -L "$file" 2>/dev/null | tail -n +2 | sed 's/^/      /'
-  echo "    codesign:"
-  codesign -dvv "$file" 2>&1 | sed 's/^/      /' || true
+    [ -n "${VERBOSE:-}" ] || return 0
+    local label="$1" file="$2"
+    echo "----- $label: $file"
+    if [ ! -f "$file" ]; then
+        echo "    (missing)"
+        return 0
+    fi
+    echo "    file:  $(file -b "$file")"
+    echo "    archs: $(lipo -archs "$file" 2>/dev/null || echo 'n/a')"
+    echo "    id:    $(otool -D "$file" 2>/dev/null | tail -n +2)"
+    echo "    deps:"
+    otool -L "$file" 2>/dev/null | tail -n +2 | sed 's/^/      /'
+    echo "    codesign:"
+    codesign -dvv "$file" 2>&1 | sed 's/^/      /' || true
 }
 
 # build_lib SRC_DIR  extra cmake args...
 build_lib() {
-  local src="$1"; shift
-  local bld="$WORK/build-$(basename "$src")"
-  cmake -S "$src" -B "$bld" -G Ninja \
+    local src="$1"; shift
+    local bld="$WORK/build-$(basename "$src")"
+    cmake -S "$src" -B "$bld" -G Ninja \
     -DCMAKE_BUILD_TYPE=Release \
     "${CMAKE_COMPAT_ARGS[@]}" \
     -DCMAKE_OSX_ARCHITECTURES="$OSX_ARCHS" \
@@ -85,8 +85,8 @@ build_lib() {
     -DCMAKE_PREFIX_PATH="$PREFIX" \
     -DBUILD_SHARED_LIBS=ON \
     "$@"
-  cmake --build "$bld" ${CMAKE_BUILD_VERBOSE:+--verbose}
-  cmake --install "$bld"
+    cmake --build "$bld" ${CMAKE_BUILD_VERBOSE:+--verbose}
+    cmake --install "$bld"
 }
 
 # ---- Clean workspace ---------------------------------------------------------
@@ -116,47 +116,47 @@ build_lib "$WORK/SDL2_ttf-$SDL2_TTF_VERSION" "${SDL_TTF_ARGS[@]}"
 # other next to the executable regardless of where Yafc is installed.
 log "Staging freshly built dylibs"
 for key in SDL2 SDL2_image SDL2_ttf; do
-  name="$(output_name "$key")"
-  # cp dereferences the unversioned symlink and copies the real dylib content.
-  cp "$PREFIX/lib/$name" "$STAGE/$name"
-  dump_macho "as-built $key" "$STAGE/$name"
+    name="$(output_name "$key")"
+    # cp dereferences the unversioned symlink and copies the real dylib content.
+    cp "$PREFIX/lib/$name" "$STAGE/$name"
+    dump_macho "as-built $key" "$STAGE/$name"
 done
 
 log "Rewriting install names to @loader_path"
 for key in SDL2 SDL2_image SDL2_ttf; do
-  name="$(output_name "$key")"
-  file="$STAGE/$name"
-  install_name_tool -id "@loader_path/$name" "$file"
-  # Rewrite any dependency that isn't an OS path to its bundled @loader_path
-  # name. @rpath is NOT skipped: SDL's CMake build references its own libraries
-  # as @rpath/libSDL2-2.0.0.dylib, which would not resolve in our bundle (we
-  # ship libSDL2.dylib with an @loader_path id and no rpath).
-  while IFS= read -r dep; do
-    case "$dep" in
-      /usr/lib/*|/System/*|@loader_path/*) continue ;;
-    esac
-    case "$(basename "$dep")" in
-      libSDL2-*.dylib|libSDL2.dylib)             newname="$(output_name SDL2)" ;;
-      libSDL2_image-*.dylib|libSDL2_image.dylib) newname="$(output_name SDL2_image)" ;;
-      libSDL2_ttf-*.dylib|libSDL2_ttf.dylib)     newname="$(output_name SDL2_ttf)" ;;
-      *)
-        echo "Unexpected external dependency in $file: $dep" >&2
-        echo "The build is supposed to be self-contained; refusing to continue." >&2
-        exit 1
-        ;;
-    esac
-    echo "    $key: $dep -> @loader_path/$newname"
-    install_name_tool -change "$dep" "@loader_path/$newname" "$file"
-  done < <(otool -L "$file" | tail -n +2 | awk '{print $1}')
+    name="$(output_name "$key")"
+    file="$STAGE/$name"
+    install_name_tool -id "@loader_path/$name" "$file"
+    # Rewrite any dependency that isn't an OS path to its bundled @loader_path
+    # name. @rpath is NOT skipped: SDL's CMake build references its own libraries
+    # as @rpath/libSDL2-2.0.0.dylib, which would not resolve in our bundle (we
+    # ship libSDL2.dylib with an @loader_path id and no rpath).
+    while IFS= read -r dep; do
+        case "$dep" in
+            /usr/lib/*|/System/*|@loader_path/*) continue ;;
+        esac
+        case "$(basename "$dep")" in
+            libSDL2-*.dylib|libSDL2.dylib)             newname="$(output_name SDL2)" ;;
+            libSDL2_image-*.dylib|libSDL2_image.dylib) newname="$(output_name SDL2_image)" ;;
+            libSDL2_ttf-*.dylib|libSDL2_ttf.dylib)     newname="$(output_name SDL2_ttf)" ;;
+            *)
+                echo "Unexpected external dependency in $file: $dep" >&2
+                echo "The build is supposed to be self-contained; refusing to continue." >&2
+                exit 1
+            ;;
+        esac
+        echo "    $key: $dep -> @loader_path/$newname"
+        install_name_tool -change "$dep" "@loader_path/$newname" "$file"
+    done < <(otool -L "$file" | tail -n +2 | awk '{print $1}')
 done
 
 # Editing a Mach-O invalidates its (ad-hoc) code signature; re-sign so dyld on
 # Apple Silicon will load it.
 log "Re-signing (ad-hoc)"
 for key in SDL2 SDL2_image SDL2_ttf; do
-  name="$(output_name "$key")"
-  codesign --force --sign - "$STAGE/$name"
-  dump_macho "relinked+signed $key" "$STAGE/$name"
+    name="$(output_name "$key")"
+    codesign --force --sign - "$STAGE/$name"
+    dump_macho "relinked+signed $key" "$STAGE/$name"
 done
 
 # ---- Verify before copying anything into the repo ----------------------------
@@ -165,20 +165,20 @@ python3 "$SCRIPT_DIR/check-macho.py" "$STAGE"
 
 # ---- Split universal -> per-arch and copy into Yafc/lib ----------------------
 copy_arch() { # lipo-arch  dest-dir
-  local arch="$1" dest="$2"
-  mkdir -p "$dest"
-  for key in SDL2 SDL2_image SDL2_ttf; do
-    local name; name="$(output_name "$key")"
-    if lipo "$STAGE/$name" -verify_arch "$arch" 2>/dev/null; then
-      lipo "$STAGE/$name" -thin "$arch" -output "$dest/$name"
-    else
-      cp "$STAGE/$name" "$dest/$name"   # already single-arch
-    fi
-    codesign --force --sign - "$dest/$name"
-    dump_macho "$arch $key" "$dest/$name"
-  done
-  log "Wrote $arch dylibs to $dest"
-  ls -la "$dest"
+    local arch="$1" dest="$2"
+    mkdir -p "$dest"
+    for key in SDL2 SDL2_image SDL2_ttf; do
+        local name; name="$(output_name "$key")"
+        if lipo "$STAGE/$name" -verify_arch "$arch" 2>/dev/null; then
+            lipo "$STAGE/$name" -thin "$arch" -output "$dest/$name"
+        else
+            cp "$STAGE/$name" "$dest/$name"   # already single-arch
+        fi
+        codesign --force --sign - "$dest/$name"
+        dump_macho "$arch $key" "$dest/$name"
+    done
+    log "Wrote $arch dylibs to $dest"
+    ls -la "$dest"
 }
 
 copy_arch arm64 "$ARM64_DIR"

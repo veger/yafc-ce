@@ -39,19 +39,19 @@ CMAKE_COMPAT_ARGS=( -DCMAKE_POLICY_VERSION_MINIMUM=3.5 )
 # encoder. The backend to disable is platform-specific (ImageIO on macOS, WIC on
 # Windows) and appended by the caller.
 SDL_IMAGE_ARGS=(
-  -DSDL2IMAGE_SAMPLES=OFF
-  -DSDL2IMAGE_DEPS_SHARED=OFF
-  -DSDL2IMAGE_VENDORED=OFF
-  -DSDL2IMAGE_BACKEND_STB=ON
-  -DSDL2IMAGE_PNG=ON -DSDL2IMAGE_JPG=ON -DSDL2IMAGE_PNG_SAVE=ON
-  -DSDL2IMAGE_AVIF=OFF -DSDL2IMAGE_JXL=OFF -DSDL2IMAGE_TIF=OFF -DSDL2IMAGE_WEBP=OFF
+    -DSDL2IMAGE_SAMPLES=OFF
+    -DSDL2IMAGE_DEPS_SHARED=OFF
+    -DSDL2IMAGE_VENDORED=OFF
+    -DSDL2IMAGE_BACKEND_STB=ON
+    -DSDL2IMAGE_PNG=ON -DSDL2IMAGE_JPG=ON -DSDL2IMAGE_PNG_SAVE=ON
+    -DSDL2IMAGE_AVIF=OFF -DSDL2IMAGE_JXL=OFF -DSDL2IMAGE_TIF=OFF -DSDL2IMAGE_WEBP=OFF
 )
 
 # SDL2_ttf: vendored, statically linking its own FreeType + HarfBuzz.
 SDL_TTF_ARGS=(
-  -DSDL2TTF_SAMPLES=OFF
-  -DSDL2TTF_VENDORED=ON
-  -DSDL2TTF_HARFBUZZ=ON
+    -DSDL2TTF_SAMPLES=OFF
+    -DSDL2TTF_VENDORED=ON
+    -DSDL2TTF_HARFBUZZ=ON
 )
 
 # ---- Helpers -----------------------------------------------------------------
@@ -64,33 +64,33 @@ log() { echo "==> $*"; }
 # sha256 of a file, using whichever tool the platform provides (Linux has
 # sha256sum, macOS has shasum).
 sha256_of() {
-  if command -v sha256sum >/dev/null 2>&1; then
-    sha256sum "$1" | cut -d' ' -f1
-  else
-    shasum -a 256 "$1" | cut -d' ' -f1
-  fi
+    if command -v sha256sum >/dev/null 2>&1; then
+        sha256sum "$1" | cut -d' ' -f1
+    else
+        shasum -a 256 "$1" | cut -d' ' -f1
+    fi
 }
 
 # fetch URL SHA256 OUTFILE -- download (unless already present) and verify the
 # checksum against the committed pin.
 fetch() {
-  local url="$1" sha="$2" out="$3"
-  if [ ! -f "$out" ]; then
-    log "Downloading $(basename "$out")"
-    curl -fL -o "$out" "$url"
-  else
-    log "Using cached $(basename "$out")"
-  fi
-  # Committed checksums may carry stray whitespace when edited by hand.
-  local expected="${sha// /}" actual
-  actual="$(sha256_of "$out")"
-  if [ "$expected" != "$actual" ]; then
-    echo "Checksum mismatch for $out" >&2
-    echo "  expected: $expected" >&2
-    echo "  actual:   $actual" >&2
-    echo "If you meant to change the version, update the checksum in sdl/common.sh" >&2
-    echo "(sdl/update-versions.sh prints the new values)." >&2
-    exit 1
-  fi
-  log "Checksum OK for $(basename "$out")"
+    local url="$1" sha="$2" out="$3"
+    if [ ! -f "$out" ]; then
+        log "Downloading $(basename "$out")"
+        curl -fL -o "$out" "$url"
+    else
+        log "Using cached $(basename "$out")"
+    fi
+    # Committed checksums may carry stray whitespace when edited by hand.
+    local expected="${sha// /}" actual
+    actual="$(sha256_of "$out")"
+    if [ "$expected" != "$actual" ]; then
+        echo "Checksum mismatch for $out" >&2
+        echo "  expected: $expected" >&2
+        echo "  actual:   $actual" >&2
+        echo "If you meant to change the version, update the checksum in sdl/common.sh" >&2
+        echo "(sdl/update-versions.sh prints the new values)." >&2
+        exit 1
+    fi
+    log "Checksum OK for $(basename "$out")"
 }

@@ -50,43 +50,43 @@ STATIC_RT_FLAGS="-static -static-libgcc -static-libstdc++"
 # Cross-compile CMake args, as an array so the space-containing linker-flag
 # values stay a single argument each.
 CROSS_ARGS=(
-  -G Ninja
-  -DCMAKE_BUILD_TYPE=Release
-  "${CMAKE_COMPAT_ARGS[@]}"
-  -DCMAKE_SYSTEM_NAME=Windows
-  "-DCMAKE_C_COMPILER=${HOST}-gcc"
-  "-DCMAKE_CXX_COMPILER=${HOST}-g++"
-  "-DCMAKE_RC_COMPILER=${HOST}-windres"
-  "-DCMAKE_FIND_ROOT_PATH=/usr/${HOST};$PREFIX"
-  -DCMAKE_FIND_ROOT_PATH_MODE_PROGRAM=NEVER
-  -DCMAKE_FIND_ROOT_PATH_MODE_LIBRARY=BOTH
-  -DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=BOTH
-  "-DCMAKE_INSTALL_PREFIX=$PREFIX"
-  "-DCMAKE_PREFIX_PATH=$PREFIX"
-  -DBUILD_SHARED_LIBS=ON
-  "-DCMAKE_SHARED_LINKER_FLAGS=$STATIC_RT_FLAGS"
-  "-DCMAKE_EXE_LINKER_FLAGS=$STATIC_RT_FLAGS"
+    -G Ninja
+    -DCMAKE_BUILD_TYPE=Release
+    "${CMAKE_COMPAT_ARGS[@]}"
+    -DCMAKE_SYSTEM_NAME=Windows
+    "-DCMAKE_C_COMPILER=${HOST}-gcc"
+    "-DCMAKE_CXX_COMPILER=${HOST}-g++"
+    "-DCMAKE_RC_COMPILER=${HOST}-windres"
+    "-DCMAKE_FIND_ROOT_PATH=/usr/${HOST};$PREFIX"
+    -DCMAKE_FIND_ROOT_PATH_MODE_PROGRAM=NEVER
+    -DCMAKE_FIND_ROOT_PATH_MODE_LIBRARY=BOTH
+    -DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=BOTH
+    "-DCMAKE_INSTALL_PREFIX=$PREFIX"
+    "-DCMAKE_PREFIX_PATH=$PREFIX"
+    -DBUILD_SHARED_LIBS=ON
+    "-DCMAKE_SHARED_LINKER_FLAGS=$STATIC_RT_FLAGS"
+    "-DCMAKE_EXE_LINKER_FLAGS=$STATIC_RT_FLAGS"
 )
 
 # Dump a PE's imported DLLs so a stray libgcc/libstdc++/libpng dependency is
 # obvious in the CI log.
 dump_pe() { # label file
-  [ -n "${VERBOSE:-}" ] || return 0
-  local label="$1" file="$2"
-  echo "----- $label: $file"
-  if [ ! -f "$file" ]; then echo "    (missing)"; return 0; fi
-  echo "    file:    $(file -b "$file")"
-  echo "    imports:"
-  "${HOST}-objdump" -p "$file" 2>/dev/null | awk '/DLL Name:/ {print "      " $3}' | sort -u
+    [ -n "${VERBOSE:-}" ] || return 0
+    local label="$1" file="$2"
+    echo "----- $label: $file"
+    if [ ! -f "$file" ]; then echo "    (missing)"; return 0; fi
+    echo "    file:    $(file -b "$file")"
+    echo "    imports:"
+    "${HOST}-objdump" -p "$file" 2>/dev/null | awk '/DLL Name:/ {print "      " $3}' | sort -u
 }
 
 # build_lib SRC_DIR  extra cmake args...
 build_lib() {
-  local src="$1"; shift
-  local bld="$WORK/build-$(basename "$src")"
-  cmake -S "$src" -B "$bld" "${CROSS_ARGS[@]}" "$@"
-  cmake --build "$bld" ${CMAKE_BUILD_VERBOSE:+--verbose}
-  cmake --install "$bld"
+    local src="$1"; shift
+    local bld="$WORK/build-$(basename "$src")"
+    cmake -S "$src" -B "$bld" "${CROSS_ARGS[@]}" "$@"
+    cmake --build "$bld" ${CMAKE_BUILD_VERBOSE:+--verbose}
+    cmake --install "$bld"
 }
 
 # ---- Clean workspace ---------------------------------------------------------
@@ -119,27 +119,27 @@ ALLOWED='^(KERNEL32|USER32|GDI32|WINMM|IMM32|OLE32|OLEAUT32|ADVAPI32|SHELL32|SET
 
 fail=0
 for dll in SDL2.dll SDL2_image.dll SDL2_ttf.dll; do
-  src="$PREFIX/bin/$dll"
-  [ -f "$src" ] || { echo "Expected $src was not produced by the build" >&2; exit 1; }
-  cp -f "$src" "$WIN_DIR/$dll"
-  dump_pe "built $dll" "$WIN_DIR/$dll"
-  while IFS= read -r imp; do
-    if ! echo "$imp" | grep -qiE "$ALLOWED"; then
-      echo "  UNEXPECTED import in $dll: $imp" >&2
-      fail=1
-    fi
-  done < <("${HOST}-objdump" -p "$WIN_DIR/$dll" | awk '/DLL Name:/ {print $3}' | sort -u)
-  log "Wrote $dll"
+    src="$PREFIX/bin/$dll"
+    [ -f "$src" ] || { echo "Expected $src was not produced by the build" >&2; exit 1; }
+    cp -f "$src" "$WIN_DIR/$dll"
+    dump_pe "built $dll" "$WIN_DIR/$dll"
+    while IFS= read -r imp; do
+        if ! echo "$imp" | grep -qiE "$ALLOWED"; then
+            echo "  UNEXPECTED import in $dll: $imp" >&2
+            fail=1
+        fi
+    done < <("${HOST}-objdump" -p "$WIN_DIR/$dll" | awk '/DLL Name:/ {print $3}' | sort -u)
+    log "Wrote $dll"
 done
 
 if [ "$fail" -ne 0 ]; then
-  echo "One or more Windows DLLs import a non-system library; they are not self-contained." >&2
-  exit 1
+    echo "One or more Windows DLLs import a non-system library; they are not self-contained." >&2
+    exit 1
 fi
 
 # The old dependency DLLs are now built in and no longer needed.
 for old in libpng16-16.dll libjpeg-9.dll zlib1.dll libfreetype-6.dll; do
-  [ -f "$WIN_DIR/$old" ] && log "Now built in, can be removed from Yafc/lib/windows: $old"
+    [ -f "$WIN_DIR/$old" ] && log "Now built in, can be removed from Yafc/lib/windows: $old"
 done
 
 ls -la "$WIN_DIR"
