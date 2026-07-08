@@ -62,7 +62,9 @@ public abstract class WindowUtility(Padding padding) : Window(padding) {
 internal class UtilityWindowDrawingSurface : SoftwareDrawingSurface {
     public override Window window { get; }
 
-    public UtilityWindowDrawingSurface(WindowUtility window) : base(IntPtr.Zero, window.pixelsPerUnit) {
+    public override float pixelsPerUnit => window.pixelsPerUnit;
+
+    public UtilityWindowDrawingSurface(WindowUtility window) : base(IntPtr.Zero) {
         this.window = window;
         InvalidateRenderer();
     }

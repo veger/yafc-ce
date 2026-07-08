@@ -92,6 +92,8 @@ internal class MainWindowDrawingSurface : DrawingSurface {
 
     public override Window window { get; }
 
+    public override float pixelsPerUnit => window.pixelsPerUnit;
+
     /// <summary>
     /// Function <c>PickRenderDriver()</c> picks the best rendering backend available on the platform.
     ///
@@ -169,7 +171,7 @@ internal class MainWindowDrawingSurface : DrawingSurface {
         return selectedRenderDriver;
     }
 
-    public MainWindowDrawingSurface(WindowMain window, bool forceSoftwareRenderer) : base(window.pixelsPerUnit) {
+    public MainWindowDrawingSurface(WindowMain window, bool forceSoftwareRenderer) {
         this.window = window;
 
         renderer = SDL.SDL_CreateRenderer(window.window, PickRenderDriver(SDL.SDL_RendererFlags.SDL_RENDERER_PRESENTVSYNC, forceSoftwareRenderer), SDL.SDL_RendererFlags.SDL_RENDERER_PRESENTVSYNC);

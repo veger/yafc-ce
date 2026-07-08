@@ -249,6 +249,7 @@ public partial class ImGui {
         }
 
         buildWidth = width;
+        buildPixelsPerUnit = pixelsPerUnit;
         nextRebuildTimer = long.MaxValue;
         rebuildRequested = false;
         ClearDrawCommandList();
