@@ -149,11 +149,11 @@ public static partial class Ui {
                             case SDL.SDL_WindowEventID.SDL_WINDOWEVENT_MINIMIZED:
                                 window.Minimized();
                                 break;
-                            case SDL.SDL_WindowEventID.SDL_WINDOWEVENT_MOVED:
-                                window.WindowMoved();
-                                break;
                             case SDL.SDL_WindowEventID.SDL_WINDOWEVENT_RESIZED:
                                 window.WindowResize();
+                                break;
+                            case SDL.SDL_WindowEventID.SDL_WINDOWEVENT_SIZE_CHANGED:
+                                window.SizeChanged();
                                 break;
                             case SDL.SDL_WindowEventID.SDL_WINDOWEVENT_MAXIMIZED:
                                 window.WindowMaximized();

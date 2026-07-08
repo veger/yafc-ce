@@ -44,9 +44,9 @@ public abstract class WindowUtility(Padding padding) : Window(padding) {
         base.Create();
     }
 
-    protected internal override void WindowResize() {
-        (surface as UtilityWindowDrawingSurface)!.OnResize(); // null-forgiving: Assuming WindowResize cannot be called before Create
-        base.WindowResize();
+    protected internal override void SizeChanged() {
+        (surface as UtilityWindowDrawingSurface)?.OnSizeChanged();
+        base.SizeChanged();
     }
 
     protected internal override void Close() {
@@ -76,7 +76,7 @@ internal class UtilityWindowDrawingSurface : SoftwareDrawingSurface {
         _ = SDL.SDL_SetRenderDrawBlendMode(renderer, SDL.SDL_BlendMode.SDL_BLENDMODE_BLEND);
     }
 
-    public void OnResize() => InvalidateRenderer();
+    public void OnSizeChanged() => InvalidateRenderer();
 
     public override void Dispose() {
         base.Dispose();
