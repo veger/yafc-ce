@@ -30,6 +30,7 @@ Date:
         - Ensure technology levels can always be specified, even with super-long technology names.
         - Don't log an exception when a cache file is simply absent.
         - Show the per-cycle amount for every science pack in a technology tooltip, instead of only the first.
+        - Fix text disappearing on the welcome screen and other secondary windows.
     Internal changes:
         - Upgrade to .NET 10.
 ----------------------------------------------------------------------------------------------------------------------
