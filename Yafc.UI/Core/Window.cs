@@ -90,6 +90,10 @@ public abstract class Window : IDisposable {
         return desiredUnitsToPixels;
     }
 
+    internal static float UnitsToDips(float units) => units * MathUtils.Round(96f / 6.8f);
+
+    internal static float DipsToUnits(float dips) => dips / MathUtils.Round(96f / 6.8f);
+
     protected internal void SetWindowTitle(string value) => SDL.SDL_SetWindowTitle(window, value);
 
     protected internal virtual void WindowResize() {

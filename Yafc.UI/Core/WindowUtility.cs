@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Numerics;
 using SDL2;
 
 namespace Yafc.UI;
@@ -17,17 +18,20 @@ public abstract class WindowUtility(Padding padding) : Window(padding) {
         if (parent != null) {
             parent.ChildWindow = this;
         }
-        contentSize.X = width;
-        int display = parent == null ? 0 : SDL.SDL_GetWindowDisplayIndex(parent.window);
-        pixelsPerUnit = CalculateUnitsToPixels(display);
-        contentSize = rootGui.CalculateState(width, pixelsPerUnit);
-        windowWidth = rootGui.UnitsToPixels(contentSize.X);
-        windowHeight = rootGui.UnitsToPixels(contentSize.Y);
-        var flags = SDL.SDL_WindowFlags.SDL_WINDOW_MOUSE_FOCUS;
+
+        contentSize = new Vector2(width, 0);
+        // Perform initial layout to dynamically calculate necessary window height.
+        contentSize = rootGui.CalculateState(width, UnitsToDips(1));
+
+        windowWidth = MathUtils.Round(UnitsToDips(contentSize.X));
+        windowHeight = MathUtils.Round(UnitsToDips(contentSize.Y));
+
+        var flags = SDL.SDL_WindowFlags.SDL_WINDOW_MOUSE_FOCUS | SDL.SDL_WindowFlags.SDL_WINDOW_ALLOW_HIGHDPI;
         if (parent != null) {
             flags |= SDL.SDL_WindowFlags.SDL_WINDOW_SKIP_TASKBAR | SDL.SDL_WindowFlags.SDL_WINDOW_ALWAYS_ON_TOP;
         }
 
+        int display = parent == null ? 0 : SDL.SDL_GetWindowDisplayIndex(parent.window);
         window = SDL.SDL_CreateWindow(title,
             SDL.SDL_WINDOWPOS_CENTERED_DISPLAY(display),
             SDL.SDL_WINDOWPOS_CENTERED_DISPLAY(display),
@@ -35,6 +39,7 @@ public abstract class WindowUtility(Padding padding) : Window(padding) {
             windowHeight,
             flags
         );
+
         surface = new UtilityWindowDrawingSurface(this);
         base.Create();
     }
@@ -42,23 +47,6 @@ public abstract class WindowUtility(Padding padding) : Window(padding) {
     protected internal override void WindowResize() {
         (surface as UtilityWindowDrawingSurface)!.OnResize(); // null-forgiving: Assuming WindowResize cannot be called before Create
         base.WindowResize();
-    }
-
-    private void CheckSizeChange() {
-        int newWindowWidth = rootGui.UnitsToPixels(contentSize.X);
-        int newWindowHeight = rootGui.UnitsToPixels(contentSize.Y);
-
-        if (windowWidth != newWindowWidth || windowHeight != newWindowHeight) {
-            windowWidth = newWindowWidth;
-            windowHeight = newWindowHeight;
-            SDL.SDL_SetWindowSize(window, newWindowWidth, newWindowHeight);
-            WindowResize();
-        }
-    }
-
-    protected override void MainRender() {
-        CheckSizeChange();
-        base.MainRender();
     }
 
     protected internal override void Close() {

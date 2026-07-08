@@ -14,16 +14,22 @@ public abstract class WindowMain(Padding padding, bool forceSoftwareRenderer) : 
             return;
         }
 
-        pixelsPerUnit = CalculateUnitsToPixels(display);
-        // Min width/height define the minimum size of the main window when it gets resized.
-        // The minimal size prevents issues/unreachable spots within the UI (like dialogs that do not size with the window size).
-        int minWidth = MathUtils.Round(85f * pixelsPerUnit);
-        int minHeight = MathUtils.Round(60f * pixelsPerUnit);
-        // Initial width/height define the initial size of the MainWindow when it is opened.
-        int initialWidthPixels = Math.Max(minWidth, MathUtils.Round(initialWidth * pixelsPerUnit));
-        int initialHeightPixels = Math.Max(minHeight, MathUtils.Round(initialHeight * pixelsPerUnit));
-        SDL.SDL_WindowFlags flags = SDL.SDL_WindowFlags.SDL_WINDOW_RESIZABLE | (RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? 0 : SDL.SDL_WindowFlags.SDL_WINDOW_OPENGL);
+        // The minimum size is to prevent unreachable spots within the UI.
+        float minUnitWidth = 85f;
+        float minUnitHeight = 60f;
+        contentSize = new Vector2(
+            Math.Max(minUnitWidth, initialWidth),
+            Math.Max(minUnitHeight, initialHeight)
+        );
+        int width = MathUtils.Round(UnitsToDips(contentSize.X));
+        int height = MathUtils.Round(UnitsToDips(contentSize.Y));
 
+        SDL.SDL_WindowFlags flags =
+            SDL.SDL_WindowFlags.SDL_WINDOW_RESIZABLE |
+            SDL.SDL_WindowFlags.SDL_WINDOW_ALLOW_HIGHDPI;
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+            flags |= SDL.SDL_WindowFlags.SDL_WINDOW_OPENGL;
+        }
         if (maximized) {
             flags |= SDL.SDL_WindowFlags.SDL_WINDOW_MAXIMIZED;
         }
@@ -31,13 +37,16 @@ public abstract class WindowMain(Padding padding, bool forceSoftwareRenderer) : 
         window = SDL.SDL_CreateWindow(title,
             SDL.SDL_WINDOWPOS_CENTERED_DISPLAY(display),
             SDL.SDL_WINDOWPOS_CENTERED_DISPLAY(display),
-            initialWidthPixels, initialHeightPixels, flags
+            width, height, flags
         );
         if (window == IntPtr.Zero) {
             logger.Error("SDL_CreateWindow failed: {Error}", SDL.SDL_GetError());
         }
-        SDL.SDL_SetWindowMinimumSize(window, minWidth, minHeight);
-        WindowResize();
+        SDL.SDL_SetWindowMinimumSize(
+            window,
+            MathUtils.Round(UnitsToDips(minUnitWidth)),
+            MathUtils.Round(UnitsToDips(minUnitHeight)));
+
         surface = new MainWindowDrawingSurface(this, forceSoftwareRenderer);
         base.Create();
     }
@@ -64,7 +73,7 @@ public abstract class WindowMain(Padding padding, bool forceSoftwareRenderer) : 
 
     protected internal override void WindowResize() {
         SDL.SDL_GetWindowSize(window, out int windowWidth, out int windowHeight);
-        contentSize = new Vector2(windowWidth / pixelsPerUnit, windowHeight / pixelsPerUnit);
+        contentSize = new Vector2(DipsToUnits(windowWidth), DipsToUnits(windowHeight));
         base.WindowResize();
     }
 

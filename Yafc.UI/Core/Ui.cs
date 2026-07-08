@@ -18,19 +18,8 @@ public static partial class Ui {
     private static readonly Dictionary<uint, Window> windows = [];
     internal static void RegisterWindow(uint id, Window window) => windows[id] = window;
 
-    [LibraryImport("SHCore.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static partial bool SetProcessDpiAwareness(int awareness);
     public static void Start() {
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
-            try {
-                _ = SetProcessDpiAwareness(2);
-            }
-            catch (Exception) {
-                logger.Information("DPI awareness setup failed"); // On older versions on Windows
-            }
-        }
-
+        SDL.SDL_SetHint("SDL_WINDOWS_DPI_SCALING", "1");
         int sdlInitResult = SDL.SDL_Init(SDL.SDL_INIT_VIDEO);
         if (sdlInitResult != 0) {
             logger.Error("SDL_Init failed ({Result}): {Error}", sdlInitResult, SDL.SDL_GetError());

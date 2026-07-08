@@ -106,7 +106,7 @@ public sealed class InputSystem {
             return;
         }
 
-        Vector2 newMousePos = new Vector2(rawX / mouseOverWindow.pixelsPerUnit, rawY / mouseOverWindow.pixelsPerUnit);
+        Vector2 newMousePos = new Vector2(Window.DipsToUnits(rawX), Window.DipsToUnits(rawY));
         mouseDelta = newMousePos - mousePosition;
         mousePosition = newMousePos;
 
