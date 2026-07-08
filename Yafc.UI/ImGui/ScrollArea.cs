@@ -50,7 +50,7 @@ public abstract class Scrollable(bool vertical, bool horizontal, bool collapsibl
 
         if (gui.isBuilding) {
             // Calculate required size, including padding if needed
-            requiredContentSize = MeasureContent(width, gui);
+            requiredContentSize = MeasureContent(width);
 
             if (requiredContentSize.Y > availableHeight && useBottomPadding) {
                 requiredContentSize.Y += BottomPaddingInPixels / gui.pixelsPerUnit;
@@ -162,7 +162,7 @@ public abstract class Scrollable(bool vertical, bool horizontal, bool collapsibl
 
     ///<summary>This method is called when the required area of the <see cref="Scrollable"/> for the provided <paramref name="width"/> is needed.</summary>
     /// <returns>The required area of the contents of the <see cref="Scrollable"/>.</returns>
-    public abstract Vector2 MeasureContent(float width, ImGui gui);
+    public abstract Vector2 MeasureContent(float width);
 
     public bool KeyDown(SDL.SDL_Keysym key) {
         if (gui?.enableDrawing != true) {
@@ -292,7 +292,7 @@ public abstract class ScrollAreaBase : Scrollable {
     public void RebuildContents() => contents.Rebuild();
 
     ///<summary>Calculates the content dimensions by (re)building the contents using <see cref="BuildContents"/></summary>
-    public override Vector2 MeasureContent(float width, ImGui gui) => contents.CalculateState(width, gui.pixelsPerUnit);
+    public override Vector2 MeasureContent(float width) => contents.CalculateState(width);
 }
 
 ///<summary>Area with scrollbars, which will be visible if it does not fit in the parent area in order to let the user fully view the content of the area.</summary>

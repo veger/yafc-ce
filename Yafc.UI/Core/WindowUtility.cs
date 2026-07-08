@@ -21,7 +21,7 @@ public abstract class WindowUtility(Padding padding) : Window(padding) {
 
         contentSize = new Vector2(width, 0);
         // Perform initial layout to dynamically calculate necessary window height.
-        contentSize = rootGui.CalculateState(width, UnitsToDips(1));
+        contentSize = rootGui.CalculateState(width);
 
         windowWidth = MathUtils.Round(UnitsToDips(contentSize.X));
         windowHeight = MathUtils.Round(UnitsToDips(contentSize.Y));

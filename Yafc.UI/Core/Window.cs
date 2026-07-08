@@ -118,7 +118,7 @@ public abstract class Window : IDisposable {
         repaintRequired = false;
 
         if (rootGui.IsRebuildRequired()) {
-            _ = rootGui.CalculateState(size.X, pixelsPerUnit);
+            _ = rootGui.CalculateState(surface, size.X);
         }
 
         MainRender();
@@ -134,7 +134,12 @@ public abstract class Window : IDisposable {
         _ = SDL.SDL_SetRenderDrawColor(surface.renderer, bgColor.r, bgColor.g, bgColor.b, bgColor.a);
         Rect fullRect = new Rect(default, contentSize);
         repaintCount++;
-        surface.Clear(rootGui.ToSdlRect(fullRect));
+        surface.Clear(new SDL.SDL_Rect {
+            x = MathUtils.Round(fullRect.X * surface.pixelsPerUnit),
+            y = MathUtils.Round(fullRect.Y * surface.pixelsPerUnit),
+            w = MathUtils.Round(fullRect.Width * surface.pixelsPerUnit),
+            h = MathUtils.Round(fullRect.Height * surface.pixelsPerUnit),
+        });
         rootGui.InternalPresent(surface, fullRect, fullRect);
     }
 

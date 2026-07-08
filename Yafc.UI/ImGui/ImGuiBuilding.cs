@@ -76,7 +76,7 @@ public partial class ImGui {
         }
 
         panels.Add(new DrawCommand<IPanel>(rect, panel, 0));
-        _ = panel.CalculateState(rect.Width, pixelsPerUnit);
+        _ = panel.CalculateState(rect.Width);
     }
 
     private void ClearDrawCommandList() {

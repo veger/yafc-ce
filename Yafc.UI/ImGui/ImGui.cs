@@ -23,7 +23,7 @@ public interface IPanel {
     void MouseMove(int mouseDownButton);
     void MouseScroll(int delta);
     void MarkEverythingForRebuild();
-    Vector2 CalculateState(float width, float pixelsPerUnit);
+    Vector2 CalculateState(float width);
     void Present(DrawingSurface surface, Rect position, Rect screenClip, ImGui parent);
     IPanel HitTest(Vector2 position);
     IPanel? Parent { get; }
@@ -132,12 +132,17 @@ public sealed partial class ImGui : IDisposable, IPanel {
 
     public void Repaint() => window?.Repaint();
 
-    public Vector2 CalculateState(float width, float _) {
+    public Vector2 CalculateState(float width) {
         if (IsRebuildRequired() || buildWidth != width || buildPixelsPerUnit != pixelsPerUnit) {
             BuildGui(width);
         }
 
         return contentSize;
+    }
+
+    public Vector2 CalculateState(DrawingSurface surface, float width) {
+        this.surface = surface;
+        return CalculateState(width);
     }
 
     public void Present(DrawingSurface surface, Rect position, Rect screenClip, ImGui? parent) {

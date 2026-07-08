@@ -152,7 +152,7 @@ public class MainScreenTabBar {
         switch (gui.action) {
             case ImGuiAction.Build:
                 gui.DrawPanel(rect, tabs);
-                var measuredSize = tabs.CalculateState(0f, gui.pixelsPerUnit);
+                var measuredSize = tabs.CalculateState(0f);
                 maxScroll = MathF.Max(0f, measuredSize.X - rect.Width);
                 break;
             case ImGuiAction.MouseScroll:
