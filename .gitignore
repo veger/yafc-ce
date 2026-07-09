@@ -404,3 +404,7 @@ FodyWeavers.xsd
 
 # JetBrains Rider
 *.sln.iml
+
+# SDL native-library build work directories (sdl/build-*.sh)
+sdl/.build-macos/
+sdl/.build-windows/
