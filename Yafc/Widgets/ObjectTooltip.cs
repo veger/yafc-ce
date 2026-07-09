@@ -700,6 +700,9 @@ doneDrawing:;
             if (quality.UpgradeChance > 0) {
                 gui.BuildText(LSs.TooltipQualityUpgradeChance.L(DataUtils.FormatAmount(quality.UpgradeChance, UnitOfMeasure.Percent)));
             }
+            if (quality.level > 0 && quality.ChainChance > 0) {
+                gui.BuildText(LSs.TooltipQualityChainChance.L(DataUtils.FormatAmount(quality.ChainChance, UnitOfMeasure.Percent)));
+            }
         }
 
         BuildSubHeader(gui, LSs.TooltipHeaderQualityBonuses);

@@ -543,7 +543,12 @@ internal partial class FactorioDataDeserializer {
                 baseSpeed = effect.speed,
                 baseProductivity = effect.productivity,
                 basePollution = effect.pollution,
-                baseQuality = effect.quality,
+                // In Factorio 2.0, quality module effects on the prototype were 10x greater. To avoid version-specific
+                // logic in the UI, this is scaled during parsing. This is offset by multiplying 'next_probability' by
+                // 10 in the quality prototype.
+                baseQuality = factorioVersion < v2_1 ? effect.quality / 10f : effect.quality,
+                // In Factorio 2.0, quality module bonus was floored to 0.1% precision instead of 0.01%.
+                qualityPrecisionScale = factorioVersion < v2_1 ? 1_000 : 10_000,
             };
         }
         else if (table.Get("type", "") == "ammo" && table["ammo_type"] is LuaTable ammo_type) {
