@@ -19,7 +19,7 @@ dotnet publish Yafc/Yafc.csproj -r linux-x64 --self-contained -c Release -o Buil
 
 find Build -name "Yafc.I18n.Generator*" -delete
 find Build -type f -print0 | xargs -0 chmod 644
-find Build \( -name Yafc -or -type d \) -print0 | xargs -0 chmod 755
+find Build \( -name Yafc -or -name Yafc.exe -or -path "Build/Windows*.dll" -or -type d \) -print0 | xargs -0 chmod 755
 
 pushd Build
 tar czf Yafc-CE-Linux-$VERSION.tar.gz Linux
