@@ -1,0 +1,17 @@
+# style: apply file-scoped namespaces
+1f723b4156a8c7d03a6167bd951eb78e26e26015
+
+# Run Code Cleanup for the whole solution
+14a46967df509549d2dfa4bac87b2749db025dc8
+
+# csharp_prefer_braces = true:suggestion
+862a4aa980b7ef72d39a0545aea2f1d9e73ac53b
+
+# don't use vars where possible
+4df1f94a8143da46048f04d4df2ae6f6cdf74eda
+
+# style: Apply wrapping and blank lines around control statements
+eb7b0e31ad073a80333f01bf771d41bd5cd69358
+
+# IDE0022: Use expression body for methods
+316ffda0782d995cf17e9af5282f8357a7139ada
