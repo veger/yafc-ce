@@ -3,8 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
 using Serilog;
+using Yafc.Core;
 using Yafc.I18n;
-using Yafc.UI;
 
 namespace Yafc.Model;
 

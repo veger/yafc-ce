@@ -6,6 +6,7 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using SDL2;
 using Serilog;
+using Yafc.Core;
 using Yafc.Model;
 using Yafc.Parser;
 using Yafc.UI;

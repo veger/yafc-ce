@@ -7,8 +7,8 @@ using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using Google.OrTools.LinearSolver;
 using Serilog;
+using Yafc.Core;
 using Yafc.I18n;
-using Yafc.UI;
 
 namespace Yafc.Model;
 

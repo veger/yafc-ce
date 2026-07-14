@@ -3,6 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using SDL2;
+using Yafc.Core;
 
 namespace Yafc.UI;
 

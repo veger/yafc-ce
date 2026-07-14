@@ -6,8 +6,8 @@ using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Threading.Tasks;
 using Serilog;
+using Yafc.Core;
 using Yafc.I18n;
-using Yafc.UI;
 
 namespace Yafc.Model;
 

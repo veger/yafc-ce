@@ -2,6 +2,7 @@
 using System.Numerics;
 using SDL2;
 using Serilog;
+using Yafc.Core;
 
 namespace Yafc.UI;
 

@@ -9,6 +9,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using SDL2;
 using Serilog;
+using Yafc.Core;
 using Yafc.I18n;
 using Yafc.Model;
 using Yafc.UI;

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using SDL2;
+using Yafc.Core;
 using Yafc.I18n;
 
 namespace Yafc.UI;
