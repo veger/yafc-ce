@@ -251,6 +251,9 @@ doneDrawing:;
                     if (baseEffect.productivity != 0f) {
                         gui.BuildText(LSs.EntityCraftingProductivity.L(DataUtils.FormatAmount(baseEffect.productivity, UnitOfMeasure.Percent)));
                     }
+                    if (baseEffect.quality != 0f) {
+                        gui.BuildText(LSs.EntityCraftingQuality.L(DataUtils.FormatAmount(baseEffect.quality, UnitOfMeasure.Percent)));
+                    }
                     if (baseEffect.consumption != 0f) {
                         gui.BuildText(LSs.EntityEnergyConsumption.L(DataUtils.FormatAmount(baseEffect.consumption, UnitOfMeasure.Percent)));
                     }
