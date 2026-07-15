@@ -23,7 +23,7 @@ public interface IPanel {
     void MouseMove(int mouseDownButton);
     void MouseScroll(int delta);
     void MarkEverythingForRebuild();
-    Vector2 CalculateState(float width, float pixelsPerUnit);
+    Vector2 CalculateState(float width);
     void Present(DrawingSurface surface, Rect position, Rect screenClip, ImGui parent);
     IPanel HitTest(Vector2 position);
     IPanel? Parent { get; }
@@ -64,11 +64,13 @@ public sealed partial class ImGui : IDisposable, IPanel {
     }
 
     public readonly GuiBuilder? guiBuilder;
-    public Window? window { get; private set; }
+    private DrawingSurface? surface { get; set; }
+    public Window? window { get => surface?.window; }
     public ImGui? parent { get; private set; }
     IPanel? IPanel.Parent => parent;
     private bool rebuildRequested = true;
     private float buildWidth;
+    private float buildPixelsPerUnit;
     public bool mouseCapture { get; set; } = true;
     [MemberNotNullWhen(true, nameof(window))]
     public bool valid { get => field && window != null && window.visible; private set; } = true;
@@ -81,7 +83,7 @@ public sealed partial class ImGui : IDisposable, IPanel {
     }
     public int actionParameter { get; private set; }
     private long nextRebuildTimer = long.MaxValue;
-    public float pixelsPerUnit { get; private set; }
+    public float pixelsPerUnit { get => surface?.pixelsPerUnit ?? Window.UnitsToDips(1); }
 
     private readonly float scale = 1f;
     private readonly bool clip;
@@ -130,13 +132,17 @@ public sealed partial class ImGui : IDisposable, IPanel {
 
     public void Repaint() => window?.Repaint();
 
-    public Vector2 CalculateState(float width, float pixelsPerUnit) {
-        if (IsRebuildRequired() || buildWidth != width || this.pixelsPerUnit != pixelsPerUnit) {
-            this.pixelsPerUnit = pixelsPerUnit;
+    public Vector2 CalculateState(float width) {
+        if (IsRebuildRequired() || buildWidth != width || buildPixelsPerUnit != pixelsPerUnit) {
             BuildGui(width);
         }
 
         return contentSize;
+    }
+
+    public Vector2 CalculateState(DrawingSurface surface, float width) {
+        this.surface = surface;
+        return CalculateState(width);
     }
 
     public void Present(DrawingSurface surface, Rect position, Rect screenClip, ImGui? parent) {
@@ -144,9 +150,8 @@ public sealed partial class ImGui : IDisposable, IPanel {
             this.parent = parent;
         }
 
-        pixelsPerUnit = surface.pixelsPerUnit;
-
-        if (IsRebuildRequired() || buildWidth != position.Width) {
+        this.surface = surface;
+        if (IsRebuildRequired() || buildWidth != position.Width || pixelsPerUnit != buildPixelsPerUnit) {
             BuildGui(position.Width);
         }
 
@@ -155,10 +160,8 @@ public sealed partial class ImGui : IDisposable, IPanel {
 
     private static readonly List<(SDL.SDL_Rect, RectangleBorder)> borders = [];
     internal void InternalPresent(DrawingSurface surface, Rect position, Rect screenClip) {
-        if (surface.window != null) {
-            window = surface.window;
-            window.SetNextRepaint(nextRebuildTimer);
-        }
+        this.surface = surface;
+        window?.SetNextRepaint(nextRebuildTimer);
 
         nint renderer = surface.renderer;
         SDL.SDL_Rect prevClip = default;

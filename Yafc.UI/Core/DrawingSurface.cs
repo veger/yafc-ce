@@ -20,7 +20,7 @@ public readonly struct TextureHandle(DrawingSurface surface, IntPtr handle) {
     }
 }
 
-public abstract class DrawingSurface(float pixelsPerUnit) : IDisposable {
+public abstract class DrawingSurface : IDisposable {
     public IntPtr renderer {
         get;
         protected set {
@@ -31,7 +31,7 @@ public abstract class DrawingSurface(float pixelsPerUnit) : IDisposable {
 
     public int rendererVersion { get; private set; }
 
-    public float pixelsPerUnit { get; set; } = pixelsPerUnit;
+    public abstract float pixelsPerUnit { get; }
 
     internal static RenderingUtils.BlitMapping[]? blitMapping;
 
@@ -104,7 +104,7 @@ public abstract class DrawingSurface(float pixelsPerUnit) : IDisposable {
     }
 }
 
-public abstract class SoftwareDrawingSurface(IntPtr surface, float pixelsPerUnit) : DrawingSurface(pixelsPerUnit) {
+public abstract class SoftwareDrawingSurface(IntPtr surface) : DrawingSurface {
     public IntPtr surface { get; protected set; } = surface;
 
     public override SDL.SDL_Rect SetClip(SDL.SDL_Rect clip) {
@@ -133,15 +133,18 @@ public abstract class SoftwareDrawingSurface(IntPtr surface, float pixelsPerUnit
 }
 
 public class MemoryDrawingSurface : SoftwareDrawingSurface {
+    public override float pixelsPerUnit { get; }
+
     public MemoryDrawingSurface(Vector2 size, float pixelsPerUnit) : this(size, ClampPixelsPerUnit(size, pixelsPerUnit), true) { }
 
     private MemoryDrawingSurface(Vector2 size, float pixelsPerUnit, bool __) :
-        base(SDL.SDL_CreateRGBSurfaceWithFormat(0, MathUtils.Round(size.X * pixelsPerUnit), MathUtils.Round(size.Y * pixelsPerUnit), 0, SDL.SDL_PIXELFORMAT_RGB888), pixelsPerUnit) {
+        base(SDL.SDL_CreateRGBSurfaceWithFormat(0, MathUtils.Round(size.X * pixelsPerUnit), MathUtils.Round(size.Y * pixelsPerUnit), 0, SDL.SDL_PIXELFORMAT_RGB888)) {
+        this.pixelsPerUnit = pixelsPerUnit;
         renderer = SDL.SDL_CreateSoftwareRenderer(surface);
         _ = SDL.SDL_SetRenderDrawBlendMode(renderer, SDL.SDL_BlendMode.SDL_BLENDMODE_BLEND);
     }
 
-    public static float ClampPixelsPerUnit(Vector2 size, float pixelsPerUnit) {
+    private static float ClampPixelsPerUnit(Vector2 size, float pixelsPerUnit) {
         float maxPPU = MathF.Min(65535 / size.X, 65535 / size.Y);
         return MathF.Min(maxPPU, pixelsPerUnit);
     }

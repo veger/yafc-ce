@@ -19,19 +19,10 @@ public static partial class Ui {
     private static readonly Dictionary<uint, Window> windows = [];
     internal static void RegisterWindow(uint id, Window window) => windows[id] = window;
 
-    [LibraryImport("SHCore.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static partial bool SetProcessDpiAwareness(int awareness);
     public static void Start() {
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
-            try {
-                _ = SetProcessDpiAwareness(2);
-            }
-            catch (Exception) {
-                logger.Information("DPI awareness setup failed"); // On older versions on Windows
-            }
-        }
-
+        SDL.SDL_SetHint("SDL_WINDOWS_DPI_SCALING", "1");
+        // SDL2-compat on Wayland assumes that all SDL2 apps are not DPI aware, unless forcibly overriden.
+        SDL.SDL_SetHintWithPriority("SDL_VIDEO_WAYLAND_SCALE_TO_DISPLAY", "0", SDL.SDL_HintPriority.SDL_HINT_OVERRIDE);
         int sdlInitResult = SDL.SDL_Init(SDL.SDL_INIT_VIDEO);
         if (sdlInitResult != 0) {
             logger.Error("SDL_Init failed ({Result}): {Error}", sdlInitResult, SDL.SDL_GetError());
@@ -161,11 +152,11 @@ public static partial class Ui {
                             case SDL.SDL_WindowEventID.SDL_WINDOWEVENT_MINIMIZED:
                                 window.Minimized();
                                 break;
-                            case SDL.SDL_WindowEventID.SDL_WINDOWEVENT_MOVED:
-                                window.WindowMoved();
-                                break;
                             case SDL.SDL_WindowEventID.SDL_WINDOWEVENT_RESIZED:
                                 window.WindowResize();
+                                break;
+                            case SDL.SDL_WindowEventID.SDL_WINDOWEVENT_SIZE_CHANGED:
+                                window.SizeChanged();
                                 break;
                             case SDL.SDL_WindowEventID.SDL_WINDOWEVENT_MAXIMIZED:
                                 window.WindowMaximized();

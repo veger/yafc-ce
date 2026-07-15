@@ -48,12 +48,12 @@ public abstract class ProjectPageView : Scrollable {
         if (gui.isBuilding) {
             gui.spacing = 0f;
             var position = gui.AllocateRect(0f, 0f, 0f).Position;
-            var headerSize = headerContent.CalculateState(visibleSize.X - ScrollbarSize, gui.pixelsPerUnit);
+            var headerSize = headerContent.CalculateState(visibleSize.X - ScrollbarSize);
             contentWidth = headerSize.X;
             headerHeight = headerSize.Y;
             var headerRect = gui.AllocateRect(visibleSize.X, headerHeight);
             position.Y += headerHeight;
-            var contentSize = bodyContent.CalculateState(visibleSize.X - ScrollbarSize, gui.pixelsPerUnit);
+            var contentSize = bodyContent.CalculateState(visibleSize.X - ScrollbarSize);
 
             if (contentSize.X > contentWidth) {
                 contentWidth = contentSize.X;
@@ -70,7 +70,7 @@ public abstract class ProjectPageView : Scrollable {
         base.Build(gui, visibleSize.Y - headerHeight, true);
     }
 
-    public override Vector2 MeasureContent(float _, ImGui gui) => new Vector2(contentWidth, contentHeight);
+    public override Vector2 MeasureContent(float _) => new Vector2(contentWidth, contentHeight);
 
     protected override void PositionContent(ImGui gui, Rect viewport) {
         headerContent.offset = new Vector2(-scrollX, 0);

@@ -305,7 +305,7 @@ public partial class MainScreen : WindowMain, IKeyboardFocus, IProgress<(string,
             }
 
             if (pageSearch.query != null && gui.isBuilding) {
-                var searchSize = searchGui.CalculateState(30, gui.pixelsPerUnit);
+                var searchSize = searchGui.CalculateState(30);
                 gui.DrawPanel(new Rect(pageVisibleSize.X - searchSize.X, usedHeaderSpace, searchSize.X, searchSize.Y), searchGui);
             }
         }

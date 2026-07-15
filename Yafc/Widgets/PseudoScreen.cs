@@ -27,7 +27,7 @@ public abstract class PseudoScreen : IKeyboardFocus {
 
     public void Build(ImGui gui, Vector2 screenSize) {
         if (gui.isBuilding) {
-            var contentSize = contents.CalculateState(width, gui.pixelsPerUnit);
+            var contentSize = contents.CalculateState(width);
             var position = (screenSize - contentSize) / 2;
             Rect rect = new Rect(position, contentSize);
             gui.DrawPanel(rect, contents);

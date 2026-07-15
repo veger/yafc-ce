@@ -19,7 +19,8 @@ public abstract class Window : IDisposable {
     internal bool visible;
     internal bool closed;
     internal long nextRepaintTime = long.MaxValue;
-    internal float pixelsPerUnit;
+    public float DisplayScale { get; private set; } = 1f;
+    internal float pixelsPerUnit { get => UnitsToDips(DisplayScale); }
     public virtual SchemeColor backgroundColor => SchemeColor.Background;
 
     private Tooltip? tooltip;
@@ -48,6 +49,7 @@ public abstract class Window : IDisposable {
             throw new InvalidOperationException($"surface must be set by a derived class before calling {nameof(Create)}.");
         }
 
+        UpdateDisplayScale();
         SDL.SDL_SetWindowIcon(window, GetIcon());
 
         _ = SDL.SDL_SetRenderDrawBlendMode(surface.renderer, SDL.SDL_BlendMode.SDL_BLENDMODE_BLEND);
@@ -70,47 +72,32 @@ public abstract class Window : IDisposable {
 
         return icon;
     }
-
-    internal static int CalculateUnitsToPixels(int display) {
-        _ = SDL.SDL_GetDisplayDPI(display, out float dpi, out _, out _);
-        _ = SDL.SDL_GetDisplayBounds(display, out var rect);
-        // 82x60 is the minimum screen size in units, plus some for borders
-        // DPI bellow 96 is more likely to be incorrectly reported value than desired,
-        //     see discussion in https://github.com/Yafc-CE/yafc-ce/issues/255#issuecomment-2508884418
-        //     => we treat is as "unknown" and revert to default 100% scaling
-        int desiredUnitsToPixels = dpi < 96 ? 13 : MathUtils.Round(dpi / 6.8f);
-
-        if (desiredUnitsToPixels * 82f >= rect.w) {
-            desiredUnitsToPixels = MathUtils.Floor(rect.w / 82f);
+    private void UpdateDisplayScale() {
+        if (surface is null) {
+            throw new InvalidOperationException($"surface must be set by a derived class before calling {nameof(UpdateDisplayScale)}.");
         }
 
-        if (desiredUnitsToPixels * 65f >= rect.h) {
-            desiredUnitsToPixels = MathUtils.Floor(rect.h / 65f);
-        }
+        SDL.SDL_GetWindowSize(window, out int windowWidth, out int _);
+        SDL.SDL_GetRendererOutputSize(surface.renderer, out int renderWidth, out int _);
+        var value = (float)renderWidth / windowWidth;
 
-        return desiredUnitsToPixels;
+        if (value != DisplayScale) {
+            DisplayScale = value;
+            rootGui.MarkEverythingForRebuild();
+            Repaint();
+        }
     }
+
+    internal static float UnitsToDips(float units) => units * MathUtils.Round(96f / 6.8f);
+
+    internal static float DipsToUnits(float dips) => dips / MathUtils.Round(96f / 6.8f);
 
     protected internal void SetWindowTitle(string value) => SDL.SDL_SetWindowTitle(window, value);
 
-    protected internal virtual void WindowResize() {
-        rootGui.MarkEverythingForRebuild();
-        rootGui.Rebuild();
-    }
+    protected internal virtual void WindowResize() { }
 
-    internal void WindowMoved() {
-        if (surface is null) { throw new InvalidOperationException($"surface must be set by a derived class before calling {nameof(WindowMoved)}."); }
-
-        int index = SDL.SDL_GetWindowDisplayIndex(window);
-        int u2p = CalculateUnitsToPixels(index);
-
-        if (u2p != pixelsPerUnit) {
-            pixelsPerUnit = u2p;
-            surface.pixelsPerUnit = pixelsPerUnit;
-            repaintRequired = true;
-            rootGui.MarkEverythingForRebuild();
-            WindowResize();
-        }
+    protected internal virtual void SizeChanged() {
+        UpdateDisplayScale();
     }
 
     protected virtual void OnRepaint() { }
@@ -132,7 +119,7 @@ public abstract class Window : IDisposable {
         repaintRequired = false;
 
         if (rootGui.IsRebuildRequired()) {
-            _ = rootGui.CalculateState(size.X, pixelsPerUnit);
+            _ = rootGui.CalculateState(surface, size.X);
         }
 
         MainRender();
@@ -148,7 +135,12 @@ public abstract class Window : IDisposable {
         _ = SDL.SDL_SetRenderDrawColor(surface.renderer, bgColor.r, bgColor.g, bgColor.b, bgColor.a);
         Rect fullRect = new Rect(default, contentSize);
         repaintCount++;
-        surface.Clear(rootGui.ToSdlRect(fullRect));
+        surface.Clear(new SDL.SDL_Rect {
+            x = MathUtils.Round(fullRect.X * surface.pixelsPerUnit),
+            y = MathUtils.Round(fullRect.Y * surface.pixelsPerUnit),
+            w = MathUtils.Round(fullRect.Width * surface.pixelsPerUnit),
+            h = MathUtils.Round(fullRect.Height * surface.pixelsPerUnit),
+        });
         rootGui.InternalPresent(surface, fullRect, fullRect);
     }
 
