@@ -176,6 +176,7 @@ internal class RecipeParameters(float recipeTime, float fuelUsagePerSecondPerBui
             activeEffects.productivity += productivity;
             activeEffects.speed += speed;
             activeEffects.consumption += consumption;
+            activeEffects.quality += entity.target.effectReceiver.baseEffect.quality;
 
             if (recipe.target is Recipe { maximumProductivity: float maxProd } && activeEffects.productivity > maxProd) {
                 warningFlags |= WarningFlags.ExcessProductivity;
