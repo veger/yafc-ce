@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using SDL2;
 using Yafc.Core;
 using Yafc.I18n;
 using Yafc.Model;
@@ -7,13 +8,17 @@ using Yafc.UI;
 
 namespace Yafc;
 
-public class NeverEnoughItemsPanel : PseudoScreen, IComparer<NeverEnoughItemsPanel.RecipeEntry> {
+public class NeverEnoughItemsPanel : PseudoScreen, INavigationTarget, IComparer<NeverEnoughItemsPanel.RecipeEntry> {
     private static readonly NeverEnoughItemsPanel Instance = new NeverEnoughItemsPanel();
     private Goods current = null!; // null-forgiving: Set by Show.
     private Goods? changing;
     private float currentFlow;
     private EntryStatus showRecipesRange = EntryStatus.Normal;
+
+    // Recent is the list of Goods shown at the top of the window, and does not contain duplicates.
     private readonly List<Goods> recent = [];
+    // History is the linear history of what Goods have been shown, except when backspace is used to navigate backwards through history.
+    private readonly List<Goods> history = [];
     private bool atCurrentMilestones;
 
     private readonly ScrollArea productionList;
@@ -79,7 +84,8 @@ public class NeverEnoughItemsPanel : PseudoScreen, IComparer<NeverEnoughItemsPan
         Instance.SetItem(item);
     }
 
-    private void SetItem(Goods current) {
+    private void SetItem(Goods current) => SetItem(current, true);
+    private void SetItem(Goods current, bool recordHistory) {
         if (current == this.current) {
             return;
         }
@@ -91,6 +97,12 @@ public class NeverEnoughItemsPanel : PseudoScreen, IComparer<NeverEnoughItemsPan
 
         if (this.current != null) {
             recent.Add(this.current);
+            if (recordHistory) {
+                history.Add(this.current);
+                if (history.Count > 100) {
+                    history.RemoveRange(0, 20);
+                }
+            }
         }
 
         currentFlow = current.ApproximateFlow(atCurrentMilestones);
@@ -113,6 +125,27 @@ public class NeverEnoughItemsPanel : PseudoScreen, IComparer<NeverEnoughItemsPan
         Rebuild();
         productionList.Rebuild();
         usageList.Rebuild();
+    }
+
+    public void NavigateBack() {
+        if (history.Count > 0) {
+            var last = history[^1];
+            SetItem(last, false);
+            history.RemoveAt(history.Count - 1);
+        }
+    }
+
+    /// <summary>
+    /// Handle KeyDown event. 
+    /// Allow for using backspace to backtrack to whatever was viewed previously.
+    /// Most of the code is similar to Yafc\Windows\DependencyExplorer.cs.
+    /// </summary>
+    public override bool KeyDown(SDL.SDL_Keysym key) {
+        if (key.scancode is SDL.SDL_Scancode.SDL_SCANCODE_BACKSPACE or SDL.SDL_Scancode.SDL_SCANCODE_KP_BACKSPACE) {
+            NavigateBack();
+            return true;
+        }
+        return base.KeyDown(key);
     }
 
     private void DrawIngredients(ImGui gui, Recipe recipe) {
