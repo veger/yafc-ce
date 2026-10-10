@@ -7,7 +7,7 @@ using Yafc.UI;
 
 namespace Yafc;
 
-public class DependencyExplorer : PseudoScreen {
+public class DependencyExplorer : PseudoScreen, INavigationTarget {
     private readonly ScrollArea dependencies;
     private readonly ScrollArea dependents;
     private static readonly Padding listPad = new Padding(0.5f);
@@ -177,10 +177,14 @@ public class DependencyExplorer : PseudoScreen {
         dependents.Build(gui);
     }
 
-    public void Change(FactorioObject target) {
-        history.Add(current);
-        if (history.Count > 100) {
-            history.RemoveRange(0, 20);
+    // Overloaded version of the Change function to allow for the function to be stored in Action<T> delegates.
+    public void Change(FactorioObject target) => Change(target, true);
+    public void Change(FactorioObject target, bool recordHistory) {
+        if (recordHistory) {
+            history.Add(current);
+            if (history.Count > 100) {
+                history.RemoveRange(0, 20);
+            }
         }
 
         current = target;
@@ -189,11 +193,17 @@ public class DependencyExplorer : PseudoScreen {
         Rebuild();
     }
 
-    public override bool KeyDown(SDL.SDL_Keysym key) {
-        if (key.scancode == SDL.SDL_Scancode.SDL_SCANCODE_BACKSPACE && history.Count > 0) {
+    public void NavigateBack() {
+        if (history.Count > 0) {
             var last = history[^1];
-            Change(last);
-            history.RemoveRange(history.Count - 2, 2);
+            Change(last, false);
+            history.RemoveAt(history.Count - 1);
+        }
+    }
+
+    public override bool KeyDown(SDL.SDL_Keysym key) {
+        if (key.scancode == SDL.SDL_Scancode.SDL_SCANCODE_BACKSPACE) {
+            NavigateBack();
             return true;
         }
         return base.KeyDown(key);
