@@ -202,7 +202,7 @@ public class DependencyExplorer : PseudoScreen, INavigationTarget {
     }
 
     public override bool KeyDown(SDL.SDL_Keysym key) {
-        if (key.scancode == SDL.SDL_Scancode.SDL_SCANCODE_BACKSPACE) {
+        if (key.scancode is SDL.SDL_Scancode.SDL_SCANCODE_BACKSPACE or SDL.SDL_Scancode.SDL_SCANCODE_KP_BACKSPACE) {
             NavigateBack();
             return true;
         }
