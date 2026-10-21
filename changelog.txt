@@ -28,6 +28,7 @@ Date:
     Fixes:
         - A mod's recommended dependencies are now correctly treated as optional
         - Define LuaHelpers.stage (added in 2.1) as "prototype"
+        - Support for Factorio 2.1.20: item fuel_category renamed to fuel_categories (#705)
 ----------------------------------------------------------------------------------------------------------------------
 Version: 2.20.0
 Date: 17 July 2026
