@@ -451,6 +451,11 @@ public static partial class FactorioDataSource {
                 }
             }
             modPackDataHash.Append(Encoding.UTF8.GetBytes(locale));
+            // Both flags change the parsed data. Expensive recipes only exist before 2.0.
+            if (factorioVersion < FactorioDataDeserializer.v2_0) {
+                modPackDataHash.Append(BitConverter.GetBytes(expensive));
+            }
+            modPackDataHash.Append(BitConverter.GetBytes(netProduction));
 
             Task? renderTask = null;
             ProgressForwarder<(string, string)> renderProgress = new();
