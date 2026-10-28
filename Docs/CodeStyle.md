@@ -14,8 +14,19 @@ The main idea is to keep the code maintainable and readable.
 ### Commits
 * Please separate the change of behavior from the refactoring, into different commits. That helps to understand your commits easier.
 * Please update your branch by rebasing, not merging. Merges are expected only when a PR merges into master. In all other cases, they complicate the commit history, so please rebase instead.
-* Please make meaningful commit messages.
-* Commit-prefixes help to browse the commits later. We encourage you to use the following prefixes in commit subjects:
+* Please make meaningful commit messages. A commit message consists of a title, an empty line, and a description:
+    ```
+    fix: Draw a divider after the Entity column header
+
+    Describe what changed and why. Wrap the lines at 72 characters,
+    and use multiple paragraphs if needed.
+
+    Fixes #386
+    ```
+    * The title is the first line. Git and GitHub often show only this line, so keep it short (around 50 characters, at most 72) and use the imperative mood ("Add", not "Added").
+    * The empty line separates the title from the description. Without it, git treats the whole text as the title.
+    * Use `Fixes #<issue>` to close the issue automatically when the PR is merged.
+* Commit-prefixes help to browse the commits later. Start the title with one of the following prefixes, followed by a colon (e.g. `feat: Add …`):
     * `docs` for documentation changes,
     * `feature` or `feat` for new features,
     * `fix` for bugfixes,
@@ -23,6 +34,7 @@ The main idea is to keep the code maintainable and readable.
     * `style` for the application of the code style,
     * `style-change` for the change of the code style,
     * `chore` is only for the changes that do not belong to any other prefix.
+* Please add the changelog entry in the same commit as the change it describes.
 
 ### Code
 * If you add a TODO, then please describe the details in the commit message, or ideally in a github issue. That increases the chances of the TODOs being addressed.
