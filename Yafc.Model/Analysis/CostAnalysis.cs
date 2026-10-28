@@ -27,7 +27,7 @@ public class CostAnalysis(bool onlyCurrentMilestones) : Analysis {
     private const float CostLowerLimit = -10f;
     private const float CostLimitWhenGeneratesOnMap = 1e4f;
     private const float MiningPenalty = 1f; // Penalty for any mining
-    private const float MiningMaxDensityForPenalty = 2000; // Mining things with less density than this gets extra penalty
+    private const float MiningMaxDensityForPenalty = 30f; // Mining things with less density (resources per tile on a default map; vanilla iron ore is 10) than this gets extra penalty
     private const float MiningMaxExtraPenaltyForRarity = 10f;
 
     public Mapping<FactorioObject, float> cost;
@@ -249,7 +249,8 @@ public class CostAnalysis(bool onlyCurrentMilestones) : Analysis {
                 float miningPenalty = MiningPenalty;
                 float totalDensity = recipe.sourceEntity.mapGenDensity / totalMining;
 
-                if (totalDensity < MiningMaxDensityForPenalty) {
+                // A density of 0 means the density could not be estimated. Don't treat such resources as the rarest possible.
+                if (totalDensity > 0 && totalDensity < MiningMaxDensityForPenalty) {
                     float extraPenalty = MathF.Log(MiningMaxDensityForPenalty / totalDensity);
                     miningPenalty += Math.Min(extraPenalty, MiningMaxExtraPenaltyForRarity);
                 }

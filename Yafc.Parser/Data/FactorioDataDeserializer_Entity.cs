@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using System.Linq;
+using System.Text.RegularExpressions;
 using Yafc.Core;
 using Yafc.I18n;
 using Yafc.Model;
@@ -10,7 +12,6 @@ using Yafc.UI;
 namespace Yafc.Parser;
 
 internal partial class FactorioDataDeserializer {
-    private const float EstimationDistanceFromCenter = 3000f;
     private bool GetFluidBoxFilter(LuaTable? table, string fluidBoxName, int temperature, [NotNullWhen(true)] out Fluid? fluid, out TemperatureRange range) {
         fluid = null;
         range = default;
@@ -638,21 +639,15 @@ internal partial class FactorioDataDeserializer {
         }
 
         if (table.Get("autoplace", out LuaTable? generation)) {
-            if (generation.Get("probability_expression", out LuaTable? prob)) {
-                float probability = EstimateNoiseExpression(prob);
-                float richness = generation.Get("richness_expression", out LuaTable? rich) ? EstimateNoiseExpression(rich) : probability;
-                entity.mapGenDensity = richness * probability;
+            if (generation.Get("probability_expression", out string? probabilityExpression)) {
+                entity.mapGenDensity = EstimateMapGenDensity(probabilityExpression, 0);
             }
-            else if (generation.Get("coverage", out float coverage)) {
-                float richBase = generation.Get("richness_base", 0f);
-                float richMultiplier = generation.Get("richness_multiplier", 0f);
-                float richMultiplierDistance = generation.Get("richness_multiplier_distance_bonus", 0f);
-                float estimatedAmount = coverage * (richBase + richMultiplier + (richMultiplierDistance * EstimationDistanceFromCenter));
-                entity.mapGenDensity = estimatedAmount;
+            if (entity.mapGenDensity <= 0 && generation.Get("richness_expression", out string? richnessExpression)) {
+                entity.mapGenDensity = EstimateMapGenDensity(richnessExpression, 0);
             }
             if (generation.Get("control", out string? control)) {
                 entity.mapGenerated = true;
-                entity.autoplaceControl = generation.Get<string>("control");
+                entity.autoplaceControl = control;
             }
         }
 
@@ -693,114 +688,40 @@ internal partial class FactorioDataDeserializer {
         }
     }
 
-    private float EstimateArgument(LuaTable args, string name, float def = 0) => args.Get(name, out LuaTable? res) ? EstimateNoiseExpression(res) : def;
+    private const int MaxNoiseExpressionDepth = 4;
+    private static readonly Regex baseDensityRegex = new(@"\bbase_density\s*=\s*([-+0-9.eE]+)", RegexOptions.Compiled);
+    private static readonly Regex noiseExpressionReferenceRegex = new(@"var\('([^']+)'\)|[A-Za-z_][A-Za-z0-9_-]*", RegexOptions.Compiled);
 
-    private float EstimateArgument(LuaTable args, int index, float def = 0) => args.Get(index, out LuaTable? res) ? EstimateNoiseExpression(res) : def;
+    /// <summary>
+    /// Estimates the map generation density of an autoplaced entity from one of its noise expressions.
+    /// Yafc does not evaluate noise expressions. Instead, it looks for the <c>base_density</c> parameter that
+    /// <c>resource_autoplace_settings</c> passes to <c>resource_autoplace_all_patches</c>, following references to named noise expressions.
+    /// That parameter is the amount of resource per tile, averaged over the map, assuming default map generation settings.
+    /// </summary>
+    /// <returns>The base density, or 0 if the expression does not lead to a <c>base_density</c> parameter.</returns>
+    private float EstimateMapGenDensity(string expression, int depth) {
+        Match match = baseDensityRegex.Match(expression);
 
-    private float EstimateNoiseExpression(LuaTable expression) {
-        string type = expression.Get("type", "typed");
-
-        switch (type) {
-            case "variable":
-                string varName = expression.Get("variable_name", "");
-
-                if (varName is "x" or "y" or "distance") {
-                    return EstimationDistanceFromCenter;
-                }
-
-                if (((LuaTable?)raw["noise-expression"]).Get(varName, out LuaTable? noiseExpr)) {
-                    return EstimateArgument(noiseExpr, "expression");
-                }
-
-                return 1f;
-            case "function-application":
-                string funName = expression.Get("function_name", "");
-                var args = expression.Get<LuaTable>("arguments");
-
-                if (args is null) {
-                    return 0;
-                }
-
-                switch (funName) {
-                    case "add":
-                        float res = 0f;
-
-                        foreach (var el in args.ArrayElements<LuaTable>()) {
-                            res += EstimateNoiseExpression(el);
-                        }
-
-                        return res;
-
-                    case "multiply":
-                        res = 1f;
-
-                        foreach (var el in args.ArrayElements<LuaTable>()) {
-                            res *= EstimateNoiseExpression(el);
-                        }
-
-                        return res;
-
-                    case "subtract":
-                        return EstimateArgument(args, 1) - EstimateArgument(args, 2);
-                    case "divide":
-                        return EstimateArgument(args, 1) / EstimateArgument(args, 2);
-                    case "exponentiate":
-                        return MathF.Pow(EstimateArgument(args, 1), EstimateArgument(args, 2));
-                    case "absolute-value":
-                        return MathF.Abs(EstimateArgument(args, 1));
-                    case "clamp":
-                        return MathUtils.Clamp(EstimateArgument(args, 1), EstimateArgument(args, 2), EstimateArgument(args, 3));
-                    case "log2":
-                        return MathF.Log(EstimateArgument(args, 1), 2f);
-                    case "distance-from-nearest-point":
-                        return EstimateArgument(args, "maximum_distance");
-                    case "ridge":
-                        return (EstimateArgument(args, 2) + EstimateArgument(args, 3)) * 0.5f; // TODO
-                    case "terrace":
-                        return EstimateArgument(args, "value"); // TODO what terrace does
-                    case "random-penalty":
-                        float source = EstimateArgument(args, "source");
-                        float penalty = EstimateArgument(args, "amplitude");
-
-                        if (penalty > source) {
-                            return source / penalty;
-                        }
-
-                        return (source + source - penalty) / 2;
-
-                    case "spot-noise":
-                        float quantity = EstimateArgument(args, "spot_quantity_expression");
-                        float spotCount;
-
-                        if (args.Get("candidate_spot_count", out LuaTable? spots)) {
-                            spotCount = EstimateNoiseExpression(spots);
-                        }
-                        else {
-                            spotCount = EstimateArgument(args, "candidate_point_count", 256) / EstimateArgument(args, "skip_span", 1);
-                        }
-
-                        float regionSize = EstimateArgument(args, "region_size", 512);
-                        regionSize *= regionSize;
-                        float count = spotCount * quantity / regionSize;
-
-                        return count;
-
-                    case "factorio-basis-noise":
-                    case "factorio-quick-multioctave-noise":
-                    case "factorio-multioctave-noise":
-                        float outputScale = EstimateArgument(args, "output_scale", 1f);
-                        return 0.1f * outputScale;
-                    default:
-                        return 0f;
-                }
-            case "procedure-delimiter":
-                return EstimateArgument(expression, "expression");
-            case "literal-number":
-                return expression.Get("literal_value", 0f);
-            case "literal-expression":
-                return EstimateArgument(expression, "literal_value");
-            default:
-                return 0f;
+        if (match.Success && float.TryParse(match.Groups[1].Value, NumberStyles.Float, CultureInfo.InvariantCulture, out float density)) {
+            return density;
         }
+
+        if (depth >= MaxNoiseExpressionDepth) {
+            return 0;
+        }
+
+        foreach (Match reference in noiseExpressionReferenceRegex.Matches(expression)) {
+            string name = reference.Groups[1].Success ? reference.Groups[1].Value : reference.Value;
+
+            if (((LuaTable?)raw["noise-expression"]).Get(name, out LuaTable? noiseExpression) && noiseExpression.Get("expression", out string? nestedExpression)) {
+                float nestedDensity = EstimateMapGenDensity(nestedExpression, depth + 1);
+
+                if (nestedDensity > 0) {
+                    return nestedDensity;
+                }
+            }
+        }
+
+        return 0;
     }
 }
